@@ -10,7 +10,7 @@ export const getUsers = async (req: any, res: any) => {
         const users = await User.find()
 
         return res.status(200).json({
-            msg: "from Aleef",
+            msg: "from Aleeff",
             users
         })
     } catch (err) {
