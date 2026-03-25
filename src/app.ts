@@ -8,7 +8,7 @@ import hpp from "hpp";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import usersRouter from "./modules/User/users.router";
-
+import globalErrorHandler from "./middlewares/error";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -41,5 +41,9 @@ const authLimiter = rateLimit({
 app.use(cookieParser());
 
 app.use('/api/v1/users', usersRouter)
+
+//Global Error Handler
+app.use(globalErrorHandler);
+
 
 export default app;
