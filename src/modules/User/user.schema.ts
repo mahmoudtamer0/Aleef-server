@@ -11,6 +11,11 @@ const userSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
+    phone: {
+        type: String,
+        required: true,
+        unique: true
+    },
     password: {
         type: String,
         required: true
@@ -19,13 +24,14 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: "USER"
     },
-    image: {
+    profilePic: {
         type: String,
-        default: "../uploads/image.png"
+        default: "https://res.cloudinary.com/ddgniiotg/image/upload/v1773086407/default_eop2qt.jpg"
     },
-    posts: [{
+    cloudinary_id: {
         type: String,
-    }],
+        default: "default"
+    },
     isEmailVerified: {
         type: Boolean,
         default: false,
