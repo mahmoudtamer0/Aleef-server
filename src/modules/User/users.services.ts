@@ -112,7 +112,9 @@ export const login = async ({ email, password }: any, device: string) => {
         throw new ApiError(401, "email not veryfied");
     }
 
+    console.log(password)
     const checkPass = await bcrypt.compare(password, findUser.password)
+    console.log(checkPass)
 
     if (!checkPass) {
         throw new ApiError(400, "password not correct");
