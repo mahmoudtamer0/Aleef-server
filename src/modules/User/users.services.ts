@@ -90,17 +90,13 @@ export const verifyEmail = async ({ email, otp }: any, device: string) => {
     user.emailVerificationExpires = null;
 
     await user.save()
-    const session = await Session.create({
-        userId: user._id,
-        device: device
-    });
-    const token = generateToken(user.name, user._id.toString(), user.role, session._id.toString())
+    const token = generateToken(user.name, user._id.toString(), user.role)
 
     return { user, token }
 
 }
 
-export const login = async ({ email, password }: any, device: string) => {
+export const login = async ({ email, password }: any) => {
 
     const findUser = await User.findOne({ email: email })
 
@@ -120,14 +116,13 @@ export const login = async ({ email, password }: any, device: string) => {
         throw new ApiError(400, "password not correct");
     }
 
-    const session = await Session.create({
-        userId: findUser._id,
-        device: device
-    });
+    // const session = await Session.create({
+    //     userId: findUser._id,
+    //     device: device
+    // });
 
-    const token = generateToken(findUser.name, findUser._id.toString(), findUser.role, session._id.toString())
-
-    const time = new Date().toLocaleString();
+    const token = generateToken(findUser.name, findUser._id.toString(), findUser.role)
+    console.log(password)
 
     await sendEmail({
         email: email,
@@ -146,7 +141,7 @@ export const login = async ({ email, password }: any, device: string) => {
                 <!-- Login Details -->
                 <div style="margin: 25px 0; text-align: left; background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
                     <p style="margin: 8px 0;"><strong>Device:</strong>samsung</p>
-                    <p style="margin: 8px 0;"><strong>Time:</strong> ${time}</p>
+                    <p style="margin: 8px 0;"><strong>Time:</strong> ${new Date().getFullYear()}</p>
                     <p style="margin: 8px 0;"><strong>Location:</strong>Egypt,Cairo</p>
                 </div>
 
@@ -164,7 +159,7 @@ export const login = async ({ email, password }: any, device: string) => {
         </div>
 `
     });
-
+    console.log(password)
     return { findUser, token };
 }
 
