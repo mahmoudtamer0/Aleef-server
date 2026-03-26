@@ -115,7 +115,7 @@ export const login = async ({ email, password }: any, device: string) => {
     const checkPass = await bcrypt.compare(password, findUser.password)
 
     if (!checkPass) {
-        throw new ApiError(400, "email or password not correct");
+        throw new ApiError(400, "password not correct");
     }
 
     const session = await Session.create({
