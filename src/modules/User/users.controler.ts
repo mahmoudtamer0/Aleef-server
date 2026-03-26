@@ -39,7 +39,7 @@ export const verifyEmail = catchAsync(async (req, res, next) => {
 export const login = catchAsync(async (req, res, next) => {
 
     const device = req.headers["user-agent"] || ""
-    const user = await userService.login(req.body, device)
+    const user = await userService.login(req.body)
 
     return res.status(200).json({
         status: "success",
