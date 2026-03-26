@@ -90,13 +90,17 @@ export const verifyEmail = async ({ email, otp }: any, device: string) => {
     user.emailVerificationExpires = null;
 
     await user.save()
-    const token = generateToken(user.name, user._id.toString(), user.role)
+    const session = await Session.create({
+        userId: user._id,
+        device: device
+    });
+    const token = generateToken(user.name, user._id.toString(), user.role, session._id.toString())
 
     return { user, token }
 
 }
 
-export const login = async ({ email, password }: any) => {
+export const login = async ({ email, password }: any, device: string) => {
 
     const findUser = await User.findOne({ email: email })
 
@@ -116,13 +120,14 @@ export const login = async ({ email, password }: any) => {
         throw new ApiError(400, "password not correct");
     }
 
-    // const session = await Session.create({
-    //     userId: findUser._id,
-    //     device: device
-    // });
+    const session = await Session.create({
+        userId: findUser._id,
+        device: device
+    });
 
-    const token = generateToken(findUser.name, findUser._id.toString(), findUser.role)
-    console.log(password)
+    const token = generateToken(findUser.name, findUser._id.toString(), findUser.role, session._id.toString())
+
+    const time = new Date().toLocaleString();
 
     await sendEmail({
         email: email,
@@ -141,7 +146,7 @@ export const login = async ({ email, password }: any) => {
                 <!-- Login Details -->
                 <div style="margin: 25px 0; text-align: left; background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
                     <p style="margin: 8px 0;"><strong>Device:</strong>samsung</p>
-                    <p style="margin: 8px 0;"><strong>Time:</strong> ${new Date().getFullYear()}</p>
+                    <p style="margin: 8px 0;"><strong>Time:</strong> ${time}</p>
                     <p style="margin: 8px 0;"><strong>Location:</strong>Egypt,Cairo</p>
                 </div>
 
@@ -159,7 +164,7 @@ export const login = async ({ email, password }: any) => {
         </div>
 `
     });
-    console.log(password)
+
     return { findUser, token };
 }
 
