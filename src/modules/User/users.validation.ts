@@ -24,3 +24,16 @@ export const loginSchema = Joi.object({
             "any.required": "Password is required",
         }),
 });
+
+export const verifyOtpSchema = Joi.object({
+    email: Joi.string().email().required(),
+    otp: Joi.string()
+        .required()
+        .messages({
+            "any.required": "otp required",
+        }),
+});
+
+export const resendOtpSchema = Joi.object({
+    email: Joi.string().email().required()
+});

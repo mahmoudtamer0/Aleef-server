@@ -10,12 +10,6 @@ export const register = catchAsync(async (req, res, next) => {
     return res.status(200).json({
         status: "success",
         message: "User registered. Please verify your email.",
-        user: {
-            id: user._id,
-            name: user.name,
-            email: user.email,
-            phone: user.phone
-        }
     })
 
 })
@@ -33,6 +27,16 @@ export const verifyEmail = catchAsync(async (req, res, next) => {
             email: verfied.user.email,
             profilePic: verfied.user.profilePic,
         }
+    })
+})
+
+export const resendOtp = catchAsync(async (req, res, next) => {
+
+    const verify = await userService.resendOtp(req.body)
+
+    return res.status(200).json({
+        status: "success",
+        message: "User registered. Please verify your email.",
     })
 })
 
