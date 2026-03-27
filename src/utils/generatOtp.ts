@@ -10,7 +10,7 @@ export const generateOTP = () => {
         .update(otp)
         .digest("hex");
 
-    const expires = new Date(Date.now() + 1 * 60 * 1000);
+    const expires = new Date(Date.now() + 2 * 60 * 1000);
 
     return { otp, hashedOtp, expires };
 };
