@@ -59,6 +59,17 @@ export const login = catchAsync(async (req, res, next) => {
 
 })
 
+export const forgetPassword = catchAsync(async (req, res, next) => {
+
+    const forget = null
+
+    return res.status(200).json({
+        status: "success",
+        message: "User registered. Please verify your email.",
+    })
+
+})
+
 export const logOut = catchAsync(async (req, res, next) => {
 
     const user = (req as any).user
