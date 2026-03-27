@@ -112,9 +112,7 @@ export const login = async ({ email, password }: any, device: string) => {
         throw new ApiError(401, "email not veryfied");
     }
 
-    console.log(password)
     const checkPass = await bcrypt.compare(password, findUser.password)
-    console.log(checkPass)
 
     if (!checkPass) {
         throw new ApiError(400, "password not correct");
@@ -129,7 +127,7 @@ export const login = async ({ email, password }: any, device: string) => {
 
     const time = new Date().toLocaleString();
 
-    await sendEmail({
+    sendEmail({
         email: email,
         subject: "New Login Detected",
         message: `
@@ -145,7 +143,7 @@ export const login = async ({ email, password }: any, device: string) => {
 
                 <!-- Login Details -->
                 <div style="margin: 25px 0; text-align: left; background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
-                    <p style="margin: 8px 0;"><strong>Device:</strong>samsung</p>
+                    <p style="margin: 8px 0;"><strong>Device:</strong>${device}</p>
                     <p style="margin: 8px 0;"><strong>Time:</strong> ${time}</p>
                     <p style="margin: 8px 0;"><strong>Location:</strong>Egypt,Cairo</p>
                 </div>
@@ -163,7 +161,7 @@ export const login = async ({ email, password }: any, device: string) => {
             </div>
         </div>
 `
-    });
+    }).catch(err => console.log("email error:", err))
 
     return { findUser, token };
 }
