@@ -143,9 +143,9 @@ export const login = async ({ email, password }: any, device: string) => {
 
                 <!-- Login Details -->
                 <div style="margin: 25px 0; text-align: left; background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
-                    <p style="margin: 8px 0;"><strong>Device:</strong>${device}</p>
+                    <p style="margin: 8px 0;"><strong>Device:</strong> ${device}</p>
                     <p style="margin: 8px 0;"><strong>Time:</strong> ${time}</p>
-                    <p style="margin: 8px 0;"><strong>Location:</strong>Egypt,Cairo</p>
+                    <p style="margin: 8px 0;"><strong>Location:</strong> Egypt,Cairo</p>
                 </div>
 
                 <!-- Warning -->
