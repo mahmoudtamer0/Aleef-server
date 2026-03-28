@@ -6,6 +6,7 @@ import { sendEmail } from "../../utils/sendEmail";
 import crypto from "crypto";
 import { generateToken } from "../../utils/generateToken";
 import Session from "./session.schema";
+import deleteProfilPic from "../../utils/deleteProfile";
 
 
 export const register = async ({ email, name, password, phone }: any) => {
@@ -172,8 +173,12 @@ export const login = async ({ email, password }: any, device: string) => {
         throw new ApiError(400, "email or password not correct");
     }
 
-    if (findUser && findUser.isEmailVerified == false) {
+    if (findUser.isEmailVerified == false) {
         throw new ApiError(401, "email not veryfied");
+    }
+
+    if (findUser.status == "banned") {
+        throw new ApiError(403, "your account is banned");
     }
 
     const checkPass = await bcrypt.compare(password, findUser.password)
@@ -228,6 +233,128 @@ export const login = async ({ email, password }: any, device: string) => {
     }).catch(err => console.log("email error:", err))
 
     return { findUser, token };
+}
+
+export const getMe = async (user: any) => {
+
+    const userProfile = await User.findOne({ _id: user.id }).select('name email phone profilePic')
+
+    if (!userProfile) throw new ApiError(404, "user not fount");
+
+    return userProfile;
+}
+
+export const editUserProfile = async (user: any, reqBody: any, reqFile: any) => {
+    const { name, phone, changeProfilePic, deleteProfilePic } = reqBody;
+    const userProfile = await User.findOne({ _id: user.id }).select('name email phone profilePic cloudinary_id')
+
+    if (!userProfile) throw new ApiError(404, "user not fount");
+
+    if (name) userProfile.name = name;
+
+    if (phone) userProfile.phone = phone;
+
+
+    if (deleteProfilePic == true || deleteProfilePic == "true") {
+
+        if (userProfile.cloudinary_id == "default") {
+            throw new ApiError(400, "user don't have profile pic");
+        }
+
+        void deleteProfilPic(userProfile.cloudinary_id)
+
+        userProfile.profilePic = "https://res.cloudinary.com/ddgniiotg/image/upload/v1773086407/default_eop2qt.jpg";
+        userProfile.cloudinary_id = "default";
+
+    }
+
+    if (changeProfilePic == "true" && reqFile) {
+
+        if (userProfile.cloudinary_id != "default") {
+            void deleteProfilPic(userProfile.cloudinary_id)
+        }
+
+        userProfile.profilePic = reqFile.path;
+        userProfile.cloudinary_id = reqFile.filename;
+
+    }
+
+    await userProfile.save()
+
+    return userProfile
+
+}
+
+export const banUser = async (req: any) => {
+    const { userId } = req.params;
+    const { banAction, banDays } = req.body;
+
+    const user = await User.findOne({ _id: userId });
+
+    if (!user) throw new ApiError(404, "user not fount");
+
+    if (banAction == "ban") {
+        const banDate = new Date(Date.now() + Number(banDays) * 24 * 60 * 60 * 1000);
+
+        user.status = "banned";
+        user.banExpiresAt = banDate;
+
+        await user.save();
+
+        await Session.deleteMany({ userId: userId });
+
+        sendEmail({
+            email: user.email,
+            subject: "Account Suspended - Aleef",
+            message: `
+    <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
+        <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
+            
+            <!-- Header -->
+            <h1 style="color: #267D77; margin-bottom: 10px;">Aleef</h1>
+            <h2 style="color: #d9534f;">Account Suspended</h2>
+            <p style="color: #555; font-size: 16px;">
+                Your account has been temporarily restricted due to a violation of our policies.
+            </p>
+
+            <!-- Ban Details -->
+            <div style="margin: 25px 0; text-align: left; background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
+                <p style="margin: 8px 0;"><strong>Action By:</strong> System Administration</p>
+                <p style="margin: 8px 0;"><strong>Administrator:</strong> Mahmoud Tamer</p>
+                <p style="margin: 8px 0;"><strong>Ban Start:</strong> ${new Date().toLocaleString()}</p>
+                <p style="margin: 8px 0;"><strong>Ban Ends:</strong> ${banDate.toLocaleString()}</p>
+            </div>
+
+            <!-- Warning -->
+            <p style="color: #d9534f; font-size: 14px; margin-top: 15px;">
+                During this period, you will not be able to access your account.
+            </p>
+
+            <!-- Help -->
+            <p style="color: #555; font-size: 14px;">
+                If you believe this action was taken by mistake, please contact our support team.
+            </p>
+
+            <!-- Footer -->
+            <div style="margin-top: 30px; font-size: 12px; color: #999;">
+                <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+`
+        }).catch(err => console.log("email error:", err));
+        return { status: "success", message: "User banned successfully" }
+    }
+
+    if (banAction == "remove") {
+        user.status = "active";
+        user.banExpiresAt = null;
+        await user.save()
+
+        return { status: "success", message: "ban removed successfuly" }
+    }
+
+    throw new ApiError(400, "unexpected ban action");
 }
 
 export const logOut = async (user: any) => {

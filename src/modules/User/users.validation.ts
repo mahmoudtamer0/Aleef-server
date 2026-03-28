@@ -37,3 +37,10 @@ export const verifyOtpSchema = Joi.object({
 export const resendOtpSchema = Joi.object({
     email: Joi.string().email().required()
 });
+
+export const editProfileSchema = Joi.object({
+    name: Joi.string().min(2),
+    phone: Joi.string(),
+    changeProfilePic: Joi.string(),
+    deleteProfilePic: Joi.string(),
+});

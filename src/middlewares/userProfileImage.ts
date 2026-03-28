@@ -9,8 +9,8 @@ const storage = new CloudinaryStorage({
     params: async (req, file) => {
         return {
             folder: "aleef/users",
-            format: file.mimetype.split("/")[1],
-            public_id: file.originalname.split(".")[0],
+            format: undefined,
+            public_id: `${Date.now()}-${file.originalname.split(".")[0]}`
         }
     }
 });
@@ -19,8 +19,8 @@ export const upload = multer({
     storage: storage,
 
     fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-        if (!file.mimetype.startsWith("image")) {
-            return cb(new Error("Only images are allowed"));
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
+            return cb(new Error("Only JPG, PNG, WEBP are allowed"));
         }
         cb(null, true);
     }
