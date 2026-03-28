@@ -12,7 +12,12 @@ if (!cached) {
 }
 
 export const connectDB = async () => {
-    if (cached.conn) return cached.conn;
+    if (cached.conn) {
+        console.log("♻️ Using cached MongoDB connection");
+        return cached.conn;
+    }
+
+    console.log("🚀 Creating NEW MongoDB connection");
 
     if (!cached.promise) {
         cached.promise = mongoose.connect(DB_URL).then((mongoose) => mongoose);
