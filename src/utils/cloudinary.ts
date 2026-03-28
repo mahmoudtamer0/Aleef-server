@@ -1,13 +1,17 @@
-const cloudinary = require("cloudinary").v2;
+import { v2 as cloudinary } from 'cloudinary';
 
 const cloudName = process.env["CLOUD_NAME"]
 const cloudApiKey = process.env["CLOUD_API_KEY"]
-const cloudApySecret = process.env["CLOUD_API_SECRET"]
+const cloudApiSecret = process.env["CLOUD_API_SECRET"]
+
+if (!cloudName || !cloudApiKey || !cloudApiSecret) {
+    throw new Error("Cloudinary environment variables are missing");
+}
 
 cloudinary.config({
     cloud_name: cloudName,
     api_key: cloudApiKey,
-    api_secret: cloudApySecret
+    api_secret: cloudApiSecret
 });
 
 export default cloudinary;

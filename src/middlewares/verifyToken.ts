@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import catchAsync from "../utils/catchAsync";
 import ApiError from "../utils/ApiError";
 import Session from "../modules/User/session.schema";
+import User from "../modules/User/user.schema";
 
 export const verifyToken = catchAsync(async (req, res, next) => {
 
@@ -28,11 +29,31 @@ export const verifyToken = catchAsync(async (req, res, next) => {
         return next(new ApiError(401, "Session expired. Please login again."));
     }
 
-    const session = await Session.findOne({ _id: decoded.sessionId })
+    const session = await Session.findById(decoded.sessionId)
+        .populate<{ userId: { status: string, banExpiresAt: Date } }>({
+            path: "userId",
+            select: "status banExpiresAt"
+        });
 
     if (!session) return next(new ApiError(401, "Session expired. Please login again."));
 
-    (req as any).user = decoded;
+
+    let status = session?.userId?.status;
+    const banExpiresAt = session?.userId?.banExpiresAt;
+
+
+    if (status === "banned" && banExpiresAt && banExpiresAt < new Date()) {
+        const user = await User.findByIdAndUpdate({ _id: decoded.id }, {
+            status: "active",
+            banExpiresAt: null
+        })
+
+        status = "active";
+    }
+
+    if (status == "banned") return next(new ApiError(403, "your account has been banned"));
+
+    req.user = decoded;
     next();
 })
 

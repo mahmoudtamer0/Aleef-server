@@ -59,6 +59,28 @@ export const login = catchAsync(async (req, res, next) => {
 
 })
 
+export const getME = catchAsync(async (req, res, next) => {
+    const user = (req as any).user
+    const userProfile = await userService.getMe(user)
+
+    return res.status(200).json({
+        status: "success",
+        user: userProfile
+    })
+})
+
+export const editUserProfile = catchAsync(async (req, res, next) => {
+    const user = (req as any).user
+    const body = (req as any).body
+    const file = (req as any).file
+    const userProfile = await userService.editUserProfile(user, body, file)
+
+    return res.status(200).json({
+        status: "success",
+        user: userProfile
+    })
+})
+
 export const forgetPassword = catchAsync(async (req, res, next) => {
 
     const forget = null
@@ -66,6 +88,17 @@ export const forgetPassword = catchAsync(async (req, res, next) => {
     return res.status(200).json({
         status: "success",
         message: "User registered. Please verify your email.",
+    })
+
+})
+
+export const banUser = catchAsync(async (req, res, next) => {
+
+    const baan = await userService.banUser(req)
+
+    return res.status(200).json({
+        status: baan.status,
+        message: baan.message
     })
 
 })
