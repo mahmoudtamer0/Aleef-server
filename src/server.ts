@@ -13,11 +13,9 @@ if (process.env["NODE_ENV"] !== "production") {
     mongoose.connect(dbUrl)
         .then(() => {
             console.log("DB Connected");
-
-
-            app.listen(PORT, () => {
-                console.log(`Server running on ${PORT}`);
-            });
         })
         .catch((err: any) => console.log(err));
 }
+app.listen(PORT, () => {
+    console.log(`Server running on ${PORT}`);
+});
