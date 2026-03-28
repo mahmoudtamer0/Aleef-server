@@ -88,7 +88,7 @@ export const resendOtp = async ({ email }: any) => {
     await findUser.save()
 
 
-    sendEmail({
+    await sendEmail({
         email: email,
         subject: "Resend Verification Code",
         text: "",
@@ -198,7 +198,7 @@ export const login = async ({ email, password }: any, device: string) => {
 
     const time = new Date().toLocaleString();
 
-    void sendEmail({
+    await sendEmail({
         email: email,
         subject: "New Login Detected",
         text: "",
@@ -306,7 +306,7 @@ export const banUser = async (req: any) => {
 
         await Session.deleteMany({ userId: userId });
 
-        void sendEmail({
+        await sendEmail({
             email: user.email,
             subject: "Important update about your Aleef account",
 
@@ -370,7 +370,7 @@ If you believe this was a mistake, please contact our support team.
         user.banExpiresAt = null;
         await user.save()
 
-        void sendEmail({
+        await sendEmail({
             email: user.email,
             subject: "Your Aleef account is now accessible",
 
