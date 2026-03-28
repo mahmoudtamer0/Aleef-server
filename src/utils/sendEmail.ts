@@ -12,10 +12,11 @@ const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi()
 interface SendEmailParams {
     email: string;
     subject: string;
+    text: string;
     message: string;
 }
 
-export const sendEmail = async ({ email, message, subject }: SendEmailParams) => {
+export const sendEmail = async ({ email, message, text, subject }: SendEmailParams) => {
     try {
         await apiInstance.sendTransacEmail({
             sender: {
@@ -24,9 +25,11 @@ export const sendEmail = async ({ email, message, subject }: SendEmailParams) =>
             },
             to: [{ email: email }],
             subject: subject,
+            text: text,
             htmlContent: message
         });
 
+        console.log("email sent to :")
     } catch (error: any) {
         console.log(error.response?.body || error.message);
     }

@@ -40,6 +40,7 @@ export const register = async ({ email, name, password, phone }: any) => {
     await sendEmail({
         email: email,
         subject: "Verify your email",
+        text: "",
         message: `
             <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
                 <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
@@ -90,6 +91,7 @@ export const resendOtp = async ({ email }: any) => {
     sendEmail({
         email: email,
         subject: "Resend Verification Code",
+        text: "",
         message: `
         <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
             <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
@@ -199,6 +201,7 @@ export const login = async ({ email, password }: any, device: string) => {
     sendEmail({
         email: email,
         subject: "New Login Detected",
+        text: "",
         message: `
         <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
             <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
@@ -303,46 +306,62 @@ export const banUser = async (req: any) => {
 
         await Session.deleteMany({ userId: userId });
 
-        sendEmail({
+        void sendEmail({
             email: user.email,
-            subject: "Account Suspended - Aleef",
+            subject: "Important update about your Aleef account",
+
+            text: `
+Hello ${user.name},
+
+We want to inform you that your account access has been temporarily restricted.
+
+Ban start: ${new Date().toLocaleString()}
+Ban ends: ${banDate.toLocaleString()}
+
+If you believe this was a mistake, please contact our support team.
+
+- Aleef Team
+`,
+
             message: `
-    <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
-        <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
-            
-            <!-- Header -->
-            <h1 style="color: #267D77; margin-bottom: 10px;">Aleef</h1>
-            <h2 style="color: #d9534f;">Account Suspended</h2>
-            <p style="color: #555; font-size: 16px;">
-                Your account has been temporarily restricted due to a violation of our policies.
-            </p>
+        <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
+            <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; padding: 30px;">
+    
+                <h1 style="color: #267D77;">Aleef</h1>
+                <h2 style="color: #333;">Account Access Update</h2>
 
-            <!-- Ban Details -->
-            <div style="margin: 25px 0; text-align: left; background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
-                <p style="margin: 8px 0;"><strong>Action By:</strong> System Administration</p>
-                <p style="margin: 8px 0;"><strong>Administrator:</strong> Mahmoud Tamer</p>
-                <p style="margin: 8px 0;"><strong>Ban Start:</strong> ${new Date().toLocaleString()}</p>
-                <p style="margin: 8px 0;"><strong>Ban Ends:</strong> ${banDate.toLocaleString()}</p>
-            </div>
+                <p style="color: #555; font-size: 16px;">
+                    Hello <strong>${user.name}</strong>,
+                </p>
 
-            <!-- Warning -->
-            <p style="color: #d9534f; font-size: 14px; margin-top: 15px;">
-                During this period, you will not be able to access your account.
-            </p>
+                <p style="color: #555; font-size: 15px;">
+                    Your account access has been temporarily restricted due to a policy review.
+                </p>
 
-            <!-- Help -->
-            <p style="color: #555; font-size: 14px;">
-                If you believe this action was taken by mistake, please contact our support team.
-            </p>
+                <div style="margin: 25px 0; text-align: left; background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
+                    <p><strong>Action By:</strong> System</p>
+                    <p><strong>Start:</strong> ${new Date().toLocaleString()}</p>
+                    <p><strong>End:</strong> ${banDate.toLocaleString()}</p>
+                </div>
 
-            <!-- Footer -->
-            <div style="margin-top: 30px; font-size: 12px; color: #999;">
-                <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
+                <p style="color: #555;">
+                    If you think this is a mistake, you can contact our support team.
+                </p>
+
+                <a href="https://yourdomain.com/support"
+                    style="display: inline-block; margin-top: 15px; padding: 12px 20px; background-color: #267D77; color: white; text-decoration: none; border-radius: 6px;">
+                    Contact Support
+                </a>
+
+                <div style="margin-top: 30px; font-size: 12px; color: #999;">
+                    <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
+                    <p>If you didn’t expect this email, you can ignore it.</p>
+                </div>
             </div>
         </div>
-    </div>
 `
         }).catch(err => console.log("email error:", err));
+
         return { status: "success", message: "User banned successfully" }
     }
 
@@ -350,6 +369,62 @@ export const banUser = async (req: any) => {
         user.status = "active";
         user.banExpiresAt = null;
         await user.save()
+
+        void sendEmail({
+            email: user.email,
+            subject: "Your Aleef account is now accessible",
+
+            text: `
+Hello ${user.name},
+
+Good news! Your account access has been restored and you can now use Aleef normally.
+
+If you experience any issues, feel free to contact our support team.
+
+- Aleef Team
+`,
+
+            message: `
+<div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
+  <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; padding: 30px;">
+    
+    <h1 style="color: #267D77;">Aleef</h1>
+    <h2 style="color: #28a745;">Account Access Restored</h2>
+
+    <p style="color: #555; font-size: 16px;">
+      Hello <strong>${user.name}</strong>,
+    </p>
+
+    <p style="color: #555; font-size: 15px;">
+      We're happy to inform you that your account is now fully accessible again.
+    </p>
+
+    <div style="margin: 25px 0; text-align: left; background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
+      <p><strong>Status:</strong> Active</p>
+      <p><strong>Restored At:</strong> ${new Date().toLocaleString()}</p>
+    </div>
+
+    <p style="color: #555;">
+      You can now continue using Aleef without any restrictions.
+    </p>
+
+    <a href="https://yourdomain.com/login"
+       style="display: inline-block; margin-top: 15px; padding: 12px 20px; background-color: #267D77; color: white; text-decoration: none; border-radius: 6px;">
+       Go to your account
+    </a>
+
+    <p style="color: #777; font-size: 13px; margin-top: 20px;">
+      If you have any questions, our support team is here to help.
+    </p>
+
+    <div style="margin-top: 30px; font-size: 12px; color: #999;">
+      <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
+      <p>If you didn’t expect this email, you can safely ignore it.</p>
+    </div>
+  </div>
+</div>
+`
+        }).catch(err => console.log("email error:", err));
 
         return { status: "success", message: "ban removed successfuly" }
     }
