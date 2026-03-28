@@ -198,7 +198,7 @@ export const login = async ({ email, password }: any, device: string) => {
 
     const time = new Date().toLocaleString();
 
-    sendEmail({
+    void sendEmail({
         email: email,
         subject: "New Login Detected",
         text: "",
