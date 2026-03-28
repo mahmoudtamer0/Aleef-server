@@ -16,16 +16,9 @@ app.set("trust proxy", 1);
 
 import { connectDB } from "./utils/db";
 if (process.env["NODE_ENV"] == "production") {
-
-    let isConnected = false;
-
-    app.use(async (req, res, next) => {
-        if (!isConnected) {
-            await connectDB();
-            isConnected = true;
-        }
-        next();
-    });
+    (async () => {
+        await connectDB();
+    })();
 }
 
 
