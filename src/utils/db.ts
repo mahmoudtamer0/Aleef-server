@@ -12,13 +12,23 @@ let cached = (global as any).mongoose || { conn: null, promise: null };
 
 
 export const connectDB = async () => {
-    if (cached.conn) return cached.conn;
+    console.log("👉 connectDB called");
+
+    if (cached.conn) {
+        console.log("✅ Connection exists (using cached)");
+        return cached.conn;
+    }
+
+    console.log("⚡ Creating new connection...");
+
+
 
     if (!cached.promise) {
         cached.promise = mongoose.connect(DB_URL, {
             maxPoolSize: 5,
             serverSelectionTimeoutMS: 5000,
         });
+        console.log("mongoose.connect");
     }
 
     cached.conn = await cached.promise;
