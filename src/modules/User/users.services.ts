@@ -37,34 +37,34 @@ export const register = async ({ email, name, password, phone }: any) => {
         })
     }
 
-    //     await sendEmail({
-    //         email: email,
-    //         subject: "Verify your email",
-    //         text: "",
-    //         message: `
-    //             <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
-    //                 <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
-    //                     <!-- Header -->
-    //                     <h1 style="color: #267D77; margin-bottom: 10px;">Aleef</h1>
-    //                     <h2 style="color: #333;">Email Verification</h2>
-    //                     <p style="color: #555; font-size: 16px;">You're almost ready! Use the code below to verify your email address.</p>
+    await sendEmail({
+        email: email,
+        subject: "Verify your email",
+        text: "",
+        message: `
+                <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
+                    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
+                        <!-- Header -->
+                        <h1 style="color: #267D77; margin-bottom: 10px;">Aleef</h1>
+                        <h2 style="color: #333;">Email Verification</h2>
+                        <p style="color: #555; font-size: 16px;">You're almost ready! Use the code below to verify your email address.</p>
 
-    //                     <!-- OTP Code -->
-    //                     <div style="margin: 20px 0;">
-    //                         <span style="font-size: 32px; font-weight: bold; color: #267D77; letter-spacing: 8px;">${otp}</span>
-    //                     </div>
+                        <!-- OTP Code -->
+                        <div style="margin: 20px 0;">
+                            <span style="font-size: 32px; font-weight: bold; color: #267D77; letter-spacing: 8px;">${otp}</span>
+                        </div>
 
-    //                     <p style="color: #777; font-size: 14px;">This verification code will expire in 1 minute.</p>
+                        <p style="color: #777; font-size: 14px;">This verification code will expire in 1 minute.</p>
 
-    //                     <!-- Footer -->
-    //                     <div style="margin-top: 30px; font-size: 12px; color: #999;">
-    //                         <p>If you did not request this email, please ignore it.</p>
-    //                         <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
-    //                     </div>
-    //                 </div>
-    //             </div>
-    // `
-    //     });
+                        <!-- Footer -->
+                        <div style="margin-top: 30px; font-size: 12px; color: #999;">
+                            <p>If you did not request this email, please ignore it.</p>
+                            <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
+                        </div>
+                    </div>
+                </div>
+    `
+    });
 
     return user;
 }
