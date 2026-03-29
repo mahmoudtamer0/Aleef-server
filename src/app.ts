@@ -8,6 +8,7 @@ import hpp from "hpp";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import usersRouter from "./modules/User/users.router";
+import doctorRouter from "./modules/Doctor/doctor.router";
 import globalErrorHandler from "./middlewares/error";
 
 const app = express();
@@ -42,6 +43,7 @@ const authLimiter = rateLimit({
 app.use(cookieParser());
 
 app.use('/api/v1/users', usersRouter)
+app.use('/api/v1/doctors', doctorRouter)
 
 //Global Error Handler
 app.use(globalErrorHandler);
