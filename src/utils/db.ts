@@ -1,6 +1,12 @@
 import mongoose from "mongoose";
 
-const DB_URL = process.env["DB_URL"] as string;
+const DB_URL = process.env["DB_URL"];
+
+if (!DB_URL) {
+    throw new Error("❌ DB_URL is not defined");
+}
+
+
 let cached = (global as any).mongoose || { conn: null, promise: null };
 (global as any).mongoose = cached;
 
