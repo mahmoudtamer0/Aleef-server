@@ -14,15 +14,6 @@ const app = express();
 app.set("trust proxy", 1);
 
 
-import { connectDB } from "./utils/db";
-if (process.env["NODE_ENV"] == "production") {
-    (async () => {
-        await connectDB();
-    })();
-}
-
-
-
 app.use(helmet());
 app.use(cors());
 app.use(express.json());

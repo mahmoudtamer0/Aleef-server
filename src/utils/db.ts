@@ -1,26 +1,18 @@
 import mongoose from "mongoose";
 
 const DB_URL = process.env["DB_URL"] as string;
+let cached = (global as any).mongoose || { conn: null, promise: null };
+(global as any).mongoose = cached;
 
-let cached = (global as any).mongoose;
-
-if (!cached) {
-    cached = (global as any).mongoose = {
-        conn: null,
-        promise: null,
-    };
-}
 
 export const connectDB = async () => {
-    if (cached.conn) {
-        console.log("♻️ Using cached MongoDB connection");
-        return cached.conn;
-    }
-
-    console.log("🚀 Creating NEW MongoDB connection");
+    if (cached.conn) return cached.conn;
 
     if (!cached.promise) {
-        cached.promise = mongoose.connect(DB_URL).then((mongoose) => mongoose);
+        cached.promise = mongoose.connect(DB_URL, {
+            maxPoolSize: 5,
+            serverSelectionTimeoutMS: 5000,
+        });
     }
 
     cached.conn = await cached.promise;
