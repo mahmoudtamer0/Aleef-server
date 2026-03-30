@@ -305,7 +305,9 @@ export const banUser = async (req: any) => {
     if (!user) throw new ApiError(404, "user not fount");
 
     if (banAction == "ban") {
-        const banDate = new Date(Date.now() + Number(banDays) * 24 * 60 * 60 * 1000);
+        const days = banDays ? Number(banDays) : 5;
+
+        const banDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
         user.status = "banned";
         user.banExpiresAt = banDate;
