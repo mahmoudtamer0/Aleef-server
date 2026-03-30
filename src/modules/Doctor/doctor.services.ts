@@ -229,3 +229,21 @@ export const verifyEmail = async ({ email, otp }: any, device: string) => {
     return { doctor }
 
 }
+
+
+export const getAllDoctorsRequests = async () => {
+
+    const docotrs = await Doctor.find({ isEmailVerified: true, status: "pending" }).lean().select("name phone city specialization status").sort({ createdAt: 1 })
+
+    return docotrs
+
+}
+
+
+export const getAllDoctors = async () => {
+
+    const docotrs = await Doctor.find({ isEmailVerified: true, status: { $ne: "pending" } }).lean().select("name phone city specialization status").sort({ createdAt: -1 })
+
+    return docotrs
+
+}

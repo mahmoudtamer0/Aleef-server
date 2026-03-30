@@ -1,5 +1,5 @@
 import express from "express";
-import { doctorRegister, verifyEmail, resendOtp } from "./doctor.controler";
+import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors } from "./doctor.controler";
 import { upload } from "../../middlewares/doctorProfilepic"
 import validate from "../../middlewares/userValidate";
 import { registerSchema, verifyOtpSchema, resendOtpSchema } from "./doctor.validation";
@@ -16,6 +16,12 @@ router.route("/verify-email")
 
 router.route("/resend-otp")
     .post(validate(resendOtpSchema), resendOtp)
+
+router.route("/get-doctors-requests")
+    .get(verifyToken, allowTo("ADMIN"), getAllDoctorsRequests)
+
+router.route("/get-all-doctors")
+    .get(verifyToken, allowTo("ADMIN"), getAllDoctors)
 
 
 export default router

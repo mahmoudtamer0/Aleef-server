@@ -288,6 +288,14 @@ export const editUserProfile = async (user: any, reqBody: any, reqFile: any) => 
 
 }
 
+export const getAllUsers = async () => {
+
+    const users = await User.find({ isEmailVerified: true }).lean().select("name email createdAt phone status").sort({ createdAt: -1 })
+
+    return users
+
+}
+
 export const banUser = async (req: any) => {
     const { userId } = req.params;
     const { banAction, banDays } = req.body;

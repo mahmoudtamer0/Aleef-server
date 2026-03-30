@@ -81,6 +81,17 @@ export const editUserProfile = catchAsync(async (req, res, next) => {
     })
 })
 
+export const getAllUsers = catchAsync(async (req, res, next) => {
+
+    const users = await userService.getAllUsers()
+
+    return res.status(200).json({
+        status: "success",
+        users: users,
+    })
+
+})
+
 export const forgetPassword = catchAsync(async (req, res, next) => {
 
     const forget = null
@@ -115,3 +126,4 @@ export const logOut = catchAsync(async (req, res, next) => {
     })
 
 })
+

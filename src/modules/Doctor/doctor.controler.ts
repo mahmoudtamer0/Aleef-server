@@ -35,3 +35,25 @@ export const resendOtp = catchAsync(async (req, res, next) => {
         message: "otp sent to your email",
     })
 })
+
+export const getAllDoctorsRequests = catchAsync(async (req, res, next) => {
+
+    const doctors = await doctorService.getAllDoctorsRequests()
+
+    return res.status(200).json({
+        status: "success",
+        doctors: doctors,
+    })
+
+})
+
+export const getAllDoctors = catchAsync(async (req, res, next) => {
+
+    const doctors = await doctorService.getAllDoctors()
+
+    return res.status(200).json({
+        status: "success",
+        doctors: doctors,
+    })
+
+})

@@ -1,5 +1,5 @@
 import express from "express";
-import { banUser, editUserProfile, getME, login, logOut, register, resendOtp, verifyEmail } from "./users.controler";
+import { banUser, editUserProfile, getME, login, logOut, register, resendOtp, verifyEmail, getAllUsers } from "./users.controler";
 import { upload } from "../../middlewares/userProfileImage"
 import validate from "../../middlewares/userValidate";
 import { registerSchema, loginSchema, verifyOtpSchema, resendOtpSchema, editProfileSchema } from "./users.validation";
@@ -22,6 +22,9 @@ router.route("/login")
 
 router.route("/me")
     .get(verifyToken, getME)
+
+router.route("/get-all-users")
+    .get(verifyToken, allowTo("ADMIN"), getAllUsers)
 
 router.route("/edit-user-profile")
     .patch(verifyToken, upload.single("profilePic"), validate(editProfileSchema), editUserProfile)

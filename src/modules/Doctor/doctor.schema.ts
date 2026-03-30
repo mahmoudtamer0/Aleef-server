@@ -21,6 +21,10 @@ const doctorSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
+    specialization: {
+        type: String,
+        required: true,
+    },
     city: {
         type: String,
         required: true,
@@ -44,6 +48,14 @@ const doctorSchema = new mongoose.Schema({
     cloudinary_id: {
         type: String,
         require: true
+    },
+    rating: {
+        type: Number,
+        default: 5
+    },
+    ratingsCount: {
+        type: Number,
+        default: 0
     },
     isEmailVerified: {
         type: Boolean,
