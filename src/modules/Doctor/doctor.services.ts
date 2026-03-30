@@ -291,8 +291,9 @@ export const getAllDoctors = async () => {
     return docotrs
 
 }
+
 export const getDoctor = async (doctorId: any) => {
-    const doctor = await Doctor.findOne(doctorId).lean().select("name email phone city specialization status profilePic")
+    const doctor = await Doctor.findById(doctorId).select("name email phone city specialization status profilePic")
 
     return doctor
 }
