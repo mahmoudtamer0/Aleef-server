@@ -238,9 +238,9 @@ export const login = async ({ email, password }: any, device: string) => {
     return { findUser, token };
 }
 
-export const getMe = async (user: any) => {
+export const getMe = async (userId: any) => {
 
-    const userProfile = await User.findOne({ _id: user.id }).select('name email phone profilePic')
+    const userProfile = await User.findOne({ _id: userId }).select('name email phone profilePic')
 
     if (!userProfile) throw new ApiError(404, "user not fount");
 

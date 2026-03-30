@@ -61,7 +61,17 @@ export const login = catchAsync(async (req, res, next) => {
 
 export const getME = catchAsync(async (req, res, next) => {
     const user = (req as any).user
-    const userProfile = await userService.getMe(user)
+    const userProfile = await userService.getMe(user.id)
+
+    return res.status(200).json({
+        status: "success",
+        user: userProfile
+    })
+})
+
+export const getUserToAdmin = catchAsync(async (req, res, next) => {
+    const { userId } = (req as any).params
+    const userProfile = await userService.getMe(userId)
 
     return res.status(200).json({
         status: "success",

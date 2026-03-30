@@ -1,5 +1,5 @@
 import express from "express";
-import { banUser, editUserProfile, getME, login, logOut, register, resendOtp, verifyEmail, getAllUsers } from "./users.controler";
+import { banUser, editUserProfile, getME, login, logOut, register, resendOtp, verifyEmail, getAllUsers, getUserToAdmin } from "./users.controler";
 import { upload } from "../../middlewares/userProfileImage"
 import validate from "../../middlewares/userValidate";
 import { registerSchema, loginSchema, verifyOtpSchema, resendOtpSchema, editProfileSchema } from "./users.validation";
@@ -34,5 +34,8 @@ router.route("/logout")
 
 router.route("/baan-user/:userId")
     .post(verifyToken, allowTo("ADMIN"), banUser)
+
+router.route("/:userId")
+    .get(verifyToken, allowTo("ADMIN"), getUserToAdmin)
 
 export default router
