@@ -14,8 +14,6 @@ export const doctorRegister = catchAsync(async (req, res, next) => {
 
 })
 
-
-
 export const verifyEmail = catchAsync(async (req, res, next) => {
     const device = req.headers["user-agent"] || ""
     const verfied = await doctorService.verifyEmail(req.body, device)
@@ -43,6 +41,28 @@ export const getAllDoctorsRequests = catchAsync(async (req, res, next) => {
     return res.status(200).json({
         status: "success",
         doctors: doctors,
+    })
+
+})
+
+export const getDoctor = catchAsync(async (req, res, next) => {
+    const { doctorId } = req.params
+    const doctor = await doctorService.getDoctor(doctorId)
+
+    return res.status(200).json({
+        status: "success",
+        doctor: doctor,
+    })
+
+})
+
+export const approveDoctorRequest = catchAsync(async (req, res, next) => {
+    const { doctorId } = req.params
+    const doctorApprove = await doctorService.approveDoctorRequest(doctorId)
+
+    return res.status(200).json({
+        status: "success",
+        message: doctorApprove,
     })
 
 })

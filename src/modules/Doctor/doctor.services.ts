@@ -230,6 +230,50 @@ export const verifyEmail = async ({ email, otp }: any, device: string) => {
 
 }
 
+export const approveDoctorRequest = async ({ doctorId }: any) => {
+
+    const doctor = await Doctor.findById(doctorId);
+
+    if (!doctor) {
+        throw new ApiError(404, "Doctor not found");
+    }
+
+    if (doctor.status !== "pending") {
+        throw new ApiError(400, "Doctor is already processed");
+    }
+
+    doctor.status = "active";
+    await doctor.save();
+
+    void sendEmail({
+        email: doctor.email,
+        subject: "Account Approved 🎉 - Aleef",
+        text: "",
+        message: `
+    <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
+        <div style="max-width: 600px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 10px;">
+            
+            <h2 style="color: #4CAF50;">Congratulations 🎉</h2>
+            
+            <p>Dear Dr. ${doctor.name},</p>
+
+            <p>Your account has been <strong>approved</strong> successfully.</p>
+
+            <p>You can now log in and start using the platform.</p>
+
+            <p style="margin-top:30px; font-size:12px; color:#888;">
+                Thank you for being part of Aleef ❤️
+            </p>
+
+        </div>
+    </div>
+  `
+    });
+
+    return "request approved"
+
+}
+
 
 export const getAllDoctorsRequests = async () => {
 
@@ -242,8 +286,14 @@ export const getAllDoctorsRequests = async () => {
 
 export const getAllDoctors = async () => {
 
-    const docotrs = await Doctor.find({ isEmailVerified: true, status: { $ne: "pending" } }).lean().select("name phone city specialization status").sort({ createdAt: -1 })
+    const docotrs = await Doctor.find({ isEmailVerified: true, status: { $ne: "pending" } }).lean().select("name email phone city specialization status profilePic").sort({ createdAt: -1 })
 
     return docotrs
 
 }
+export const getDoctor = async (doctorId: any) => {
+    const doctor = await Doctor.findOne(doctorId).lean().select("name email phone city specialization status profilePic")
+
+    return doctor
+}
+
