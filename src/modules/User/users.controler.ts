@@ -25,6 +25,7 @@ export const verifyEmail = catchAsync(async (req, res, next) => {
             id: verfied.user._id,
             name: verfied.user.name,
             email: verfied.user.email,
+            phone: verfied.user.phone,
             profilePic: verfied.user.profilePic,
         }
     })
@@ -53,6 +54,7 @@ export const login = catchAsync(async (req, res, next) => {
             id: user.findUser._id,
             name: user.findUser.name,
             email: user.findUser.email,
+            phone: user.findUser.phone,
             profilePic: user.findUser.profilePic,
         }
     })

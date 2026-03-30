@@ -230,8 +230,7 @@ export const verifyEmail = async ({ email, otp }: any, device: string) => {
 
 }
 
-export const approveDoctorRequest = async ({ doctorId }: any) => {
-
+export const approveDoctorRequest = async (doctorId: any) => {
     const doctor = await Doctor.findById(doctorId);
 
     if (!doctor) {

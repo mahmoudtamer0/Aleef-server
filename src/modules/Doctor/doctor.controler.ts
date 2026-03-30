@@ -58,6 +58,7 @@ export const getDoctor = catchAsync(async (req, res, next) => {
 
 export const approveDoctorRequest = catchAsync(async (req, res, next) => {
     const { doctorId } = req.params
+
     const doctorApprove = await doctorService.approveDoctorRequest(doctorId)
 
     return res.status(200).json({

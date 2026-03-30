@@ -24,7 +24,7 @@ router.route("/get-all-doctors")
     .get(verifyToken, allowTo("ADMIN"), getAllDoctors)
 
 router.route("/approve-request/:doctorId")
-    .patch(verifyToken, allowTo("ADMIN"), approveDoctorRequest)
+    .post(verifyToken, allowTo("ADMIN"), approveDoctorRequest)
 
 router.route("/:doctorId")
     .get(verifyToken, getDoctor)
