@@ -27,6 +27,6 @@ router.route("/approve-request/:doctorId")
     .patch(verifyToken, allowTo("ADMIN"), approveDoctorRequest)
 
 router.route("/:doctorId")
-    .patch(verifyToken, getDoctor)
+    .get(verifyToken, getDoctor)
 
 export default router
