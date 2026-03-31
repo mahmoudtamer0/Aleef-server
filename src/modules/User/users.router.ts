@@ -27,7 +27,16 @@ router.route("/get-all-users")
     .get(verifyToken, allowTo("ADMIN"), getAllUsers)
 
 router.route("/edit-user-profile")
-    .patch(verifyToken, upload.single("profilePic"), validate(editProfileSchema), editUserProfile)
+    .patch(verifyToken,
+        (req, res, next) => {
+            console.log("🚀 Route hit before multer");
+            next();
+        },
+        upload.single("profilePic"),
+        (req, res, next) => {
+            console.log("📸 After multer:", req.file);
+            next();
+        }, validate(editProfileSchema), editUserProfile)
 
 router.route("/logout")
     .post(verifyToken, logOut)
