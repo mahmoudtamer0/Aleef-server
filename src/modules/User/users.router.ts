@@ -26,17 +26,24 @@ router.route("/me")
 router.route("/get-all-users")
     .get(verifyToken, allowTo("ADMIN"), getAllUsers)
 
-router.route("/edit-user-profile")
-    .patch(verifyToken,
-        (req, res, next) => {
-            console.log("🚀 Route hit before multer");
-            next();
-        },
-        upload.single("profilePic"),
-        (req, res, next) => {
+router.patch(
+    "/edit-user-profile",
+    (req, res, next) => {
+        console.log("🚀 Route hit before multer");
+        next();
+    },
+    (req, res, next) => {
+        upload.single("profilePic")(req, res, function (err: any) {
+            if (err) {
+                console.error("❌ Multer Error:", err);
+                return res.status(400).json({ message: err.message });
+            }
             console.log("📸 After multer:", req.file);
             next();
-        }, validate(editProfileSchema), editUserProfile)
+        });
+    },
+    editUserProfile
+);
 
 router.route("/logout")
     .post(verifyToken, logOut)
