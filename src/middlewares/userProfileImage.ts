@@ -19,7 +19,7 @@ export const upload = multer({
     storage: storage,
 
     fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-        if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
+        if (!["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.mimetype)) {
             return cb(new Error("Only JPG, PNG, WEBP are allowed"));
         }
         cb(null, true);
