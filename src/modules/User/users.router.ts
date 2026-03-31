@@ -28,6 +28,7 @@ router.route("/get-all-users")
 
 router.patch(
     "/edit-user-profile",
+    verifyToken,
     (req, res, next) => {
         console.log("🚀 Route hit before multer");
         next();
