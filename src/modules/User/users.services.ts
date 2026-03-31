@@ -253,7 +253,7 @@ export const editUserProfile = async (user: any, reqBody: any, reqFile: any) => 
 
     console.log("📥 Incoming Request Body:", reqBody);
     console.log("📸 Uploaded File:", reqFile);
-    console.log("👤 User ID:", user?.id);
+    console.log("👤 User ID:", user.id);
 
 
     const userProfile = await User.findOne({ _id: user.id }).select('name email phone profilePic cloudinary_id')
