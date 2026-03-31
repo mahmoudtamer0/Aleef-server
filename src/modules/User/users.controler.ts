@@ -89,7 +89,13 @@ export const editUserProfile = catchAsync(async (req, res, next) => {
 
     return res.status(200).json({
         status: "success",
-        user: userProfile
+        user: {
+            id: userProfile._id,
+            name: userProfile.name,
+            email: userProfile.email,
+            phone: userProfile.phone,
+            profilePic: userProfile.profilePic,
+        }
     })
 })
 
