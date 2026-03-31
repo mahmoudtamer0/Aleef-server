@@ -5,7 +5,7 @@ import * as doctorService from "./doctor.services"
 
 export const doctorRegister = catchAsync(async (req, res, next) => {
 
-    const doctor = await doctorService.doctorRegister(req.body, req.file);
+    const doctor = await doctorService.doctorRegister(req.body, req.files);
 
     return res.status(200).json({
         status: "success",

@@ -45,6 +45,18 @@ const doctorSchema = new mongoose.Schema({
         type: String,
         require: true
     },
+    IdentityVerificationImage: {
+        type: String,
+        require: true
+    },
+    NationalIdFront: {
+        type: String,
+        require: true
+    },
+    NationalIdBack: {
+        type: String,
+        require: true
+    },
     cloudinary_id: {
         type: String,
         require: true

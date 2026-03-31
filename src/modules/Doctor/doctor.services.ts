@@ -10,33 +10,36 @@ import deleteProfilPic from "../../utils/deleteProfile";
 
 
 
-export const doctorRegister = async ({ email, name, password, phone, license_number, city, address }: any, reqFile: any) => {
+export const doctorRegister = async ({ email, name, password, phone, specialization, license_number, city, address }: any, reqFiles: any) => {
 
-    const { otp, hashedOtp, expires } = generateOTP()
+    //const { otp, hashedOtp, expires } = generateOTP()
     const findDoctor = await Doctor.findOne({ $or: [{ email: email }, { license_number: license_number }] })
 
     if (findDoctor && findDoctor.isEmailVerified == true) {
         throw new ApiError(400, "this email already in use");
     }
     let doctor;
+    console.log(reqFiles)
+
     const hashedPassword = await bcrypt.hash(password, 10)
+    if (!reqFiles.profilePic || !reqFiles.IdentityVerificationImage || !reqFiles.NationalIdFront || !reqFiles.NationalIdBack) {
+        throw new ApiError(400, "profile picture is required")
+    }
     if (findDoctor && findDoctor.isEmailVerified == false) {
-
-        if (!reqFile) { throw new ApiError(400, "profile picture is required") }
-
         findDoctor.name = name
         findDoctor.phone = phone
         findDoctor.password = hashedPassword
         findDoctor.license_number = license_number
         findDoctor.city = city
         findDoctor.address = address
-        findDoctor.profilePic = reqFile.path
-        findDoctor.cloudinary_id = reqFile.filename
-        findDoctor.emailVerificationCode = hashedOtp
-        findDoctor.emailVerificationExpires = expires
+        findDoctor.specialization = specialization
+        findDoctor.profilePic = reqFiles.profilePic[0].path
+        findDoctor.cloudinary_id = reqFiles.profilePic[0].filename
+        findDoctor.IdentityVerificationImage = reqFiles.IdentityVerificationImage[0].path;
+        findDoctor.NationalIdFront = reqFiles.NationalIdFront[0].path;
+        findDoctor.NationalIdBack = reqFiles.NationalIdBack[0].path;
         doctor = await findDoctor.save()
     } else {
-        if (!reqFile) { throw new ApiError(400, "profile picture is required") }
         doctor = await Doctor.create({
             email: email,
             name: name,
@@ -45,43 +48,46 @@ export const doctorRegister = async ({ email, name, password, phone, license_num
             license_number: license_number,
             city: city,
             address: address,
-            profilePic: reqFile.path,
-            cloudinary_id: reqFile.filename,
-            emailVerificationCode: hashedOtp,
-            emailVerificationExpires: expires
+            specialization: specialization,
+            profilePic: reqFiles.profilePic[0].path,
+            cloudinary_id: reqFiles.profilePic[0].filename,
+            IdentityVerificationImage: reqFiles.IdentityVerificationImage[0].path,
+            NationalIdFront: reqFiles.NationalIdFront[0].path,
+            NationalIdBack: reqFiles.NationalIdBack[0].path,
+            isEmailVerified: true
         })
     }
 
-    void sendEmail({
-        email: email,
-        subject: "Verify your email",
-        text: "",
-        message: `
-                <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
-                    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
-                        <!-- Header -->
-                        <h1 style="color: #267D77; margin-bottom: 10px;">Aleef</h1>
-                        <h2 style="color: #333;">Email Verification</h2>
-                        <p style="color: #555; font-size: 16px;">You're almost ready! Use the code below to verify your email address.</p>
+    // void sendEmail({
+    //     email: email,
+    //     subject: "Verify your email",
+    //     text: "",
+    //     message: `
+    //             <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
+    //                 <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
+    //                     <!-- Header -->
+    //                     <h1 style="color: #267D77; margin-bottom: 10px;">Aleef</h1>
+    //                     <h2 style="color: #333;">Email Verification</h2>
+    //                     <p style="color: #555; font-size: 16px;">You're almost ready! Use the code below to verify your email address.</p>
 
-                        <!-- OTP Code -->
-                        <div style="margin: 20px 0;">
-                            <span style="font-size: 32px; font-weight: bold; color: #267D77; letter-spacing: 8px;">${otp}</span>
-                        </div>
+    //                     <!-- OTP Code -->
+    //                     <div style="margin: 20px 0;">
+    //                         <span style="font-size: 32px; font-weight: bold; color: #267D77; letter-spacing: 8px;">${otp}</span>
+    //                     </div>
 
-                        <p style="color: #777; font-size: 14px;">This verification code will expire in 1 minute.</p>
+    //                     <p style="color: #777; font-size: 14px;">This verification code will expire in 1 minute.</p>
 
-                        <!-- Footer -->
-                        <div style="margin-top: 30px; font-size: 12px; color: #999;">
-                            <p>If you did not request this email, please ignore it.</p>
-                            <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
-                        </div>
-                    </div>
-                </div>
-    `
-    });
+    //                     <!-- Footer -->
+    //                     <div style="margin-top: 30px; font-size: 12px; color: #999;">
+    //                         <p>If you did not request this email, please ignore it.</p>
+    //                         <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
+    //                     </div>
+    //                 </div>
+    //             </div>
+    // `
+    // });
 
-    return doctor;
+    return;
 }
 
 
@@ -292,7 +298,7 @@ export const getAllDoctors = async () => {
 }
 
 export const getDoctor = async (doctorId: any) => {
-    const doctor = await Doctor.findById(doctorId).select("name email phone city specialization status profilePic")
+    const doctor = await Doctor.findById(doctorId).select("name email phone city specialization status profilePic IdentityVerificationImage NationalIdFront NationalIdBack")
 
     return doctor
 }

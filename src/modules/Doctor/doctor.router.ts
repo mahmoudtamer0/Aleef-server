@@ -9,7 +9,12 @@ import { allowTo } from "../../middlewares/allowTo";
 const router = express.Router()
 
 router.route("/register")
-    .post(upload.single("profilePic"), validate(registerSchema), doctorRegister)
+    .post(upload.fields([
+        { name: "profilePic", maxCount: 1 },
+        { name: "IdentityVerificationImage", maxCount: 1 },
+        { name: "NationalIdFront", maxCount: 1 },
+        { name: "NationalIdBack", maxCount: 1 },
+    ]), validate(registerSchema), doctorRegister)
 
 router.route("/verify-email")
     .post(validate(verifyOtpSchema), verifyEmail)

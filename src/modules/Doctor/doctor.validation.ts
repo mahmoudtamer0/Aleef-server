@@ -7,6 +7,7 @@ export const registerSchema = Joi.object({
     license_number: Joi.string().required(),
     city: Joi.string().required(),
     address: Joi.string().required(),
+    specialization: Joi.string().required(),
     password: Joi.string()
         .min(8)
         .pattern(new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$"))
