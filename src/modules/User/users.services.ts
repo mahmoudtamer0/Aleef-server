@@ -250,14 +250,7 @@ export const getMe = async (userId: any) => {
 export const editUserProfile = async (user: any, reqBody: any, reqFile: any) => {
     const { name, phone, changeProfilePic, deleteProfilePic } = reqBody;
 
-
-    console.log("📥 Incoming Request Body:", reqBody);
-    console.log("📸 Uploaded File:", reqFile);
-    console.log("👤 User ID:", user.id);
-
-
     const userProfile = await User.findOne({ _id: user.id }).select('name email phone profilePic cloudinary_id')
-    console.log("📦 User From DB:", userProfile);
 
     if (!userProfile) throw new ApiError(404, "user not fount");
 
@@ -286,22 +279,19 @@ export const editUserProfile = async (user: any, reqBody: any, reqFile: any) => 
             throw new ApiError(400, "No file uploaded");
         }
 
-        console.log("📸 New file data:", reqFile);
 
 
         if (userProfile.cloudinary_id != "default") {
             console.log("☁️ Deleting old image:", userProfile.cloudinary_id);
-            await deleteProfilPic(userProfile.cloudinary_id)
+            void deleteProfilPic(userProfile.cloudinary_id)
         }
 
         userProfile.profilePic = reqFile.path;
         userProfile.cloudinary_id = reqFile.filename;
 
     }
-    console.log("💾 Saving user:", userProfile);
 
     await userProfile.save()
-    console.log("💾 Saving user:", userProfile);
 
     return userProfile
 
