@@ -47,7 +47,7 @@ export const register = async ({ email, name, password, phone }: any) => {
                         <!-- Header -->
                         <h1 style="color: #267D77; margin-bottom: 10px;">Aleef</h1>
                         <h2 style="color: #333;">Email Verification</h2>
-                        <p style="color: #555; font-size: 16px;">You're almost ready! Use the code below to verify your email address.</p>
+                        <p style="color: #555; font-size: 16px;">Hello ${user.name}, You're almost ready! Use the code below to verify your email address.</p>
 
                         <!-- OTP Code -->
                         <div style="margin: 20px 0;">
@@ -163,6 +163,31 @@ export const verifyEmail = async ({ email, otp }: any, device: string) => {
     });
     const token = generateToken(user.name, user._id.toString(), user.role, session._id.toString())
 
+    void sendEmail({
+        email: user.email,
+        subject: "Account Created 🎉 - Aleef",
+        text: "",
+        message: `
+        <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
+            <div style="max-width: 600px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 10px;">
+                
+                <h2 style="color: #4CAF50;">Congratulations 🎉</h2>
+                
+                <p>Dear ${user.name},</p>
+    
+                <p>Your account has been <strong>created</strong> successfully.</p>
+    
+                <p>You can now log in and start using the platform.</p>
+    
+                <p style="margin-top:30px; font-size:12px; color:#888;">
+                    Thank you for being part of Aleef ❤️
+                </p>
+    
+            </div>
+        </div>
+      `
+    });
+
     return { user, token }
 
 }
@@ -198,7 +223,7 @@ export const login = async ({ email, password }: any, device: string) => {
 
     const time = new Date().toLocaleString();
 
-    await sendEmail({
+    void sendEmail({
         email: email,
         subject: "New Login Detected",
         text: "",
