@@ -1,5 +1,4 @@
 import User from "./user.schema"
-import bcrypt from "bcrypt";
 import ApiError from "../../utils/ApiError";
 import { generateOTP } from "../../utils/generatOtp";
 import { sendEmail } from "../../utils/sendEmail";
@@ -7,6 +6,8 @@ import crypto from "crypto";
 import { generateToken } from "../../utils/generateToken";
 import Session from "./session.schema";
 import deleteProfilPic from "../../utils/deleteProfile";
+import { hashPassword } from "../../utils/hashPassword";
+import { checkPassword } from "../../utils/checkPassword";
 
 
 export const register = async ({ email, name, password, phone }: any) => {
@@ -18,7 +19,8 @@ export const register = async ({ email, name, password, phone }: any) => {
         throw new ApiError(400, "this email already in use");
     }
     let user;
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await hashPassword(password);
+
     if (findUser && findUser.isEmailVerified == false) {
         findUser.name = name
         findUser.phone = phone
@@ -211,16 +213,16 @@ export const verifyEmail = async ({ email, otp }: any, device: string) => {
 export const login = async ({ email, password }: any, device: string) => {
 
     const findUser = await User.findOne({ email })
-        .select("+password name role status isEmailVerified profilePic phone email")
+        .select("password name role status isEmailVerified profilePic phone email banExpiresAt")
         .lean();
 
     if (!findUser) {
         throw new ApiError(400, "email or password not correct");
     }
 
-    const checkPass = await bcrypt.compare(password, findUser.password)
+    const checkedPass = await checkPassword(password, findUser.password)
 
-    if (!checkPass) {
+    if (!checkedPass) {
         throw new ApiError(400, "email or password not correct");
     }
 
@@ -228,8 +230,14 @@ export const login = async ({ email, password }: any, device: string) => {
         throw new ApiError(401, "email not veryfied");
     }
 
-    if (findUser.status == "banned") {
-        throw new ApiError(403, "your account is banned");
+    if (findUser.status == "banned" && findUser.banExpiresAt) {
+        if (findUser.banExpiresAt > new Date()) {
+            throw new ApiError(403, "your account is banned");
+        }
+        await User.findByIdAndUpdate({ _id: findUser._id }, {
+            status: "active",
+            banExpiresAt: null
+        })
     }
 
 
@@ -290,7 +298,7 @@ export const login = async ({ email, password }: any, device: string) => {
 
 export const getMe = async (userId: any) => {
 
-    const userProfile = await User.findOne({ _id: userId }).select('name email phone profilePic status createdAt')
+    const userProfile = await User.findById(userId).lean().select('name email phone profilePic status createdAt')
 
     if (!userProfile) throw new ApiError(404, "user not fount");
 
