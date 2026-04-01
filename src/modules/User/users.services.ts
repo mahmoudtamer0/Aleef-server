@@ -210,9 +210,17 @@ export const verifyEmail = async ({ email, otp }: any, device: string) => {
 
 export const login = async ({ email, password }: any, device: string) => {
 
-    const findUser = await User.findOne({ email: email })
+    const findUser = await User.findOne({ email })
+        .select("+password name role status isEmailVerified profilePic phone email")
+        .lean();
 
     if (!findUser) {
+        throw new ApiError(400, "email or password not correct");
+    }
+
+    const checkPass = await bcrypt.compare(password, findUser.password)
+
+    if (!checkPass) {
         throw new ApiError(400, "email or password not correct");
     }
 
@@ -224,11 +232,6 @@ export const login = async ({ email, password }: any, device: string) => {
         throw new ApiError(403, "your account is banned");
     }
 
-    const checkPass = await bcrypt.compare(password, findUser.password)
-
-    if (!checkPass) {
-        throw new ApiError(400, "password not correct");
-    }
 
     const session = await Session.create({
         userId: findUser._id,
@@ -329,7 +332,6 @@ export const editUserProfile = async (user: any, reqBody: any, reqFile: any) => 
 
 
         if (userProfile.cloudinary_id != "default") {
-            console.log("☁️ Deleting old image:", userProfile.cloudinary_id);
             void deleteProfilPic(userProfile.cloudinary_id)
         }
 
