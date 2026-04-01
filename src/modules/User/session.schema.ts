@@ -18,7 +18,6 @@ const sessionSchema = new mongoose.Schema({
         expires: 30 * 24 * 60 * 60
     }
 }, { timestamps: true });
-sessionSchema.index({ userId: 1 })
 
 const Session = mongoose.model("Session", sessionSchema);
 
