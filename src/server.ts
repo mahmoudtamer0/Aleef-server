@@ -9,7 +9,7 @@ const PORT = process.env["PORT"] || 3000;
 if (process.env["NODE_ENV"] == "development") {
 
     mongoose.connect(dbUrl, {
-        maxPoolSize: 20,
+        maxPoolSize: 30,
         serverSelectionTimeoutMS: 5000,
         socketTimeoutMS: 45000,
     })
