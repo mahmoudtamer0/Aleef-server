@@ -42,27 +42,43 @@ export const register = async ({ email, name, password, phone }: any) => {
         subject: "Verify your email",
         text: "",
         message: `
-                <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
-                    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
-                        <!-- Header -->
-                        <h1 style="color: #267D77; margin-bottom: 10px;">Aleef</h1>
-                        <h2 style="color: #333;">Email Verification</h2>
-                        <p style="color: #555; font-size: 16px;">Hello ${user.name}, You're almost ready! Use the code below to verify your email address.</p>
+                <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 20px;">
 
-                        <!-- OTP Code -->
-                        <div style="margin: 20px 0;">
-                            <span style="font-size: 32px; font-weight: bold; color: #267D77; letter-spacing: 8px;">${otp}</span>
-                        </div>
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 25px;">
 
-                        <p style="color: #777; font-size: 14px;">This verification code will expire in 1 minute.</p>
+        <h1 style="color: #267D77; margin-bottom: 10px;">Aleef</h1>
+        <h2 style="color: #333;">Email Verification</h2>
 
-                        <!-- Footer -->
-                        <div style="margin-top: 30px; font-size: 12px; color: #999;">
-                            <p>If you did not request this email, please ignore it.</p>
-                            <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
-                        </div>
-                    </div>
-                </div>
+        <p style="color: #555; font-size: 16px;">
+            Hello ${user.name}, You're almost ready! Use the code below to verify your email address.
+        </p>
+
+        <div style="margin: 20px 0;">
+            <span style="font-size: 28px; font-weight: bold; color: #267D77; letter-spacing: 4px; word-break: break-word;">
+                ${otp}
+            </span>
+        </div>
+
+        <p style="color: #777; font-size: 14px;">
+            This verification code will expire in 1 minute.
+        </p>
+
+        <div style="margin-top: 30px; font-size: 12px; color: #999;">
+        <p style="margin-top: 15px;">
+            Made with <span style="color: #267D77;">❤️</span> by 
+            <a href="https://www.linkedin.com/in/mahmoudtamer0/" style="color: #267D77; text-decoration: none;">
+                Mahmoud Tamer
+            </a>
+        </p>
+            <p>If you did not request this email, please ignore it.</p>
+
+
+            <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
+        </div>
+
+    </div>
+
+</div>
     `
     });
 
@@ -253,6 +269,12 @@ export const login = async ({ email, password }: any, device: string) => {
                 <!-- Footer -->
                 <div style="margin-top: 30px; font-size: 12px; color: #999;">
                     <p>If you recognize this activity, you can safely ignore this email.</p>
+                    <p style="margin-top: 15px;">
+                        Made with <span style="color: #267D77;">❤️</span> by 
+                        <a href="https://www.linkedin.com/in/mahmoudtamer0/" style="color: #267D77; text-decoration: none;">
+                            Mahmoud Tamer
+                        </a>
+                    </p>
                     <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
                 </div>
             </div>
@@ -322,11 +344,44 @@ export const editUserProfile = async (user: any, reqBody: any, reqFile: any) => 
 
 }
 
-export const getAllUsers = async () => {
+export const getAllUsers = async (reqQuery: any) => {
+    interface FilterType {
+        name?: {
+            $regex: string;
+            $options: string;
+        };
+        isEmailVerified?: boolean;
+    }
 
-    const users = await User.find({ isEmailVerified: true }).lean().select("name email createdAt phone status").sort({ createdAt: -1 })
+    const { search } = reqQuery;
 
-    return users
+    let filter: FilterType = {};
+
+    // search
+    if (search) {
+        filter.name = { $regex: search, $options: "i" };
+    }
+
+
+    filter.isEmailVerified = true;
+
+
+    const page = reqQuery.page * 1 || 1;
+    const limit = reqQuery.limit * 1 || 10;
+    const skip = (page - 1) * limit;
+
+    const users = await User.find(filter)
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .select("name email createdAt phone status")
+        .sort({ createdAt: -1 });
+
+    const totalUsers = await User.countDocuments(filter)
+    const totalPages = Math.ceil(totalUsers / limit)
+    const results = users.length
+
+    return { users, totalUsers, totalPages, page, results };
 
 }
 

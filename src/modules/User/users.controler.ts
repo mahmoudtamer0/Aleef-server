@@ -100,11 +100,15 @@ export const editUserProfile = catchAsync(async (req, res, next) => {
 
 export const getAllUsers = catchAsync(async (req, res, next) => {
 
-    const users = await userService.getAllUsers()
+    const users = await userService.getAllUsers(req.query)
 
     return res.status(200).json({
         status: "success",
-        users: users,
+        users: users.users,
+        totalPages: users.totalPages,
+        page: users.page,
+        results: users.results,
+        totalUsers: users.totalUsers
     })
 
 })
