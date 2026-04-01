@@ -8,7 +8,11 @@ const PORT = process.env["PORT"] || 3000;
 
 if (process.env["NODE_ENV"] == "development") {
 
-    mongoose.connect(dbUrl)
+    mongoose.connect(dbUrl, {
+        maxPoolSize: 20,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+    })
         .then(() => {
             console.log("✅ DB Connected");
             app.listen(PORT, () => {
