@@ -39,7 +39,7 @@ export const register = async ({ email, name, password, phone }: any) => {
         })
     }
 
-    await sendEmail({
+    void sendEmail({
         email: email,
         subject: "Verify your email",
         text: "",
@@ -67,7 +67,6 @@ export const register = async ({ email, name, password, phone }: any) => {
 
         <div style="margin-top: 30px; font-size: 12px; color: #999;">
         <p style="margin-top: 15px;">
-            Made with <span style="color: #267D77;">❤️</span> by 
             <a href="https://www.linkedin.com/in/mahmoudtamer0/" style="color: #267D77; text-decoration: none;">
                 Mahmoud Tamer
             </a>
@@ -316,6 +315,7 @@ export const editUserProfile = async (user: any, reqBody: any, reqFile: any) => 
 
     if (phone) userProfile.phone = phone;
 
+    let oldImageId: string | null = null;
 
     if (deleteProfilePic == true || deleteProfilePic == "true") {
 
@@ -323,14 +323,16 @@ export const editUserProfile = async (user: any, reqBody: any, reqFile: any) => 
             throw new ApiError(400, "user don't have profile pic");
         }
 
-        void deleteProfilPic(userProfile.cloudinary_id)
+        oldImageId = userProfile.cloudinary_id;
 
         userProfile.profilePic = "https://res.cloudinary.com/ddgniiotg/image/upload/v1773086407/default_eop2qt.jpg";
         userProfile.cloudinary_id = "default";
 
     }
 
-    if (changeProfilePic == "true") {
+
+
+    if (changeProfilePic === true || changeProfilePic === "true") {
 
         if (!reqFile) {
             console.error("❌ No file uploaded from frontend");
@@ -338,17 +340,25 @@ export const editUserProfile = async (user: any, reqBody: any, reqFile: any) => 
         }
 
 
-
         if (userProfile.cloudinary_id != "default") {
-            void deleteProfilPic(userProfile.cloudinary_id)
+            oldImageId = userProfile.cloudinary_id;
         }
 
         userProfile.profilePic = reqFile.path;
         userProfile.cloudinary_id = reqFile.filename;
-
     }
 
     await userProfile.save()
+
+    if (oldImageId) {
+        setImmediate(async () => {
+            try {
+                await deleteProfilPic(oldImageId!);
+            } catch (err) {
+                console.error("❌ Failed to delete image:", err);
+            }
+        });
+    }
 
     return userProfile
 

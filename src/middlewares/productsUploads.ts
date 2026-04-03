@@ -8,9 +8,18 @@ const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: async (req, file) => {
         return {
-            folder: "aleef/users",
+            folder: "aleef/products",
             transformation: [
-                { width: 500, height: 500, crop: "limit", quality: "auto" }
+                {
+                    width: 400,
+                    height: 400,
+                    crop: "pad",
+                    background: "white"
+                },
+                {
+                    quality: "auto:best",
+                    fetch_format: "auto"
+                }
             ],
             format: undefined,
             public_id: `${Date.now()}-${file.originalname.split(".")[0]}`
@@ -28,6 +37,3 @@ export const upload = multer({
         cb(null, true);
     }
 });
-
-
-
