@@ -320,3 +320,10 @@ export const getDoctor = async (doctorId: any) => {
     return doctor
 }
 
+export const getAvailableDoctors = async () => {
+
+    const docotrs = await Doctor.find({ isEmailVerified: true, status: { $ne: "pending" } }).lean().select("name email phone city specialization status profilePic").sort({ createdAt: -1 })
+
+    return docotrs
+
+}

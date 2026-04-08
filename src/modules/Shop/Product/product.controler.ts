@@ -28,7 +28,6 @@ export const addManyProducts = catchAsync(async (req, res, next) => {
 })
 
 
-
 export const getProducts = catchAsync(async (req, res, next) => {
 
     const products = await productService.getProducts(req.query)
@@ -43,6 +42,7 @@ export const getProducts = catchAsync(async (req, res, next) => {
     })
 
 })
+
 
 export const getProduct = catchAsync(async (req, res, next) => {
 

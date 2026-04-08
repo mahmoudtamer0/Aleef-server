@@ -28,6 +28,9 @@ router.route("/get-doctors-requests")
 router.route("/get-all-doctors")
     .get(verifyToken, allowTo("ADMIN"), getAllDoctors)
 
+router.route("/get-available-doctors")
+    .get(verifyToken, getAllDoctors)
+
 router.route("/approve-request/:doctorId")
     .post(verifyToken, allowTo("ADMIN"), approveDoctorRequest)
 
