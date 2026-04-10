@@ -73,7 +73,7 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
     }
 
 
-    await sendEmail({
+    void sendEmail({
         email: user.email,
         subject: "Order Confirmation",
         text: "",
