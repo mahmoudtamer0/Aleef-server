@@ -54,3 +54,18 @@ export const getProduct = catchAsync(async (req, res, next) => {
     })
 
 })
+
+export const calculateCart = catchAsync(async (req, res, next) => {
+
+    const { cart } = req.body
+    const totalCart = await productService.calculateCart(cart)
+
+    return res.status(200).json({
+        status: "success",
+        subTotal: totalCart.subTotal,
+        delivery: totalCart.delivery,
+        taxPercent: totalCart.taxPercent,
+        taxPayed: totalCart.tax,
+        totalCart: totalCart.totalCart,
+    })
+})

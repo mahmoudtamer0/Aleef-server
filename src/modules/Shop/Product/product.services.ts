@@ -206,3 +206,33 @@ export const getProduct = async ({ prodId }: any) => {
     return product
 
 }
+
+
+
+
+export const calculateCart = async (cart: any) => {
+
+    let subTotal = 0;
+    let delivery = 20;
+    let tax = 0.14;
+
+    for (let i = 0; i < cart.length; i++) {
+        const item = cart[i]
+
+        const product = await Product.findOne({ _id: item.productId }).lean().select("_id finalPrice");
+        console.log("product:", product)
+        if (!product) {
+            throw new ApiError(404, "not found");
+        }
+        subTotal += item.quantity * product.finalPrice;
+    }
+
+    return {
+        subTotal,
+        delivery,
+        taxPercent: "14%",
+        tax: Math.floor(subTotal * tax),
+        totalCart: subTotal + delivery + Math.floor(subTotal * tax)
+    }
+
+}

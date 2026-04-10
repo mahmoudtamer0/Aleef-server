@@ -3,8 +3,8 @@ import { verifyToken } from "../../../middlewares/verifyToken"
 import { allowTo } from "../../../middlewares/allowTo"
 import { upload } from "../../../middlewares/productsUploads"
 import validate from "../../../middlewares/userValidate"
-import { addProductValidation } from "./product.validation"
-import { addManyProducts, addProduct, getProduct, getProducts } from "./product.controler"
+import { addProductValidation, calculateCartSchema } from "./product.validation"
+import { addManyProducts, addProduct, calculateCart, getProduct, getProducts } from "./product.controler"
 
 
 const router = express.Router()
@@ -21,6 +21,9 @@ router.route("/")
         addProduct
     )
     .get(verifyToken, getProducts)
+
+router.route("/calculate-cart")
+    .post(verifyToken, validate(calculateCartSchema), calculateCart)
 
 router.route("/many-products")
     .post(addManyProducts)

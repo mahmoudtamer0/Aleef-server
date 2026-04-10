@@ -9,3 +9,8 @@ export const addProductValidation = Joi.object({
     stock: Joi.number().required(),
     buys: Joi.number().required(),
 });
+
+
+export const calculateCartSchema = Joi.object({
+    cart: Joi.array().required(),
+});
