@@ -12,7 +12,7 @@ export const bookAppointment = catchAsync(async (req, res, next) => {
 
     return res.status(201).json({
         status: "success",
-        message: appointment,
+        appointment,
     })
 
 })
@@ -27,7 +27,7 @@ export const getActiveAppointment = catchAsync(async (req, res, next) => {
 
     return res.status(201).json({
         status: "success",
-        message: appointment,
+        appointment,
     })
 
 })
