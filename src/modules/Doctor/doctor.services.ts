@@ -322,7 +322,7 @@ export const getDoctor = async (doctorId: any) => {
 
 export const getAvailableDoctors = async () => {
 
-    const docotrs = await Doctor.find({ isEmailVerified: true, status: { $ne: "pending" } }).lean().select("name email phone city specialization status profilePic").sort({ createdAt: -1 })
+    const docotrs = await Doctor.find({ isEmailVerified: true, status: { $ne: "pending" } }).lean().select("name email phone city specialization status profilePic rating ratingQuantity").sort({ createdAt: -1 })
 
     return docotrs
 

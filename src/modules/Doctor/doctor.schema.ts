@@ -73,6 +73,15 @@ const doctorSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    workingHours: {
+        start: String, // "10:00"
+        end: String,   // "18:00"
+    },
+
+    slotDuration: {
+        type: Number,
+        default: 30, // minutes
+    },
 
     emailVerificationCode: String,
     emailVerificationExpires: Date,

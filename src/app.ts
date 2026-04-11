@@ -11,6 +11,8 @@ import usersRouter from "./modules/User/users.router";
 import doctorRouter from "./modules/Doctor/doctor.router";
 import productsRouter from "./modules/Shop/Product/products.router";
 import ordersRouter from "./modules/Shop/Order/order.router";
+import petsRouter from "./modules/Pet/pet.router";
+import appointmentsRouter from "./modules/Appointments/appointment.router";
 import globalErrorHandler from "./middlewares/error";
 
 const app = express();
@@ -48,6 +50,8 @@ app.use('/api/v1/users', usersRouter)
 app.use('/api/v1/doctors', doctorRouter)
 app.use('/api/v1/products', productsRouter)
 app.use('/api/v1/orders', ordersRouter)
+app.use('/api/v1/pets', petsRouter)
+app.use('/api/v1/appointments', appointmentsRouter)
 
 //Global Error Handler
 app.use(globalErrorHandler);
