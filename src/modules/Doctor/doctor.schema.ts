@@ -11,6 +11,9 @@ const doctorSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
+    about: {
+        type: String,
+    },
     phone: {
         type: String,
         required: true,
@@ -74,8 +77,41 @@ const doctorSchema = new mongoose.Schema({
         default: false,
     },
     workingHours: {
-        start: String, // "10:00"
-        end: String,   // "18:00"
+        sunday: {
+            start: { type: String, default: "10:00" },
+            end: { type: String, default: "18:00" },
+            isAvailable: { type: Boolean, default: true }
+        },
+        monday: {
+            start: { type: String, default: "10:00" },
+            end: { type: String, default: "18:00" },
+            isAvailable: { type: Boolean, default: true }
+        },
+        tuesday: {
+            start: { type: String, default: "10:00" },
+            end: { type: String, default: "18:00" },
+            isAvailable: { type: Boolean, default: true }
+        },
+        wednesday: {
+            start: { type: String, default: "10:00" },
+            end: { type: String, default: "18:00" },
+            isAvailable: { type: Boolean, default: true }
+        },
+        thursday: {
+            start: { type: String, default: "10:00" },
+            end: { type: String, default: "18:00" },
+            isAvailable: { type: Boolean, default: true }
+        },
+        friday: {
+            start: { type: String, default: "10:00" },
+            end: { type: String, default: "18:00" },
+            isAvailable: { type: Boolean, default: false }
+        },
+        saturday: {
+            start: { type: String, default: "10:00" },
+            end: { type: String, default: "18:00" },
+            isAvailable: { type: Boolean, default: true }
+        },
     },
 
     slotDuration: {

@@ -1,4 +1,5 @@
 import Doctor from "./doctor.schema"
+import Appointment from "../Appointments/appointments.schema"
 import bcrypt from "bcrypt";
 import ApiError from "../../utils/ApiError";
 import { generateOTP } from "../../utils/generatOtp";
@@ -7,6 +8,10 @@ import crypto from "crypto";
 import { generateToken } from "../../utils/generateToken";
 import Session from "../User/session.schema";
 import deleteProfilPic from "../../utils/deleteProfile";
+import mongoose from "mongoose";
+import { getNextDays } from "../../utils/getDoctorAvailableDays";
+import { getAvailableSlots } from "../../utils/getDoctorAvailableSlots";
+import DoctorReview from "./doctorReview.schema";
 
 
 
@@ -308,17 +313,24 @@ export const getAllDoctorsRequests = async () => {
 
 export const getAllDoctors = async () => {
 
-    const docotrs = await Doctor.find({ isEmailVerified: true, status: { $ne: "pending" } }).lean().select("name email phone city specialization status profilePic").sort({ createdAt: -1 })
+    const docotrs = await Doctor.find({ isEmailVerified: true, status: { $ne: "pending" } }).lean().select("name email phone city specialization status profilePic address").sort({ createdAt: -1 })
 
     return docotrs
 
 }
 
 export const getDoctor = async (doctorId: any) => {
-    const doctor = await Doctor.findById(doctorId).select("name email phone city specialization status profilePic IdentityVerificationImage NationalIdFront NationalIdBack")
+    const doctor = await Doctor.findById(doctorId).lean().select("name email phone city specialization status profilePic rating ratingsCount address");
 
-    return doctor
+    const reviews = await DoctorReview.find({ doctor: doctorId })
+        .populate({
+            path: "user",
+            select: "name profilePic"
+        });
+    return { doctor, reviews }
 }
+
+
 
 export const getAvailableDoctors = async () => {
 
@@ -327,3 +339,81 @@ export const getAvailableDoctors = async () => {
     return docotrs
 
 }
+
+export const getDoctorSchedual = async (doctorId: any) => {
+    const doctor = await Doctor.findById(doctorId)
+        .lean()
+        .select("-password");
+
+    if (!doctor) {
+        throw new ApiError(404, "Doctor not found");
+    }
+
+    const doctorDays = getNextDays(doctor);
+
+    let firstDaySlots: string[] = [];
+
+    if (doctorDays.length > 0) {
+        firstDaySlots = await getAvailableSlots(
+            doctor,
+            doctorId,
+            doctorDays[0].date
+        );
+    }
+
+    return {
+        days: doctorDays,
+        firstDaySlots,
+    };
+};
+
+
+export const getDoctorSlots = async (doctorId: any, date: any) => {
+
+    const doctor = await Doctor.findById(doctorId).lean();
+
+    if (!doctor) {
+        throw new ApiError(404, "Doctor not found");
+    }
+
+    const slots = await getAvailableSlots(
+        doctor,
+        doctorId,
+        date as string
+    );
+
+    return {
+        date,
+        slots,
+    };
+};
+
+export const addReviewToDoctor = async (user: any, doctorId: any, { comment, rate }: any) => {
+
+    const doctor = await Doctor.findById(doctorId).select("ratingsCount");
+
+    if (!doctor) {
+        throw new ApiError(404, "Doctor not found");
+    }
+
+    const checkAppointment = await Appointment.findOne({
+        doctor: doctorId,
+        owner: user.id,
+        status: "completed"
+    })
+
+    if (!checkAppointment) {
+        throw new ApiError(404, "no appointment found");
+    }
+
+    const review = await DoctorReview.create({
+        doctor: doctorId,
+        user: user.id,
+        comment,
+        rate
+    })
+
+    doctor.ratingsCount += 1;
+    await doctor.save()
+    return review;
+};

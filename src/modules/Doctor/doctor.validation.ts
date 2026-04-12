@@ -31,3 +31,13 @@ export const verifyOtpSchema = Joi.object({
 export const resendOtpSchema = Joi.object({
     email: Joi.string().email().required()
 });
+
+
+
+
+
+export const addReviewSchema = Joi.object({
+    comment: Joi.string().min(2).max(200).required(),
+    rate: Joi.number().max(5).min(1).required(),
+
+});

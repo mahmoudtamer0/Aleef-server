@@ -51,7 +51,7 @@ export const getDoctor = catchAsync(async (req, res, next) => {
 
     return res.status(200).json({
         status: "success",
-        doctor: doctor,
+        doctorProfile: doctor,
     })
 
 })
@@ -88,6 +88,46 @@ export const getAvailableDoctors = catchAsync(async (req, res, next) => {
     return res.status(200).json({
         status: "success",
         doctors: doctors,
+    })
+
+})
+
+export const getDoctorSchedual = catchAsync(async (req, res, next) => {
+    const { doctorId } = req.params
+    const doctors = await doctorService.getDoctorSchedual(doctorId)
+
+    return res.status(200).json({
+        status: "success",
+        doctors: doctors,
+    })
+
+})
+
+
+
+export const getDoctorSlots = catchAsync(async (req, res, next) => {
+    const { doctorId } = req.params
+    const { date } = req.query
+    const doctors = await doctorService.getDoctorSlots(doctorId, date)
+
+    return res.status(200).json({
+        status: "success",
+        doctors: doctors,
+    })
+
+})
+
+
+
+
+export const addReviewToDoctor = catchAsync(async (req, res, next) => {
+    const { doctorId } = req.params
+    const user = req.user
+    const review = await doctorService.addReviewToDoctor(user, doctorId, req.body)
+
+    return res.status(200).json({
+        status: "success",
+        review
     })
 
 })
