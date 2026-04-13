@@ -1,5 +1,6 @@
 import Pet from "./pet.schema"
 import ApiError from "../../utils/ApiError";
+import { getAge } from "../../utils/getPetAge";
 
 
 export const addPet = async (user: any, { name, type, birthDate, gender, weight }: any, reqFile: any) => {
@@ -38,5 +39,39 @@ export const addPet = async (user: any, { name, type, birthDate, gender, weight 
 
 
     return pet;
+
+}
+
+
+export const getMyPets = async (user: any) => {
+
+    const pets = await Pet.find({ owner: user.id }).lean().select("name type gender profilePic birthDate")
+    const realPets = []
+    for (let i = 0; i < pets.length; i++) {
+        const pet = pets[i]
+
+        const age = getAge(pet?.birthDate);
+
+        realPets.push({
+            ...pet,
+            age
+        })
+    }
+
+    return realPets;
+
+}
+
+
+
+export const getPetProfile = async (petId: any) => {
+
+    const pet = await Pet.findById({ _id: petId }).lean().select("-createdAt -updatedAt -__v -cloudinary_id -owner");
+
+    const age = getAge(pet?.birthDate);
+
+
+
+    return { pet, age };
 
 }

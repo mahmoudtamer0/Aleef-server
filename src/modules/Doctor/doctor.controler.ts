@@ -7,7 +7,7 @@ export const doctorRegister = catchAsync(async (req, res, next) => {
 
     const doctor = await doctorService.doctorRegister(req.body, req.files);
 
-    return res.status(200).json({
+    return res.status(201).json({
         status: "success",
         message: "doctor registered. Please verify your email.",
     })

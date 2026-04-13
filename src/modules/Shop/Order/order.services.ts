@@ -5,6 +5,8 @@ import Product from "../Product/product.schema"
 import OrderItems from "./orderItems";
 import User from "../../User/user.schema";
 import { sendEmail } from "../../../utils/sendEmail";
+import { syncBuiltinESMExports } from "module";
+import mongoose from "mongoose";
 
 
 
@@ -98,4 +100,75 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
 
 
 
+}
+
+
+
+export const getMyUpComingOrders = async (user: any) => {
+
+    const orders = await Order.aggregate([
+        {
+            $match: {
+                user: new mongoose.Types.ObjectId(user.id),
+                $or: [
+                    { status: "pending" },
+                    { status: "shipped" }
+                ]
+            }
+        },
+        {
+            $lookup: {
+                from: "orderitems",
+                localField: "_id",
+                foreignField: "order",
+                as: "items"
+            }
+        },
+        {
+            $project: {
+                totalOrder: "$totalPrice",
+                shippingAddress: 1,
+                paymentMethod: 1,
+                status: 1,
+                items: 1
+            }
+        }
+    ]);
+
+    return orders;
+}
+
+export const getMyPreviousOrders = async (user: any) => {
+
+    const orders = await Order.aggregate([
+        {
+            $match: {
+                user: new mongoose.Types.ObjectId(user.id),
+                $or: [
+                    { status: "cancelled" },
+                    { status: "delivered" }
+                ]
+            }
+
+        },
+        {
+            $lookup: {
+                from: "orderitems",
+                localField: "_id",
+                foreignField: "order",
+                as: "items"
+            }
+        },
+        {
+            $project: {
+                totalOrder: "$totalPrice",
+                shippingAddress: 1,
+                paymentMethod: 1,
+                status: 1,
+                items: 1
+            }
+        }
+    ]);
+
+    return orders;
 }
