@@ -313,7 +313,7 @@ export const getAllDoctorsRequests = async () => {
 
 export const getAllDoctors = async () => {
 
-    const docotrs = await Doctor.find({ isEmailVerified: true, status: { $ne: "pending" } }).lean().select("name email phone city specialization status profilePic address").sort({ createdAt: -1 })
+    const docotrs = await Doctor.find({ isEmailVerified: true, status: { $ne: "pending" } }).lean().select("name email phone city specialization status profilePic address rating ratingsCount").sort({ createdAt: -1 })
 
     return docotrs
 
