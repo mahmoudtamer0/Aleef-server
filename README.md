@@ -123,6 +123,8 @@ npm run dev
 
 ## 📡 API Routes
 
+postman collection: https://www.postman.com/mahmoudtamer0-8816438/default-workspace/collection/73p0l07/aleef?action=share&source=copy-link&creator=50295562
+
 The system follows RESTful API design with role-based access control.
 
 ---
