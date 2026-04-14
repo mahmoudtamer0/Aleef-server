@@ -5,8 +5,6 @@ Aleef aims to provide everything pet owners need in one place — from managing 
 
 > 🚧 This project is currently under active development.
 > 📮 [Postman Collection](https://www.postman.com/mahmoudtamer0-8816438/default-workspace/collection/73p0l07/aleef?action=share&source=copy-link&creator=50295562)
-> [online Server](https://aleef-server.vercel.app)
-
 ---
 
 ## 🚀 Overview
