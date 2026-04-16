@@ -343,7 +343,7 @@ export const getAvailableDoctors = async () => {
 export const getDoctorSchedual = async (doctorId: any) => {
     const doctor = await Doctor.findById(doctorId)
         .lean()
-        .select("-password -about -createdAt -updatedAt -role -slotDuration -emailVerificationCode -workingHours -emailVerificationExpires -cloudinary_id -IdentityVerificationImage -NationalIdFront -NationalIdBack -__v");
+        .select("-password -about -createdAt -updatedAt -role -slotDuration -emailVerificationCode -emailVerificationExpires -cloudinary_id -IdentityVerificationImage -NationalIdFront -NationalIdBack -__v");
 
     if (!doctor) {
         throw new ApiError(404, "Doctor not found");
@@ -361,8 +361,17 @@ export const getDoctorSchedual = async (doctorId: any) => {
         );
     }
 
+    console.log(doctorDays)
     return {
-        doctor,
+        doctor: {
+            name: doctor.name,
+            specialization: doctor.specialization,
+            city: doctor.city,
+            address: doctor.address,
+            profilePic: doctor.profilePic,
+            rating: doctor.rating,
+            ratingsCount: doctor.ratingsCount,
+        },
         doctorDays,
         firstDaySlots,
     };
