@@ -63,7 +63,7 @@ export const getAppointmentDetails = async (appointmentId: any) => {
         select: "name type gender profilePic"
     }).populate({
         path: "doctor",
-        select: "name profilePic specialization"
+        select: "name profilePic specialization rating ratingsCount city address"
     });
 
     return appointment;
