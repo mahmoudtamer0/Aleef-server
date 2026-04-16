@@ -42,7 +42,7 @@ export const bookAppointment = async (user: any, { pet, doctor, date, time, reas
 
 export const getActiveAppointment = async (user: any) => {
 
-    const appointment = await Appointment.findOne({ owner: user.id, status: { $in: ["pending", "confirmed"] } }).lean().populate({
+    const appointment = await Appointment.findOne({ owner: user.id }).lean().populate({
         path: "pet",
         select: "name type gender profilePic"
     }).populate({
