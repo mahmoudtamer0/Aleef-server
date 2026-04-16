@@ -59,5 +59,18 @@ export const getAvailableSlots = async (doctor: any, doctorId: string, date: str
         targetDate.toISOString().split("T")[0] ===
         now.toISOString().split("T")[0];
 
+    if (isToday) {
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+
+        availableSlots = availableSlots.filter((slot) => {
+            const [slotH, slotM]: any = slot.split(":").map(Number);
+            return (
+                slotH > currentHour ||
+                (slotH === currentHour && slotM > currentMinute)
+            );
+        });
+    }
+
     return availableSlots.sort();
 };

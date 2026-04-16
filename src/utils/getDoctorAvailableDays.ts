@@ -22,6 +22,19 @@ export const getNextDays = (doctor: any, daysCount = 7) => {
         const schedule = doctor.workingHours?.[dayName];
 
         if (schedule?.isAvailable) {
+            if (i === 0) {
+                const now = new Date();
+                const currentHour = now.getHours();
+                const currentMinute = now.getMinutes();
+
+                const [endH, endM] = schedule.end.split(":").map(Number);
+
+                const workdayOver =
+                    currentHour > endH ||
+                    (currentHour === endH && currentMinute >= endM);
+
+                if (workdayOver) continue;
+            }
             result.push({
                 date: formatDate(currentDate),
                 dayName,

@@ -361,7 +361,6 @@ export const getDoctorSchedual = async (doctorId: any) => {
         );
     }
 
-    console.log(doctorDays)
     return {
         doctor: {
             name: doctor.name,
