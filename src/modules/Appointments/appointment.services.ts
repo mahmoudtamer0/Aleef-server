@@ -53,3 +53,19 @@ export const getActiveAppointment = async (user: any) => {
     return appointment;
 
 }
+
+
+
+export const getAppointmentDetails = async (appointmentId: any) => {
+
+    const appointment = await Appointment.findOne({ _id: appointmentId }).lean().populate({
+        path: "pet",
+        select: "name type gender profilePic"
+    }).populate({
+        path: "doctor",
+        select: "name profilePic specialization"
+    });
+
+    return appointment;
+
+}

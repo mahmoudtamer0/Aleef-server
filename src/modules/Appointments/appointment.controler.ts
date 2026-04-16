@@ -31,3 +31,17 @@ export const getActiveAppointment = catchAsync(async (req, res, next) => {
     })
 
 })
+
+
+export const getAppointmentDetails = catchAsync(async (req, res, next) => {
+
+    const { appointmentId } = req.params;
+
+    const appointment = await appointmentServices.getAppointmentDetails(appointmentId);
+
+    return res.status(200).json({
+        status: "success",
+        appointment,
+    })
+
+})

@@ -1,5 +1,5 @@
 import express from "express";
-import { bookAppointment, getActiveAppointment } from "./appointment.controler";
+import { bookAppointment, getActiveAppointment, getAppointmentDetails } from "./appointment.controler";
 import { upload } from "../../middlewares/userProfileImage"
 import validate from "../../middlewares/userValidate";
 import { addAppointmentSchema } from "./appointment.validation";
@@ -13,5 +13,8 @@ router.route("/")
 
 router.route("/get-my-active-appointment")
     .get(verifyToken, getActiveAppointment)
+
+router.route("/:appointmentId")
+    .get(verifyToken, getAppointmentDetails);
 
 export default router
