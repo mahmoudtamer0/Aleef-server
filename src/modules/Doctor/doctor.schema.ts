@@ -127,6 +127,11 @@ const doctorSchema = new mongoose.Schema({
         default: "pending"
     },
 
+    appointmentFee: {
+        type: Number,
+        required: true,
+    },
+
     banExpiresAt: Date
 }, { timestamps: true })
 

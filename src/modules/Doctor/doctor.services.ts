@@ -1,4 +1,5 @@
 import Doctor from "./doctor.schema"
+import CreditAccount from "./crediteAccount"
 import Appointment from "../Appointments/appointments.schema"
 import bcrypt from "bcrypt";
 import ApiError from "../../utils/ApiError";
@@ -15,7 +16,7 @@ import DoctorReview from "./doctorReview.schema";
 
 
 
-export const doctorRegister = async ({ email, name, password, phone, specialization, license_number, city, address }: any, reqFiles: any) => {
+export const doctorRegister = async ({ email, name, password, phone, specialization, license_number, city, address, appointmentFee }: any, reqFiles: any) => {
 
     //const { otp, hashedOtp, expires } = generateOTP()
     const findDoctor = await Doctor.findOne({ $or: [{ email: email }, { license_number: license_number }] })
@@ -59,8 +60,11 @@ export const doctorRegister = async ({ email, name, password, phone, specializat
             IdentityVerificationImage: reqFiles.IdentityVerificationImage[0].path,
             NationalIdFront: reqFiles.NationalIdFront[0].path,
             NationalIdBack: reqFiles.NationalIdBack[0].path,
+            appointmentFee: Number(appointmentFee),
             isEmailVerified: true
-        })
+        });
+
+        await CreditAccount.create({ doctor: doctor._id });
     }
 
     // // void sendEmail({
@@ -304,7 +308,7 @@ export const approveDoctorRequest = async (doctorId: any) => {
 
 export const getAllDoctorsRequests = async () => {
 
-    const docotrs = await Doctor.find({ isEmailVerified: true, status: "pending" }).lean().select("name phone city specialization status").sort({ createdAt: 1 })
+    const docotrs = await Doctor.find({ isEmailVerified: true, status: "pending" }).lean().select("name phone city specialization status appointmentFee").sort({ createdAt: 1 })
 
     return docotrs
 
@@ -313,14 +317,14 @@ export const getAllDoctorsRequests = async () => {
 
 export const getAllDoctors = async () => {
 
-    const docotrs = await Doctor.find({ isEmailVerified: true, status: { $ne: "pending" } }).lean().select("name email phone city specialization status profilePic address rating ratingsCount").sort({ createdAt: -1 })
+    const docotrs = await Doctor.find({ isEmailVerified: true, status: { $ne: "pending" } }).lean().select("name email phone city specialization status profilePic address rating ratingsCount appointmentFee").sort({ createdAt: -1 })
 
     return docotrs
 
 }
 
 export const getDoctor = async (doctorId: any) => {
-    const doctor = await Doctor.findById(doctorId).lean().select("name email about phone city specialization status profilePic rating ratingsCount address");
+    const doctor = await Doctor.findById(doctorId).lean().select("name email about phone city specialization status profilePic rating ratingsCount address appointmentFee");
 
     const reviews = await DoctorReview.find({ doctor: doctorId })
         .populate({
@@ -334,7 +338,7 @@ export const getDoctor = async (doctorId: any) => {
 
 export const getAvailableDoctors = async () => {
 
-    const docotrs = await Doctor.find({ isEmailVerified: true, status: { $ne: "pending" } }).lean().select("name email phone city specialization status profilePic rating ratingQuantity").sort({ createdAt: -1 })
+    const docotrs = await Doctor.find({ isEmailVerified: true, status: { $ne: "pending" } }).lean().select("name email phone city specialization status profilePic rating ratingQuantity appointmentFee").sort({ createdAt: -1 })
 
     return docotrs
 
@@ -370,6 +374,7 @@ export const getDoctorSchedual = async (doctorId: any) => {
             profilePic: doctor.profilePic,
             rating: doctor.rating,
             ratingsCount: doctor.ratingsCount,
+            appointmentFee: doctor.appointmentFee,
         },
         doctorDays,
         firstDaySlots,

@@ -10,7 +10,7 @@ import ApiError from "../../utils/ApiError";
 export const bookAppointment = async (user: any, { pet, doctor, date, time, reason, notes }: any) => {
 
 
-    const checkIfAnyAppointmentsForThisUser = await Appointment.findOne({ owner: user.id }).lean().select("_id");
+    const checkIfAnyAppointmentsForThisUser = await Appointment.findOne({ owner: user.id, status: { $in: ["pending", "confirmed"] } }).lean().select("_id");
 
     if (checkIfAnyAppointmentsForThisUser) {
         throw new ApiError(400, "you an active appointmet, cancel your active appointment to be elligble to book appointment");
@@ -28,13 +28,8 @@ export const bookAppointment = async (user: any, { pet, doctor, date, time, reas
         owner: user.id,
         pet: pet,
         doctor: doctor,
-        date, time, reason
+        date, time, reason, ...(notes && { notes }),
     })
-
-    if (notes) {
-        appointment.notes = notes
-        await appointment.save()
-    }
 
     return appointment;
 
