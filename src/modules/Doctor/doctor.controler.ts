@@ -98,7 +98,9 @@ export const getDoctorSchedual = catchAsync(async (req, res, next) => {
 
     return res.status(200).json({
         status: "success",
-        schedual: doctors,
+        doctor: doctors.doctor,
+        schedual: doctors.days,
+        firstDaySlots: doctors.firstDaySlots,
     })
 
 })
