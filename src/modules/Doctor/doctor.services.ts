@@ -363,7 +363,7 @@ export const getDoctorSchedual = async (doctorId: any) => {
 
     return {
         doctor,
-        days: doctorDays,
+        doctorDays,
         firstDaySlots,
     };
 };
