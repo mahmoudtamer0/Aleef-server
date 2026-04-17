@@ -25,6 +25,7 @@ export const addAppointmentSchema = Joi.object({
 
     reason: Joi.string().min(3).max(500).required(),
 
+    notes: Joi.string().max(1000).optional(),
 
 })
     .custom((value, helpers) => {
