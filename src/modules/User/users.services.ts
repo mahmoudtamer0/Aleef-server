@@ -39,11 +39,12 @@ export const register = async ({ email, name, password, phone }: any) => {
         })
     }
 
-    void sendEmail({
-        email: email,
-        subject: "Verify your email",
-        text: "",
-        message: `
+    setImmediate(() => {
+        sendEmail({
+            email: email,
+            subject: "Verify your email",
+            text: "",
+            message: `
                 <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 20px;">
 
     <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 25px;">
@@ -81,7 +82,10 @@ export const register = async ({ email, name, password, phone }: any) => {
 
 </div>
     `
-    });
+        }).catch(err => console.log("email error:", err));
+    })
+
+
 
     return user;
 }
@@ -180,11 +184,12 @@ export const verifyEmail = async ({ email, otp }: any, device: string) => {
     });
     const token = generateToken(user.name, user._id.toString(), user.role, session._id.toString(), user.email)
 
-    void sendEmail({
-        email: user.email,
-        subject: "Account Created 🎉 - Aleef",
-        text: "",
-        message: `
+    setImmediate(() => {
+        sendEmail({
+            email: user.email,
+            subject: "Account Created 🎉 - Aleef",
+            text: "",
+            message: `
         <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
             <div style="max-width: 600px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 10px;">
                 
@@ -203,7 +208,9 @@ export const verifyEmail = async ({ email, otp }: any, device: string) => {
             </div>
         </div>
       `
-    });
+        }).catch(err => console.log("email error:", err));
+    })
+
 
     return { user, token }
 
@@ -249,11 +256,12 @@ export const login = async ({ email, password }: any, device: string) => {
 
     const time = new Date().toLocaleString();
 
-    void sendEmail({
-        email: email,
-        subject: "New Login Detected",
-        text: "",
-        message: `
+    setImmediate(() => {
+        sendEmail({
+            email: email,
+            subject: "New Login Detected",
+            text: "",
+            message: `
         <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
             <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
                 
@@ -290,7 +298,9 @@ export const login = async ({ email, password }: any, device: string) => {
             </div>
         </div>
 `
-    }).catch(err => console.log("email error:", err))
+        }).catch(err => console.log("email error:", err))
+    })
+
 
     return { findUser, token };
 }
