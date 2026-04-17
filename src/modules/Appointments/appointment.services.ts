@@ -28,8 +28,13 @@ export const bookAppointment = async (user: any, { pet, doctor, date, time, reas
         owner: user.id,
         pet: pet,
         doctor: doctor,
-        date, time, reason, ...(notes && { notes }),
+        date, time, reason,
     })
+
+    if (notes && notes.trim() !== "" && notes.length > 0 && notes !== null) {
+        appointment.notes = notes;
+        await appointment.save();
+    }
 
     return appointment;
 
