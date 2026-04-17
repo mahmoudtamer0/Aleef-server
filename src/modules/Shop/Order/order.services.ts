@@ -74,26 +74,71 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
         await product.save();
     }
 
-
-    void sendEmail({
+    await sendEmail({
         email: user.email,
-        subject: "Order Confirmation",
+        subject: "Your Order has been placed 🛍️",
         text: "",
         message: `
-    <div style="font-family: Arial; padding:20px;">
-    <h2 style="color:#333;">Order Confirmation</h2>
-    <p>Hello ${user.name},</p>
-    <p>Your order has been received successfully.</p>
+<div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
 
-    <div style="background:#f5f5f5; padding:10px; margin:10px 0;">
+    <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+
+        <h1 style="color: #267D77; text-align: center;">Aleef</h1>
+        <h2 style="text-align: center; color: #333;">Order Confirmation</h2>
+
+        <p style="color: #555; font-size: 16px;">
+            Hello ${user.name}, your order has been successfully placed 🎉
+        </p>
+
+        <hr style="margin: 20px 0;" />
+
+        <h3 style="color: #267D77;">Order Details</h3>
+
         <p><strong>Order ID:</strong> ${order._id}</p>
-        <p><strong>Total:</strong> $${order.totalPrice}</p>
+        <p><strong>Payment Method:</strong> ${paymentMethod}</p>
+
+        <h3 style="color: #267D77; margin-top: 20px;">Summary</h3>
+
+        <p><strong>Subtotal:</strong> ${subTotal} EGP</p>
+        <p><strong>Delivery:</strong> ${delivery} EGP</p>
+        <p><strong>Tax:</strong> ${Math.floor(subTotal * tax)} EGP</p>
+
+        <h2 style="color: #333;">
+            Total: ${subTotal + delivery + Math.floor(subTotal * tax)} EGP
+        </h2>
+
+        <hr style="margin: 20px 0;" />
+
+        <h3 style="color: #267D77;">Shipping Address</h3>
+        <p style="color: #555;">
+            ${shippingAddress.street || ""} <br/>
+            ${shippingAddress.city || ""} <br/>
+            ${shippingAddress.phone || ""}
+        </p>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <p style="color: #777; font-size: 14px;">
+                We’ll notify you once your order is shipped 🚚
+            </p>
+        </div>
+
+        <div style="margin-top: 30px; font-size: 12px; color: #999; text-align: center;">
+            <p>If you did not make this order, please contact support.</p>
+
+            <p style="margin-top: 10px;">
+                <a href="https://www.linkedin.com/in/mahmoudtamer0/" style="color: #267D77; text-decoration: none;">
+                    Mahmoud Tamer
+                </a>
+            </p>
+
+            <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
+        </div>
+
     </div>
 
-    <p>We will notify you when it ships 🚚</p>
-    </div>
-`,
-    })
+</div>
+`
+    });
 
 
     return order;
