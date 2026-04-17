@@ -196,11 +196,12 @@ export const verifyEmail = async ({ email, otp }: any, device: string) => {
 
     await doctor.save()
 
-    void sendEmail({
-        email: email,
-        subject: "Your Account is Under Review - Aleef",
-        text: "",
-        message: `
+    setImmediate(() => {
+        sendEmail({
+            email: email,
+            subject: "Your Account is Under Review - Aleef",
+            text: "",
+            message: `
         <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
             <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
                 
@@ -250,7 +251,11 @@ export const verifyEmail = async ({ email, otp }: any, device: string) => {
             </div>
         </div>
     `
+        }).catch(err => {
+            console.error("Email failed:", err);
+        });
     });
+
 
 
     return { doctor }
@@ -271,11 +276,12 @@ export const approveDoctorRequest = async (doctorId: any) => {
     doctor.status = "active";
     await doctor.save();
 
-    void sendEmail({
-        email: doctor.email,
-        subject: "Account Approved 🎉 - Aleef",
-        text: "",
-        message: `
+    setImmediate(() => {
+        sendEmail({
+            email: doctor.email,
+            subject: "Account Approved 🎉 - Aleef",
+            text: "",
+            message: `
     <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
         <div style="max-width: 600px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 10px;">
             
@@ -299,7 +305,12 @@ export const approveDoctorRequest = async (doctorId: any) => {
         </div>
     </div>
   `
+        }).catch(err => {
+            console.error("Email failed:", err);
+        });
+
     });
+
 
     return "request approved"
 

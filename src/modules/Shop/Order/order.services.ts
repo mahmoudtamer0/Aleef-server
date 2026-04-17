@@ -74,11 +74,12 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
         await product.save();
     }
 
-    await sendEmail({
-        email: user.email,
-        subject: "Your Order has been placed 🛍️",
-        text: "",
-        message: `
+    setImmediate(() => {
+        sendEmail({
+            email: user.email,
+            subject: "Your Order has been placed 🛍️",
+            text: "",
+            message: `
 <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
 
     <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
@@ -125,12 +126,6 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
         <div style="margin-top: 30px; font-size: 12px; color: #999; text-align: center;">
             <p>If you did not make this order, please contact support.</p>
 
-            <p style="margin-top: 10px;">
-                <a href="https://www.linkedin.com/in/mahmoudtamer0/" style="color: #267D77; text-decoration: none;">
-                    Mahmoud Tamer
-                </a>
-            </p>
-
             <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
         </div>
 
@@ -138,7 +133,11 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
 
 </div>
 `
-    });
+        }).catch(err => {
+            console.error("Email failed:", err);
+        });
+    })
+
 
 
     return order;
