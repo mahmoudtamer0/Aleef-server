@@ -45,3 +45,18 @@ export const getAppointmentDetails = catchAsync(async (req, res, next) => {
     })
 
 })
+
+export const approveAppointment = catchAsync(async (req, res, next) => {
+
+    const doctor = req.user;
+    const { appointmentId } = req.params;
+
+    const appointment = await appointmentServices.approveAppointment(doctor, appointmentId);
+
+    return res.status(201).json({
+        status: "success",
+        appointment,
+    })
+})
+
+

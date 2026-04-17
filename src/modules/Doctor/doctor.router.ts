@@ -1,10 +1,11 @@
 import express from "express";
-import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors, approveDoctorRequest, getDoctor, getDoctorSchedual, getDoctorSlots, addReviewToDoctor } from "./doctor.controler";
+import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors, approveDoctorRequest, getDoctor, getDoctorSchedual, getDoctorSlots, addReviewToDoctor, login } from "./doctor.controler";
 import { upload } from "../../middlewares/doctorProfilepic"
 import validate from "../../middlewares/userValidate";
 import { registerSchema, verifyOtpSchema, resendOtpSchema, addReviewSchema } from "./doctor.validation";
 import { verifyToken } from "../../middlewares/verifyToken";
 import { allowTo } from "../../middlewares/allowTo";
+import { loginSchema } from "../User/users.validation";
 
 const router = express.Router()
 
@@ -18,6 +19,10 @@ router.route("/register")
 
 router.route("/verify-email")
     .post(validate(verifyOtpSchema), verifyEmail)
+
+
+router.route("/login")
+    .post(validate(loginSchema), login)
 
 router.route("/resend-otp")
     .post(validate(resendOtpSchema), resendOtp)

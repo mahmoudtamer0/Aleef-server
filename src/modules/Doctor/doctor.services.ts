@@ -13,6 +13,7 @@ import mongoose from "mongoose";
 import { getNextDays } from "../../utils/getDoctorAvailableDays";
 import { getAvailableSlots } from "../../utils/getDoctorAvailableSlots";
 import DoctorReview from "./doctorReview.schema";
+import { checkPassword } from "../../utils/checkPassword";
 
 
 
@@ -262,6 +263,96 @@ export const verifyEmail = async ({ email, otp }: any, device: string) => {
 
 }
 
+
+export const login = async ({ email, password }: any, device: string) => {
+
+    const findUser = await Doctor.findOne({ email })
+        .select("password name role status isEmailVerified profilePic phone email banExpiresAt")
+        .lean();
+
+    if (!findUser) {
+        throw new ApiError(400, "email or password not correct");
+    }
+
+    const checkedPass = await checkPassword(password, findUser.password)
+
+    if (!checkedPass) {
+        throw new ApiError(400, "email or password not correct");
+    }
+
+    if (findUser.isEmailVerified == false) {
+        throw new ApiError(401, "email not veryfied");
+    }
+
+    if (findUser.status == "banned" && findUser.banExpiresAt) {
+        if (findUser.banExpiresAt > new Date()) {
+            throw new ApiError(403, "your account is banned");
+        }
+        await Doctor.findByIdAndUpdate({ _id: findUser._id }, {
+            status: "active",
+            banExpiresAt: null
+        })
+    }
+
+
+    const session = await Session.create({
+        userId: findUser._id,
+        device: device
+    });
+
+    const token = generateToken(findUser.name, findUser._id.toString(), findUser.role, session._id.toString(), findUser.email)
+
+    const time = new Date().toLocaleString();
+
+    setImmediate(() => {
+        sendEmail({
+            email: email,
+            subject: "New Login Detected",
+            text: "",
+            message: `
+        <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
+            <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
+                
+                <!-- Header -->
+                <h1 style="color: #267D77; margin-bottom: 10px;">Aleef</h1>
+                <h2 style="color: #333;">New Login Detected</h2>
+                <p style="color: #555; font-size: 16px;">
+                    We noticed a new login to your account. Here are the details:
+                </p>
+
+                <!-- Login Details -->
+                <div style="margin: 25px 0; text-align: left; background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
+                    <p style="margin: 8px 0;"><strong>Device:</strong> ${device}</p>
+                    <p style="margin: 8px 0;"><strong>Time:</strong> ${time}</p>
+                    <p style="margin: 8px 0;"><strong>Location:</strong> Egypt,Cairo</p>
+                </div>
+
+                <!-- Warning -->
+                <p style="color: #d9534f; font-size: 14px; margin-top: 15px;">
+                    If this wasn't you, please secure your account immediately.
+                </p>
+
+                <!-- Footer -->
+                <div style="margin-top: 30px; font-size: 12px; color: #999;">
+                    <p>If you recognize this activity, you can safely ignore this email.</p>
+                    <p style="margin-top: 15px;">
+                        Made with <span style="color: #267D77;">❤️</span> by 
+                        <a href="https://www.linkedin.com/in/mahmoudtamer0/" style="color: #267D77; text-decoration: none;">
+                            Mahmoud Tamer
+                        </a>
+                    </p>
+                    <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+`
+        }).catch(err => console.log("email error:", err))
+    })
+
+
+    return { findUser, token };
+}
+
 export const approveDoctorRequest = async (doctorId: any) => {
     const doctor = await Doctor.findById(doctorId);
 
@@ -315,6 +406,7 @@ export const approveDoctorRequest = async (doctorId: any) => {
     return "request approved"
 
 }
+
 
 
 export const getAllDoctorsRequests = async () => {

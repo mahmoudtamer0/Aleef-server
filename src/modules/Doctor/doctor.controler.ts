@@ -34,6 +34,27 @@ export const resendOtp = catchAsync(async (req, res, next) => {
     })
 })
 
+
+export const login = catchAsync(async (req, res, next) => {
+    const device = req.headers["user-agent"] || ""
+
+    const doctor = await doctorService.login(req.body, device);
+
+    return res.status(200).json({
+        status: "success",
+        message: "User logined. Please verify your email.",
+        token: doctor.token,
+        user: {
+            id: doctor.findUser._id,
+            name: doctor.findUser.name,
+            email: doctor.findUser.email,
+            phone: doctor.findUser.phone,
+            profilePic: doctor.findUser.profilePic,
+        }
+    })
+
+})
+
 export const getAllDoctorsRequests = catchAsync(async (req, res, next) => {
 
     const doctors = await doctorService.getAllDoctorsRequests()

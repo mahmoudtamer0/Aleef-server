@@ -3,6 +3,8 @@ import ApiError from "../../utils/ApiError";
 import Doctor from "../Doctor/doctor.schema";
 import { sendEmail } from "../../utils/sendEmail";
 import User from "../User/user.schema";
+import Chat from "../Chat/chat.schema";
+import Message from "../Chat/message.shema";
 
 
 
@@ -142,4 +144,83 @@ export const getAppointmentDetails = async (appointmentId: any) => {
 
     return appointment;
 
+}
+
+
+
+export const approveAppointment = async (doctor: any, appointmentId: any) => {
+    const appointment = await Appointment.findOne({ _id: appointmentId, doctor: doctor.id, status: "pending" });
+
+    if (!appointment) {
+        throw new ApiError(404, "appointment not found");
+    }
+    appointment.status = "confirmed";
+    await appointment.save();
+
+    const userProfile = await User.findById(appointment.owner).lean().select("email name")
+
+    const chat = await Chat.create({
+        members: [
+            { memberId: doctor.id, memberModel: "Doctor" },
+            { memberId: appointment.owner, memberModel: "User" }
+        ],
+        chatType: "personal",
+    });
+
+    const message = await Message.create({
+        chatId: chat && chat._id,
+        sender: doctor.id,
+        text: `Hello ${userProfile?.name}, Iam ${doctor.name} for your help regarding your appointment for ${appointment.reason} on ${appointment.date} at ${appointment.time}, how can I help you ? `
+    })
+
+    chat.lastMessage = message._id;
+    await chat.save();
+
+
+    if (userProfile) {
+        setImmediate(() => {
+            sendEmail({
+                email: userProfile.email,
+                subject: "Appointment Confirmed ✅",
+                text: "",
+                message: `
+            < div style = "font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;" >
+                <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" >
+                    <h1 style="color: #267D77; text-align: center;" > Aleef </h1>
+                        < h2 style = "text-align: center; color: #333;" > Your Appointment is Confirmed! </h2>
+                            < p style = "color: #555; font-size: 16px;" >
+                                Hello ${userProfile.name}, your appointment has been confirmed by the doctor ✅
+    </p>
+
+        < hr style = "margin: 20px 0;" />
+            <h3 style="color: #267D77;" > Appointment Details </h3>
+                < p > <strong>Date: </strong> ${appointment.date}</p >
+                    <p><strong>Time: </strong> ${appointment.time}</p >
+                        <p><strong>Reason: </strong> ${appointment.reason}</p >
+                            <div style="text-align: center; margin-top: 30px;" >
+                                <p style="color: #777; font-size: 14px;" >
+                                    Please arrive on time for your appointment 🐶🐱
+    </p>
+        </div>
+        < div style = "margin-top: 30px; font-size: 12px; color: #999; text-align: center;" >
+            <p>your chat with the doctor is now open.</p>
+                < p > If you have any questions, please contact support.</p>
+                    <p> & copy; ${new Date().getFullYear()} Aleef.All rights reserved.</p>
+                        </div>
+                        </div>
+
+                        </div>
+                            `
+            }).catch(err => {
+                console.error("Email failed:", err);
+            });
+        });
+
+
+        return appointment;
+
+    }
+
+
+    return appointment;
 }
