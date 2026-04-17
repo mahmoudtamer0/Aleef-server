@@ -35,7 +35,7 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
         }
 
         if (product.stock < item.quantity) {
-            throw new ApiError(400, `stock available for this product is : ${product.stock}`,)
+            throw new ApiError(400, `stock available for ${product.title} is : ${product.stock}`,)
         }
 
 
