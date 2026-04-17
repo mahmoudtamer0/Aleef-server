@@ -178,7 +178,7 @@ export const verifyEmail = async ({ email, otp }: any, device: string) => {
         userId: user._id,
         device: device
     });
-    const token = generateToken(user.name, user._id.toString(), user.role, session._id.toString())
+    const token = generateToken(user.name, user._id.toString(), user.role, session._id.toString(), user.email)
 
     void sendEmail({
         email: user.email,
@@ -245,7 +245,7 @@ export const login = async ({ email, password }: any, device: string) => {
         device: device
     });
 
-    const token = generateToken(findUser.name, findUser._id.toString(), findUser.role, session._id.toString())
+    const token = generateToken(findUser.name, findUser._id.toString(), findUser.role, session._id.toString(), findUser.email)
 
     const time = new Date().toLocaleString();
 
