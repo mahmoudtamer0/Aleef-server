@@ -5,6 +5,7 @@ import { sendEmail } from "../../utils/sendEmail";
 import User from "../User/user.schema";
 import Chat from "../Chat/chat.schema";
 import Message from "../Chat/message.shema";
+import UnreadMessage from "../Chat/unreadMessages";
 
 
 
@@ -170,7 +171,15 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
     const message = await Message.create({
         chatId: chat && chat._id,
         sender: doctor.id,
+        senderModel: "Doctor",
         text: `Hello ${userProfile?.name}, Iam ${doctor.name} for your help regarding your appointment for ${appointment.reason} on ${appointment.date} at ${appointment.time}, how can I help you ? `
+    })
+
+    const unreadMessage = await UnreadMessage.create({
+        chatId: chat._id,
+        userId: appointment.owner,
+        lastMessage: message.text,
+        unreadCount: 1,
     })
 
     chat.lastMessage = message._id;
