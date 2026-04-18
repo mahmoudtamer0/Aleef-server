@@ -22,7 +22,7 @@ export const verifyEmail = catchAsync(async (req, res, next) => {
         status: "success",
         token: verfied.token,
         user: {
-            id: verfied.user._id,
+            _id: verfied.user._id,
             name: verfied.user.name,
             email: verfied.user.email,
             phone: verfied.user.phone,
@@ -51,7 +51,7 @@ export const login = catchAsync(async (req, res, next) => {
         message: "User logined. Please verify your email.",
         token: user.token,
         user: {
-            id: user.findUser._id,
+            _id: user.findUser._id,
             name: user.findUser.name,
             email: user.findUser.email,
             phone: user.findUser.phone,
