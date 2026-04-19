@@ -76,6 +76,15 @@ export = (io: any, socket: any) => {
                 message: dataTofetch?.Response
             });
 
+            const messageBot = await createMessage({
+                chatId: chat._id.toString(),
+                sender: BOT_ID.toString(),
+                senderModel: "Bot",
+                message: dataTofetch?.Response,
+            });
+
+            return;
+
 
         } catch (err) {
             console.error("Error sending message:", err);
