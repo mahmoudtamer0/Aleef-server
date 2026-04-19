@@ -170,6 +170,7 @@ export const getProducts = async (reqQuery: any) => {
                 description: 1,
                 category: 1,
                 thumbnail: 1,
+                stock: 1,
                 discount: 1,
                 averageRate: 1,
                 ratingsQuantity: 1
