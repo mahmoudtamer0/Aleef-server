@@ -44,6 +44,10 @@ export = (io: any, socket: any) => {
                         {
                             memberId: socket.user.id,
                             memberModel: "User"
+                        },
+                        {
+                            memberId: BOT_ID,
+                            memberModel: "Bot"
                         }
                     ]
 
@@ -76,7 +80,7 @@ export = (io: any, socket: any) => {
                 message: dataTofetch?.Response
             });
 
-            const messageBot = await createMessage({
+            await createMessage({
                 chatId: chat._id.toString(),
                 sender: BOT_ID.toString(),
                 senderModel: "Bot",
