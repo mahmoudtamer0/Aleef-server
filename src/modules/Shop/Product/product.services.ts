@@ -207,9 +207,6 @@ export const getProduct = async ({ prodId }: any) => {
 
 }
 
-
-
-
 export const calculateCart = async (cart: any) => {
 
     let subTotal = 0;

@@ -47,10 +47,23 @@ const appointmentSchema = new mongoose.Schema(
         price: {
             type: Number,
         },
+
+        rejectionReason: {
+            type: String,
+            default: null,
+            trim: true
+        },
+
+        expiresAt: {
+            type: Date,
+            default: null
+        }
     },
 
     { timestamps: true }
 );
+
+appointmentSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 
 export default mongoose.model("Appointment", appointmentSchema);

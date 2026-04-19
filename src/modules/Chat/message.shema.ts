@@ -15,7 +15,7 @@ const messageSchema = new mongoose.Schema({
     senderModel: {
         type: String,
         required: true,
-        enum: ["User", "Doctor"]
+        enum: ["User", "Doctor", "Bot"]
     },
     isDeleted: { type: Boolean, default: false },
     text: { type: String, required: true },

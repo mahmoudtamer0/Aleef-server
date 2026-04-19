@@ -2,6 +2,7 @@ let io: Server<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>;
 import { DefaultEventsMap, Server } from "socket.io";
 import { verifyJWT } from "../utils/verifyJWT";
 import chatSockets from "./chat.sockets";
+import chatBotSockets from "./chatBot.sockets";
 
 export const initSocket = (server: any) => {
     io = new Server(server, {
@@ -28,6 +29,7 @@ export const initSocket = (server: any) => {
         socket.join((socket as any).user.id);
         console.log("A user connected: " + socket.id);
         chatSockets(io, socket);
+        chatBotSockets(io, socket);
 
         socket.on("disconnect", () => {
             console.log("A user disconnected: " + socket.id);
