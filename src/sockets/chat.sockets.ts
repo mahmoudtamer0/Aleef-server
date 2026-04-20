@@ -51,13 +51,18 @@ export = (io: any, socket: any) => {
             });
             const sender = populatedMessage.sender as any;
 
+
             io.to(data.chatId).emit("receive_message", {
-                messageId: message._id,
-                _id: socket.user.id,
-                text: populatedMessage.text,
-                senderId: sender._id,
-                senderProfilePic: sender.profilePic,
-                chatId: data.chatId
+                _id: message._id,
+                text: message.text,
+                sender: {
+                    _id: sender._id,
+                    name: sender.name,
+                    profilePic: sender.profilePic
+                },
+                chatId: data.chatId,
+                createdAt: message.createdAt,
+                isDeleted: message.isDeleted,
             });
 
             const chat = await Chat.findById(data.chatId);
@@ -69,6 +74,12 @@ export = (io: any, socket: any) => {
             );
 
             if (!otherUser) return;
+
+
+
+
+
+
 
             await UnreadMessage.updateOne(
                 {
