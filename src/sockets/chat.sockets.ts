@@ -7,6 +7,7 @@ export = (io: any, socket: any) => {
 
 
     socket.on("join_chat", async (chatId: string) => {
+        console.log("User joined chat:", chatId);
         socket.join(chatId);
         const member = await UnreadMessage.findOne({
             userId: socket.user.id,
@@ -28,6 +29,7 @@ export = (io: any, socket: any) => {
 
     socket.on("send_message", async (data: { chatId: string; message: string }) => {
         try {
+            console.log("Received message:", data);
             const model = socket.user.role === "DOCTOR" ? "Doctor" : "User";
 
             if (data.message.trim().length < 1) {
@@ -123,5 +125,9 @@ export = (io: any, socket: any) => {
             console.error("Error sending message:", err);
         }
     })
+
+    socket.on("leaveChat", (chatId: string) => {
+        socket.leave(chatId);
+    });
 
 };
