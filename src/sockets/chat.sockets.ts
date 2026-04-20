@@ -1,4 +1,6 @@
 import Chat from "../modules/Chat/chat.schema";
+import Doctor from "../modules/Doctor/doctor.schema";
+import User from "../modules/User/user.schema";
 import UnreadMessage from "../modules/Chat/unreadMessages";
 import { createMessage } from "../utils/createMessage";
 
@@ -38,6 +40,14 @@ export = (io: any, socket: any) => {
                 });
                 return;
             }
+            const chat = await Chat.findById(data.chatId);
+            if (!chat) return;
+
+            const isMember = chat.members.some(
+                (m: any) => m.memberId.toString() === socket.user.id
+            );
+
+            if (!isMember) return;
 
             const message = await createMessage({
                 chatId: data.chatId,
@@ -67,59 +77,68 @@ export = (io: any, socket: any) => {
                 isDeleted: message.isDeleted,
             });
 
-            // const chat = await Chat.findById(data.chatId);
-
-            // if (!chat) return;
-
-            // const otherUser = chat.members.find(
-            //     (m: any) => m.memberId.toString() !== socket.user.id
-            // );
-
-            // if (!otherUser) return;
 
 
+            const otherUser = chat.members.find(
+                (m: any) => m.memberId.toString() !== socket.user.id
+            );
+
+            if (!otherUser) return;
+
+            const unread = await UnreadMessage.updateOne(
+                {
+                    userId: otherUser.memberId,
+                    chatId: data.chatId
+                },
+                {
+                    $inc: { unreadCount: 1 },
+                    $set: { lastMessage: populatedMessage.text }
+                },
+                { upsert: true }
+            );
+
+            chat.lastMessage = populatedMessage._id;
+            await chat.save();
+
+
+            io.to(otherUser.memberId.toString()).emit("chat_updated", {
+                id: data.chatId,
+                person: {
+                    _id: sender._id,
+                    name: sender.name,
+                    profilePic: sender.profilePic
+                },
+                lastMessage: {
+                    _id: populatedMessage._id,
+                    text: populatedMessage.text,
+                    createdAt: populatedMessage.createdAt,
+                    sender: populatedMessage.sender
+                },
+                unreadCount: unread.upsertedCount || 1,
+                updatedAt: chat.updatedAt
+            });
 
 
 
+            const otherMemberProfile = model == "Doctor" ? await Doctor.findById(otherUser.memberId).lean().select("name profilePic")
+                : await User.findById(otherUser.memberId).lean().select("name profilePic");
 
-
-            // await UnreadMessage.updateOne(
-            //     {
-            //         userId: otherUser.memberId,
-            //         chatId: data.chatId
-            //     },
-            //     {
-            //         $inc: { unreadCount: 1 },
-            //         $set: { lastMessage: populatedMessage.text }
-            //     },
-            //     { upsert: true }
-            // );
-
-            // chat.lastMessage = populatedMessage._id;
-            // await chat.save();
-
-
-            // io.to(otherUser.memberId.toString()).emit("chat_updated", {
-            //     chatId: data.chatId,
-            //     lastMessage: {
-            //         _id: populatedMessage._id,
-            //         text: populatedMessage.text,
-            //         createdAt: populatedMessage.createdAt,
-            //         sender: populatedMessage.sender
-            //     },
-            //     unreadIncrement: 1
-            // });
-
-            // io.to(socket.user.id.toString()).emit("chat_updated", {
-            //     chatId: data.chatId,
-            //     lastMessage: {
-            //         _id: populatedMessage._id,
-            //         text: populatedMessage.text,
-            //         createdAt: populatedMessage.createdAt,
-            //         sender: populatedMessage.sender
-            //     },
-            //     unreadIncrement: 0
-            // });
+            io.to(socket.user.id.toString()).emit("chat_updated", {
+                id: data.chatId,
+                person: {
+                    _id: otherUser.memberId,
+                    name: otherMemberProfile?.name,
+                    profilePic: otherMemberProfile?.profilePic
+                },
+                lastMessage: {
+                    _id: populatedMessage._id,
+                    text: populatedMessage.text,
+                    createdAt: populatedMessage.createdAt,
+                    sender: populatedMessage.sender
+                },
+                unreadCount: 0,
+                updatedAt: chat.updatedAt
+            });
 
         } catch (err) {
             console.error("Error sending message:", err);

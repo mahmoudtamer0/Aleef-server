@@ -15,7 +15,7 @@ const sessionSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now,
-        expires: 30 * 24 * 60 * 60
+        expires: 5 * 24 * 60 * 60
     }
 }, { timestamps: true });
 
