@@ -67,59 +67,59 @@ export = (io: any, socket: any) => {
                 isDeleted: message.isDeleted,
             });
 
-            const chat = await Chat.findById(data.chatId);
+            // const chat = await Chat.findById(data.chatId);
 
-            if (!chat) return;
+            // if (!chat) return;
 
-            const otherUser = chat.members.find(
-                (m: any) => m.memberId.toString() !== socket.user.id
-            );
+            // const otherUser = chat.members.find(
+            //     (m: any) => m.memberId.toString() !== socket.user.id
+            // );
 
-            if (!otherUser) return;
-
-
+            // if (!otherUser) return;
 
 
 
 
 
-            await UnreadMessage.updateOne(
-                {
-                    userId: otherUser.memberId,
-                    chatId: data.chatId
-                },
-                {
-                    $inc: { unreadCount: 1 },
-                    $set: { lastMessage: populatedMessage.text }
-                },
-                { upsert: true }
-            );
-
-            chat.lastMessage = populatedMessage._id;
-            await chat.save();
 
 
-            io.to(otherUser.memberId.toString()).emit("chat_updated", {
-                chatId: data.chatId,
-                lastMessage: {
-                    _id: populatedMessage._id,
-                    text: populatedMessage.text,
-                    createdAt: populatedMessage.createdAt,
-                    sender: populatedMessage.sender
-                },
-                unreadIncrement: 1
-            });
+            // await UnreadMessage.updateOne(
+            //     {
+            //         userId: otherUser.memberId,
+            //         chatId: data.chatId
+            //     },
+            //     {
+            //         $inc: { unreadCount: 1 },
+            //         $set: { lastMessage: populatedMessage.text }
+            //     },
+            //     { upsert: true }
+            // );
 
-            io.to(socket.user.id.toString()).emit("chat_updated", {
-                chatId: data.chatId,
-                lastMessage: {
-                    _id: populatedMessage._id,
-                    text: populatedMessage.text,
-                    createdAt: populatedMessage.createdAt,
-                    sender: populatedMessage.sender
-                },
-                unreadIncrement: 0
-            });
+            // chat.lastMessage = populatedMessage._id;
+            // await chat.save();
+
+
+            // io.to(otherUser.memberId.toString()).emit("chat_updated", {
+            //     chatId: data.chatId,
+            //     lastMessage: {
+            //         _id: populatedMessage._id,
+            //         text: populatedMessage.text,
+            //         createdAt: populatedMessage.createdAt,
+            //         sender: populatedMessage.sender
+            //     },
+            //     unreadIncrement: 1
+            // });
+
+            // io.to(socket.user.id.toString()).emit("chat_updated", {
+            //     chatId: data.chatId,
+            //     lastMessage: {
+            //         _id: populatedMessage._id,
+            //         text: populatedMessage.text,
+            //         createdAt: populatedMessage.createdAt,
+            //         sender: populatedMessage.sender
+            //     },
+            //     unreadIncrement: 0
+            // });
 
         } catch (err) {
             console.error("Error sending message:", err);
