@@ -29,7 +29,7 @@ export const initSocket = (server: any) => {
         socket.join((socket as any).user.id);
         console.log("A user connected: " + socket.id);
         chatSockets(io, socket);
-        chatBotSockets(io, socket);
+        //chatBotSockets(io, socket);
 
         socket.on("disconnect", () => {
             console.log("A user disconnected: " + socket.id);
