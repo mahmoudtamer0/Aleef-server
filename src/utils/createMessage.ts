@@ -3,7 +3,15 @@ import Message from "../modules/Chat/message.shema";
 import ApiError from "./ApiError";
 
 
-export const createMessage = async ({ chatId, sender, senderModel, message }: { chatId: string; sender: string; senderModel: string; message: string }) => {
+interface CreateMessageInput {
+    chatId: string;
+    sender: string;
+    senderModel: "User" | "Doctor" | "Bot";
+    message: string;
+}
+
+
+export const createMessage = async ({ chatId, sender, senderModel, message }: CreateMessageInput) => {
 
     const chat = await Chat.findById(chatId);
 

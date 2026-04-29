@@ -32,7 +32,8 @@ export = (io: any, socket: any) => {
     socket.on("send_message", async (data: { chatId: string; message: string }) => {
         try {
             console.log("Received message:", data);
-            const model = socket.user.role === "DOCTOR" ? "Doctor" : "User";
+            const model: "Doctor" | "User" =
+                socket.user.role === "DOCTOR" ? "Doctor" : "User";
 
             if (data.message.trim().length < 1) {
                 io.to(socket.user.id).emit("error_message", {
