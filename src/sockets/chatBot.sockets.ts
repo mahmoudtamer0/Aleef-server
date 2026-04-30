@@ -19,6 +19,8 @@ export = (io: any, socket: any) => {
                 return;
             }
 
+
+
             const botresponse = fetch("https://chatbot-production-a866.up.railway.app/chat", {
                 method: "POST",
                 headers: {
@@ -60,6 +62,17 @@ export = (io: any, socket: any) => {
                 senderModel: "User",
                 message: data.message,
                 chatType: "chatbot"
+            });
+
+
+            io.to(socket.user.id).emit("chat_response", {
+                _id: message._id,
+                text: message.text,
+                sender: {
+                    _id: message.sender,
+                },
+                createdAt: message.createdAt,
+                isDeleted: message.isDeleted,
             });
 
             const res = await botresponse;
