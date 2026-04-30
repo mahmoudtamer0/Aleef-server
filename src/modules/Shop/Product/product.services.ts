@@ -135,7 +135,7 @@ export const getProducts = async (reqQuery: any) => {
             toSort = { updatedAt: -1 }
         }
     } else {
-        toSort = { updatedAt: -1 }
+        toSort = { updatedAt: -1, stock: -1 };
     }
 
 
