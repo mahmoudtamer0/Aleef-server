@@ -102,7 +102,6 @@ export = (io: any, socket: any) => {
             chat.lastMessage = populatedMessage._id;
             await chat.save();
 
-
             io.to(otherUser.memberId.toString()).emit("chat_updated", {
                 id: data.chatId,
                 person: {
@@ -121,16 +120,22 @@ export = (io: any, socket: any) => {
             });
 
 
+            const otherMemberProfile =
+                otherUser.memberModel === "Doctor"
+                    ? await Doctor.findById(otherUser.memberId)
+                        .lean()
+                        .select("name profilePic")
+                    : await User.findById(otherUser.memberId)
+                        .lean()
+                        .select("name profilePic");
 
-            const otherMemberProfile = model == "Doctor" ? await Doctor.findById(otherUser.memberId).lean().select("name profilePic")
-                : await User.findById(otherUser.memberId).lean().select("name profilePic");
 
             io.to(socket.user.id.toString()).emit("chat_updated", {
                 id: data.chatId,
                 person: {
                     _id: otherUser.memberId,
-                    name: otherMemberProfile?.name,
-                    profilePic: otherMemberProfile?.profilePic
+                    name: otherMemberProfile?.name || "Unknown",
+                    profilePic: otherMemberProfile?.profilePic || null
                 },
                 lastMessage: {
                     _id: populatedMessage._id,
