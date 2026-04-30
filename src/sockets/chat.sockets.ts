@@ -55,6 +55,7 @@ export = (io: any, socket: any) => {
                 sender: socket.user.id,
                 senderModel: model,
                 message: data.message,
+                chatType: "private"
             });
 
 

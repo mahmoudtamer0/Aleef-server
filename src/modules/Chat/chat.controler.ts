@@ -30,3 +30,13 @@ export const getChatMessages = catchAsync(async (req, res, next) => {
 });
 
 
+export const getChatbotMessages = catchAsync(async (req, res, next) => {
+    const user = req.user;
+    const messages = await chatServices.getChatbotMessages(user);
+
+    return res.status(200).json({
+        status: "success",
+        messages: messages.messages,
+        chatId: messages.chatId
+    })
+})

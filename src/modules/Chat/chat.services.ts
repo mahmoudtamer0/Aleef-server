@@ -2,6 +2,7 @@ import Chat from "./chat.schema";
 import Message from "./message.shema";
 import ApiError from "../../utils/ApiError";
 import UnreadMessage from "./unreadMessages";
+import { BOT_ID } from "../../constants/bot";
 
 export const getChats = async (user: any) => {
 
@@ -122,3 +123,69 @@ export const getChatMessages = async (chatId: any, user: any) => {
         messages: messagesToSend
     };
 };
+
+
+export const getChatbotMessages = async (user: any) => {
+
+    let chat = await Chat.findOne({
+        chatType: "chatbot",
+        "members.memberId": user.id
+    })
+
+    if (!chat) {
+        chat = await Chat.create({
+            members: [
+                { memberId: user.id, memberModel: "User" },
+                { memberId: BOT_ID, memberModel: "Bot" }
+            ],
+            chatType: "chatbot"
+        })
+    }
+
+    await chat.populate({
+        path: "members.memberId",
+        select: "name profilePic"
+    })
+
+
+
+    const messages = await Message.find(
+        { chatId: chat._id },
+        { __v: false }
+    )
+        .populate({
+            path: "sender",
+            select: "name profilePic"
+        })
+        .sort({ createdAt: 1 })
+        .lean();
+
+    // const botMember = chat.members.find(
+    //     (m: any) => m.memberId._id.toString() === BOT_ID.toString()
+    // );
+
+    // const bot = botMember?.memberId as any;
+
+    const messagesToSend = messages.map(message => {
+
+        const sender = message.sender as any;
+
+        return {
+            isDeleted: message.isDeleted,
+            _id: message._id,
+            chatId: message.chatId,
+            sender: sender
+                ? {
+                    _id: sender._id,
+                }
+                : null,
+            text: message.text,
+            createdAt: message.createdAt
+        };
+    });
+
+    return {
+        chatId: chat._id,
+        messages: messagesToSend
+    };
+}; 
