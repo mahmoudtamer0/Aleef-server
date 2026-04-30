@@ -12,7 +12,7 @@ const chatSchema = new mongoose.Schema({
             memberModel: {
                 type: String,
                 required: true,
-                enum: ["User", "Doctor"]
+                enum: ["User", "Doctor", "Bot"]
             }
         }
     ],

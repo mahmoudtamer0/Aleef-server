@@ -160,10 +160,6 @@ export const getChatbotMessages = async (user: any) => {
         .sort({ createdAt: 1 })
         .lean();
 
-    // const botMember = chat.members.find(
-    //     (m: any) => m.memberId._id.toString() === BOT_ID.toString()
-    // );
-
     // const bot = botMember?.memberId as any;
 
     const messagesToSend = messages.map(message => {

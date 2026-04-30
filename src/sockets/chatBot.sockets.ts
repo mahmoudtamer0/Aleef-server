@@ -37,6 +37,7 @@ export = (io: any, socket: any) => {
                 "members.memberId": socket.user.id
             });
 
+
             if (!chat) {
                 chat = await Chat.create({
                     chatType: "chatbot",
@@ -50,7 +51,6 @@ export = (io: any, socket: any) => {
                             memberModel: "Bot"
                         }
                     ]
-
                 });
             }
 
