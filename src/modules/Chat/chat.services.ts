@@ -154,10 +154,6 @@ export const getChatbotMessages = async (user: any) => {
         { chatId: chat._id },
         { __v: false }
     )
-        .populate({
-            path: "sender",
-            select: "name profilePic"
-        })
         .sort({ createdAt: 1 })
         .lean();
 
