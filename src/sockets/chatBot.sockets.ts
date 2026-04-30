@@ -59,7 +59,7 @@ export = (io: any, socket: any) => {
                 sender: socket.user.id,
                 senderModel: "User",
                 message: data.message,
-                chatType: "cahtbot"
+                chatType: "chatbot"
             });
 
             const res = await botresponse;

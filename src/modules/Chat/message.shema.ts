@@ -19,7 +19,8 @@ const messageSchema = new mongoose.Schema({
     },
     chatType: {
         type: String,
-        enum: ["personal", "chatbot"], default: "private"
+        enum: ["personal", "chatbot"],
+        default: "personal"
     },
     isDeleted: { type: Boolean, default: false },
     text: { type: String, required: true },

@@ -8,11 +8,11 @@ interface CreateMessageInput {
     sender: string;
     senderModel: "User" | "Doctor" | "Bot";
     message: string;
-    chatType: string;
+    chatType: "personal" | "chatbot";
 }
 
 
-export const createMessage = async ({ chatId, sender, senderModel, message, chatType }: CreateMessageInput) => {
+export const createMessage = async ({ chatId, sender, senderModel, message, chatType }: CreateMessageInput): Promise<any> => {
 
     const chat = await Chat.findById(chatId);
 
