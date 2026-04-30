@@ -79,7 +79,12 @@ export = (io: any, socket: any) => {
             const dataTofetch: any = await res.json();
 
             io.to(socket.user.id).emit("chat_response", {
-                message: dataTofetch?.Response
+                message: dataTofetch?.Response,
+                sender: {
+                    _id: BOT_ID,
+                },
+                createdAt: message.createdAt,
+                isDeleted: false,
             });
 
             await createMessage({
