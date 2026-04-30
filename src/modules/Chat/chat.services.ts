@@ -7,7 +7,8 @@ import { BOT_ID } from "../../constants/bot";
 export const getChats = async (user: any) => {
 
     const chats = await Chat.find({
-        "members.memberId": user.id
+        "members.memberId": user.id,
+        chatType: { $ne: "chatbot" }
     })
         .populate({
             path: "lastMessage"
