@@ -346,3 +346,14 @@ export const rejectAppointment = async (doctor: any, appointmentId: any, reason:
     }
     return appointment;
 }
+
+
+
+export const getPrevAppoinments = async (user: any) => {
+
+    const appointments = await Appointment.find({ owner: user.id, status: { $in: ["cancelled", "completed"] } });
+
+
+    return appointments;
+
+}

@@ -60,3 +60,15 @@ export const approveAppointment = catchAsync(async (req, res, next) => {
 })
 
 
+export const getPrevAppoinments = catchAsync(async (req, res, next) => {
+
+    const user = req.user;
+
+    const appointments = await appointmentServices.getPrevAppoinments(user);
+
+    return res.status(200).json({
+        status: "success",
+        appointments,
+    })
+
+})
