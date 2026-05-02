@@ -15,7 +15,6 @@ export const addPet = async (user: any, { name, type, birthDate, gender, weight 
 
     if (weight) {
         pet.weight = Number(weight);
-        await pet.save()
     }
 
     if (reqFile) {
@@ -36,6 +35,8 @@ export const addPet = async (user: any, { name, type, birthDate, gender, weight 
             pet.cloudinary_id = "default";
         }
     }
+
+    await pet.save();
 
 
     return pet;

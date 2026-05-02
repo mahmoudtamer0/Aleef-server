@@ -34,7 +34,7 @@ const petSchema = new mongoose.Schema({
     },
     profilePic: {
         type: String,
-        default: "https://res.cloudinary.com/ddgniiotg/image/upload/v1773086407/default_eop2qt.jpg"
+        require: true
     },
     cloudinary_id: {
         type: String,
