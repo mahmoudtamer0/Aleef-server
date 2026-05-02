@@ -188,7 +188,7 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
         text: `Hello ${userProfile?.name}, I am ${doctor.name} for your help regarding your appointment for ${appointment.reason} on ${appointment.date} at ${appointment.time}, how can I help you ? `
     })
 
-    const unreadMessage = await UnreadMessage.create({
+    await UnreadMessage.create({
         chatId: chat._id,
         userId: appointment.owner,
         lastMessage: message.text,
