@@ -1,11 +1,9 @@
 import ApiError from "../../../utils/ApiError"
-import { generateFinalPrice } from "../../../utils/generateFinalPrice"
 import Order from "./order.schema";
 import Product from "../Product/product.schema"
 import OrderItems from "./orderItems";
 import User from "../../User/user.schema";
 import { sendEmail } from "../../../utils/sendEmail";
-import { syncBuiltinESMExports } from "module";
 import mongoose from "mongoose";
 
 

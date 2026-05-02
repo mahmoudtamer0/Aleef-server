@@ -1,5 +1,4 @@
 import Pet from "./pet.schema"
-import ApiError from "../../utils/ApiError";
 import { getAge } from "../../utils/getPetAge";
 
 

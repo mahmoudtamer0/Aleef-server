@@ -4,8 +4,6 @@ import { upload } from "../../middlewares/petsUploads"
 import validate from "../../middlewares/userValidate";
 import { addPetSchema } from "./pet.validation";
 import { verifyToken } from "../../middlewares/verifyToken";
-import { allowTo } from "../../middlewares/allowTo";
-
 const router = express.Router()
 
 router.route("/")

@@ -33,7 +33,7 @@
     // Style Options
     "noImplicitReturns": true,
     "noImplicitOverride": false,
-    "noUnusedLocals": false,
+    "noUnusedLocals": true,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "noPropertyAccessFromIndexSignature": true,

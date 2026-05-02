@@ -8,8 +8,6 @@ import { sendEmail } from "../../utils/sendEmail";
 import crypto from "crypto";
 import { generateToken } from "../../utils/generateToken";
 import Session from "../User/session.schema";
-import deleteProfilPic from "../../utils/deleteProfile";
-import mongoose from "mongoose";
 import { getNextDays } from "../../utils/getDoctorAvailableDays";
 import { getAvailableSlots } from "../../utils/getDoctorAvailableSlots";
 import DoctorReview from "./doctorReview.schema";

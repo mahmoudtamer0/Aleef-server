@@ -22,7 +22,7 @@ const medicalRecordSchema = new mongoose.Schema(
 
         notes: String,
 
-        attachments: [String], // صور / تقارير
+        attachments: [String],
 
         date: {
             type: Date,

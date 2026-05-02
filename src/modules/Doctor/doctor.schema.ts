@@ -116,7 +116,7 @@ const doctorSchema = new mongoose.Schema({
 
     slotDuration: {
         type: Number,
-        default: 30, // minutes
+        default: 30,
     },
 
     emailVerificationCode: String,

@@ -5,7 +5,7 @@ import * as userService from "./users.services"
 
 export const register = catchAsync(async (req, res, next) => {
 
-    const user = await userService.register(req.body)
+    await userService.register(req.body)
 
     return res.status(200).json({
         status: "success",
@@ -33,7 +33,7 @@ export const verifyEmail = catchAsync(async (req, res, next) => {
 
 export const resendOtp = catchAsync(async (req, res, next) => {
 
-    const verify = await userService.resendOtp(req.body)
+    await userService.resendOtp(req.body)
 
     return res.status(200).json({
         status: "success",
@@ -115,7 +115,7 @@ export const getAllUsers = catchAsync(async (req, res, next) => {
 
 export const forgetPassword = catchAsync(async (req, res, next) => {
 
-    const forget = null
+    // const forget = null
 
     return res.status(200).json({
         status: "success",

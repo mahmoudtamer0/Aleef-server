@@ -5,7 +5,7 @@ import * as doctorService from "./doctor.services"
 
 export const doctorRegister = catchAsync(async (req, res, next) => {
 
-    const doctor = await doctorService.doctorRegister(req.body, req.files);
+    await doctorService.doctorRegister(req.body, req.files);
 
     return res.status(201).json({
         status: "success",
@@ -16,7 +16,7 @@ export const doctorRegister = catchAsync(async (req, res, next) => {
 
 export const verifyEmail = catchAsync(async (req, res, next) => {
     const device = req.headers["user-agent"] || ""
-    const verfied = await doctorService.verifyEmail(req.body, device)
+    await doctorService.verifyEmail(req.body, device)
 
     return res.status(200).json({
         status: "success",
@@ -26,7 +26,7 @@ export const verifyEmail = catchAsync(async (req, res, next) => {
 
 export const resendOtp = catchAsync(async (req, res, next) => {
 
-    const verify = await doctorService.resendOtp(req.body)
+    await doctorService.resendOtp(req.body)
 
     return res.status(200).json({
         status: "success",
