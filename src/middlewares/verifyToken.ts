@@ -2,7 +2,6 @@ import jwt from "jsonwebtoken";
 import catchAsync from "../utils/catchAsync";
 import ApiError from "../utils/ApiError";
 import Session from "../modules/User/session.schema";
-import User from "../modules/User/user.schema";
 
 export const verifyToken = catchAsync(async (req, res, next) => {
 

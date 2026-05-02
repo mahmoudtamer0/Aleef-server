@@ -6,7 +6,6 @@ import * as appointmentServices from "./appointment.services"
 export const bookAppointment = catchAsync(async (req, res, next) => {
 
     const user = req.user;
-    const reqFile = req.file;
 
     const appointment = await appointmentServices.bookAppointment(user, req.body);
 

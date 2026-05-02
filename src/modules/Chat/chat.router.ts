@@ -1,7 +1,6 @@
 import express from "express";
 
 import { verifyToken } from "../../middlewares/verifyToken";
-import { allowTo } from "../../middlewares/allowTo";
 import { getChatbotMessages, getChatMessages, getChats } from "./chat.controler";
 const router = express.Router()
 

@@ -1,6 +1,5 @@
 import Chat from "./chat.schema";
 import Message from "./message.shema";
-import ApiError from "../../utils/ApiError";
 import UnreadMessage from "./unreadMessages";
 import { BOT_ID } from "../../constants/bot";
 
