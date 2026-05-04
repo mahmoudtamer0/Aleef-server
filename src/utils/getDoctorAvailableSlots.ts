@@ -4,7 +4,6 @@ import { generateSlots } from "./generateSlots";
 export const getAvailableSlots = async (doctor: any, doctorId: string, date: string) => {
     if (!doctor?.workingHours) return [];
 
-    // 🔥 FIX IMPORTANT (timezone safe)
     const targetDate = new Date(date + "T00:00:00");
 
 
@@ -52,12 +51,16 @@ export const getAvailableSlots = async (doctor: any, doctorId: string, date: str
         (slot) => !bookedTimes.includes(slot)
     );
 
-    // 🔥 remove past time if today
     const now = new Date();
 
-    const isToday =
-        targetDate.toISOString().split("T")[0] ===
-        now.toISOString().split("T")[0];
+    const toLocalDateStr = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    };
+
+    const isToday = toLocalDateStr(targetDate) === toLocalDateStr(now);
 
     if (isToday) {
         const currentHour = now.getHours();
