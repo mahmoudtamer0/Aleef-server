@@ -133,6 +133,8 @@ export const getChatbotMessages = async (user: any) => {
     })
 
     if (!chat) {
+
+
         chat = await Chat.create({
             members: [
                 { memberId: user.id, memberModel: "User" },
@@ -142,12 +144,6 @@ export const getChatbotMessages = async (user: any) => {
         })
     }
 
-    await chat.populate({
-        path: "members.memberId",
-        select: "name profilePic"
-    })
-
-
 
     const messages = await Message.find(
         { chatId: chat._id },
@@ -156,7 +152,6 @@ export const getChatbotMessages = async (user: any) => {
         .sort({ createdAt: 1 })
         .lean();
 
-    // const bot = botMember?.memberId as any;
 
     const messagesToSend = messages.map(message => {
 
