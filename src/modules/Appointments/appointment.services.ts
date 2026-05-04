@@ -351,7 +351,7 @@ export const getPrevAppoinments = async (user: any) => {
 
     const appointments = await Appointment.find({ owner: user.id, status: { $in: ["cancelled", "completed"] } }).lean().populate({
         path: "doctor pet", select: "name doctor.profilePic specialization"
-    })
-    return appointments;
+    }).lean();
 
+    return appointments;
 }
