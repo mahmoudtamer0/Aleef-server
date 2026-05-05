@@ -12,6 +12,11 @@ const sessionSchema = new mongoose.Schema({
         default: "unknown"
     },
 
+    fcmToken: {
+        type: String,
+        default: "unknown"
+    },
+
     createdAt: {
         type: Date,
         default: Date.now,

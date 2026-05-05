@@ -1,5 +1,5 @@
 import express from "express";
-import { banUser, editUserProfile, getME, login, logOut, register, resendOtp, verifyEmail, getAllUsers, getUserToAdmin } from "./users.controler";
+import { banUser, editUserProfile, getME, login, logOut, register, resendOtp, verifyEmail, getAllUsers, getUserToAdmin, addFcmToken } from "./users.controler";
 import { upload } from "../../middlewares/userProfileImage"
 import validate from "../../middlewares/userValidate";
 import { registerSchema, loginSchema, verifyOtpSchema, resendOtpSchema } from "./users.validation";
@@ -19,6 +19,10 @@ router.route("/resend-otp")
 
 router.route("/login")
     .post(validate(loginSchema), login)
+
+
+router.route("/add-fcmToken")
+    .post(verifyToken, addFcmToken)
 
 router.route("/me")
     .get(verifyToken, getME)

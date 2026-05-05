@@ -305,6 +305,14 @@ export const login = async ({ email, password }: any, device: string) => {
     return { findUser, token };
 }
 
+export const addFcmToken = async (user: any, fcmToken: any) => {
+
+    const session = await Session.findByIdAndUpdate(user.sessionId, { fcmToken: fcmToken });
+
+    return session;
+}
+
+
 export const getMe = async (userId: any) => {
 
     const userProfile = await User.findById(userId).lean().select('name email phone profilePic status createdAt')
