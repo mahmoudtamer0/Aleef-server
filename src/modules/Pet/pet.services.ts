@@ -14,13 +14,11 @@ export const addPet = async (user: any, { name, type, birthDate, gender, weight 
 
     if (weight) {
         pet.weight = Number(weight);
-        await pet.save();
     }
 
     if (reqFile) {
         pet.profilePic = reqFile.path;
         pet.cloudinary_id = reqFile.filename
-        await pet.save();
     } else {
         if (pet.type == "dog") {
             pet.profilePic = "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939343/dog-2d-cartoon-vector-illustration-white-background-high_889056-22288_hyyjey.avif";
