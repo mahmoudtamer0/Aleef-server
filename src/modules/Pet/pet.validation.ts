@@ -15,9 +15,9 @@ export const addPetSchema = Joi.object({
         "date.max": "Birth date cannot be in the future",
     }),
 
-    gender: Joi.string().valid("male", "female").optional(),
+    gender: Joi.string().valid("male", "female").required(),
 
-    weight: Joi.number().min(0).max(40).optional(),
+    weight: Joi.number().min(0).max(40).required(),
 
     profilePic: Joi.string().uri().optional(),
 

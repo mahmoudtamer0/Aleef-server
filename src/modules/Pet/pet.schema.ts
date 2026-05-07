@@ -31,6 +31,7 @@ const petSchema = new mongoose.Schema({
 
     weight: {
         type: Number,
+        required: true,
     },
     profilePic: {
         type: String,
