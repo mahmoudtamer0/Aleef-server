@@ -58,6 +58,20 @@ export const approveAppointment = catchAsync(async (req, res, next) => {
     })
 })
 
+export const rejectAppointment = catchAsync(async (req, res, next) => {
+
+    const doctor = req.user;
+    const { appointmentId } = req.params;
+    const { rejectionReason } = req.body;
+
+    const appointment = await appointmentServices.rejectAppointment(doctor, appointmentId, rejectionReason);
+
+    return res.status(201).json({
+        status: "success",
+        appointment,
+    })
+})
+
 
 export const getPrevAppoinments = catchAsync(async (req, res, next) => {
 

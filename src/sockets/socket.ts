@@ -13,27 +13,30 @@ export const initSocket = (server: any) => {
 
     io.use((socket, next) => {
         const token = socket.handshake.auth["token"];
-        if (!token) {
-            return next(new Error("Authentication error: No token provided"));
-        }
-        const decoded = verifyJWT(token)
-        if (!decoded) {
-            return next(new Error("Authentication error: Invalid token"));
-        }
+        if (!token) return next(new Error("No token"));
+
+        const decoded = verifyJWT(token);
+        if (!decoded) return next(new Error("Invalid token"));
 
         (socket as any).user = decoded;
         next();
     });
 
     io.on("connection", (socket) => {
-        socket.join((socket as any).user.id);
-        console.log("A user connected: " + socket.id);
+        socket.join(`user:${(socket as any).user.id}`);
+
         chatSockets(io, socket);
         chatBotSockets(io, socket);
 
         socket.on("disconnect", () => {
-            console.log("A user disconnected: " + socket.id);
+            (socket as any).currentChat = null;
         });
     });
+};
 
-}
+export const getIO = () => {
+    if (!io) {
+        throw new Error("Socket not initialized yet");
+    }
+    return io;
+};

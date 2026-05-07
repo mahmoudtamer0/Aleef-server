@@ -7,10 +7,13 @@ import { createMessage } from "../utils/createMessage";
 
 export = (io: any, socket: any) => {
 
-
     socket.on("join_chat", async (chatId: string) => {
         console.log("User joined chat:", chatId);
+
+        (socket as any).currentChat = chatId;
+
         socket.join(chatId);
+
         const member = await UnreadMessage.findOne({
             userId: socket.user.id,
             chatId
@@ -29,9 +32,13 @@ export = (io: any, socket: any) => {
         }
     });
 
+    socket.on("leave_chat", (chatId: string) => {
+        socket.leave(chatId);
+        (socket as any).currentChat = null;
+    });
+
     socket.on("send_message", async (data: { chatId: string; message: string }) => {
         try {
-            console.log("Received message:", data);
             const model: "Doctor" | "User" =
                 socket.user.role === "DOCTOR" ? "Doctor" : "User";
 
@@ -65,8 +72,7 @@ export = (io: any, socket: any) => {
             });
             const sender = populatedMessage.sender as any;
 
-
-            io.to(data.chatId).emit("receive_message", {
+            socket.emit("receive_message", {
                 _id: message._id,
                 text: message.text,
                 sender: {
@@ -80,44 +86,87 @@ export = (io: any, socket: any) => {
             });
 
 
-
             const otherUser = chat.members.find(
                 (m: any) => m.memberId.toString() !== socket.user.id
             );
 
             if (!otherUser) return;
 
-            const unread = await UnreadMessage.updateOne(
-                {
-                    userId: otherUser.memberId,
-                    chatId: data.chatId
-                },
-                {
-                    $inc: { unreadCount: 1 },
-                    $set: { lastMessage: populatedMessage.text }
-                },
-                { upsert: true }
+            const sockets = await io.in(`user:${otherUser.memberId.toString()}`).fetchSockets();
+
+            const isInSameChat = sockets.some(
+                (s: any) => (s as any).currentChat === data.chatId
             );
+
+            const isOnline = sockets.length > 0;
+
+
+
+            if (isInSameChat) {
+                io.to(`user:${otherUser.memberId.toString()}`).emit("receive_message", {
+                    _id: message._id,
+                    text: message.text,
+                    sender: {
+                        _id: sender._id,
+                        name: sender.name,
+                        profilePic: sender.profilePic
+                    },
+                    chatId: data.chatId,
+                    createdAt: message.createdAt,
+                    isDeleted: message.isDeleted,
+                });
+
+            } else if (isOnline) {
+                const unread = await UnreadMessage.findOneAndUpdate(
+                    {
+                        userId: otherUser.memberId,
+                        chatId: data.chatId
+                    },
+                    {
+                        $inc: { unreadCount: 1 },
+                        $set: { lastMessage: populatedMessage.text }
+                    },
+                    { new: true, upsert: true }
+                );
+
+
+                io.to(`user:${otherUser.memberId.toString()}`).emit("chat_updated", {
+                    id: data.chatId,
+                    person: {
+                        _id: sender._id,
+                        name: sender.name,
+                        profilePic: sender.profilePic
+                    },
+                    lastMessage: {
+                        _id: populatedMessage._id,
+                        text: populatedMessage.text,
+                        createdAt: populatedMessage.createdAt,
+                        sender: populatedMessage.sender
+                    },
+                    unreadCount: unread.unreadCount,
+                    updatedAt: chat.updatedAt
+                });
+
+                // io.to(`user:${otherUserId}`).emit("notification", { });
+
+            } else {
+                await UnreadMessage.findOneAndUpdate(
+                    {
+                        userId: otherUser.memberId,
+                        chatId: data.chatId
+                    },
+                    {
+                        $inc: { unreadCount: 1 },
+                        $set: { lastMessage: populatedMessage.text }
+                    },
+                    { new: true, upsert: true }
+                );
+                // await sendNotification();
+            }
 
             chat.lastMessage = populatedMessage._id;
             await chat.save();
 
-            io.to(otherUser.memberId.toString()).emit("chat_updated", {
-                id: data.chatId,
-                person: {
-                    _id: sender._id,
-                    name: sender.name,
-                    profilePic: sender.profilePic
-                },
-                lastMessage: {
-                    _id: populatedMessage._id,
-                    text: populatedMessage.text,
-                    createdAt: populatedMessage.createdAt,
-                    sender: populatedMessage.sender
-                },
-                unreadCount: unread.upsertedCount || 1,
-                updatedAt: chat.updatedAt
-            });
 
 
             const otherMemberProfile =
@@ -130,7 +179,7 @@ export = (io: any, socket: any) => {
                         .select("name profilePic");
 
 
-            io.to(socket.user.id.toString()).emit("chat_updated", {
+            io.to(`user:${socket.user.id}`).emit("chat_updated", {
                 id: data.chatId,
                 person: {
                     _id: otherUser.memberId,
@@ -152,8 +201,5 @@ export = (io: any, socket: any) => {
         }
     })
 
-    socket.on("leaveChat", (chatId: string) => {
-        socket.leave(chatId);
-    });
 
 };

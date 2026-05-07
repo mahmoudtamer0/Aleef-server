@@ -45,3 +45,12 @@ export const addAppointmentSchema = Joi.object({
     .messages({
         "any.invalid": "Appointment must be in the future",
     });
+
+
+
+
+
+
+export const rejectAppoinmentSchema = Joi.object({
+    rejectionReason: Joi.string().min(10).max(500).required(),
+})

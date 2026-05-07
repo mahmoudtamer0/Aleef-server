@@ -6,6 +6,8 @@ import User from "../User/user.schema";
 import Chat from "../Chat/chat.schema";
 import Message from "../Chat/message.shema";
 import UnreadMessage from "../Chat/unreadMessages";
+import { getIO } from "../../sockets/socket";
+import Notification from "../User/notification.schema";
 
 
 
@@ -146,6 +148,8 @@ export const getAppointmentDetails = async (appointmentId: any) => {
 }
 
 export const approveAppointment = async (doctor: any, appointmentId: any) => {
+    const io = getIO();
+
     const appointment = await Appointment.findOne({ _id: appointmentId, doctor: doctor.id, status: "pending" });
 
     if (!appointment) {
@@ -200,7 +204,41 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
 
 
     if (userProfile) {
-        setImmediate(() => {
+        setImmediate(async () => {
+
+            let isOnline = false;
+
+            try {
+                const sockets = await io.in(`user:${userProfile._id.toString()}`).fetchSockets();
+                isOnline = sockets.length > 0;
+            } catch (err) {
+                isOnline = false;
+            }
+
+            if (isOnline) {
+                io.to(`user:${userProfile._id.toString()}`).emit("notification", {
+                    type: "APPOINTMENT_REJECTED",
+                    title: "Appointment Rejected ❗",
+                    body: `Doctor ${doctor.name} has accepted your appoinment`,
+                    data: {
+                        appointmentId: appointment._id,
+                        date: appointment.date,
+                    }
+                })
+            }
+
+            await Notification.create({
+                userId: userProfile._id,
+                title: "Appointment Confirmed",
+                body: `Doctor ${doctor.name} has accepted your appoinment`,
+                type: "APPOINTMENT",
+                data: {
+                    appointmentId: appointment._id,
+                    date: appointment.date,
+                }
+            })
+
+
             sendEmail({
                 email: userProfile.email,
                 subject: "Appointment Confirmed ✅",
@@ -256,19 +294,55 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
     return appointment;
 }
 
-export const rejectAppointment = async (doctor: any, appointmentId: any, reason: string) => {
+export const rejectAppointment = async (doctor: any, appointmentId: any, rejectionReason: string) => {
+
+    const io = getIO();
     const appointment = await Appointment.findOne({ _id: appointmentId, doctor: doctor.id, status: "pending" });
     if (!appointment) {
-        throw new Error("Appointment not found or not pending");
+        throw new ApiError(404, "Appointment not found or not pending");
     }
     appointment.status = "rejected";
-    appointment.expiresAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
-    appointment.rejectionReason = reason;
+    appointment.expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+    appointment.rejectionReason = rejectionReason;
     await appointment.save();
 
     const userProfile = await User.findById(appointment.owner).lean().select("email name")
     if (userProfile) {
-        setImmediate(() => {
+
+        setImmediate(async () => {
+
+            let isOnline = false;
+
+            try {
+                const sockets = await io.in(`user:${userProfile._id.toString()}`).fetchSockets();
+                isOnline = sockets.length > 0;
+            } catch (err) {
+                isOnline = false;
+            }
+
+            if (isOnline) {
+                io.to(`user:${userProfile._id.toString()}`).emit("notification", {
+                    type: "APPOINTMENT_REJECTED",
+                    title: "Appointment Rejected ❗",
+                    body: rejectionReason,
+                    data: {
+                        appointmentId: appointment._id,
+                        date: appointment.date,
+                    }
+                })
+            }
+
+            await Notification.create({
+                userId: userProfile._id,
+                title: "Appointment Rejected ❗",
+                body: rejectionReason,
+                type: "APPOINTMENT",
+                data: {
+                    appointmentId: appointment._id,
+                    date: appointment.date,
+                }
+            })
+
             sendEmail({
                 email: userProfile.email,
                 subject: "Appointment Update ❗",
@@ -344,7 +418,6 @@ export const rejectAppointment = async (doctor: any, appointmentId: any, reason:
     }
     return appointment;
 }
-
 
 
 export const getPrevAppoinments = async (user: any) => {

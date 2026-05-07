@@ -14,7 +14,7 @@ const sessionSchema = new mongoose.Schema({
 
     fcmToken: {
         type: String,
-        default: "unknown"
+        default: null
     },
 
     createdAt: {
