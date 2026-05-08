@@ -49,8 +49,8 @@ const authLimiter = rateLimit({
 app.use(cookieParser());
 
 app.use(apiLimiter)
-app.use('/api/v1/users', usersRouter)
 app.use('/api/v1/users/login', authLimiter)
+app.use('/api/v1/users', usersRouter)
 app.use('/api/v1/doctors', doctorRouter)
 app.use('/api/v1/products', productsRouter)
 app.use('/api/v1/orders', ordersRouter)
