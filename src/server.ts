@@ -14,18 +14,15 @@ if (!dbUrl) throw new Error("DB_URL is not defined");
 
 const PORT = process.env["PORT"] || 3000;
 
-if (process.env["NODE_ENV"] == "development") {
-
-    mongoose.connect(dbUrl, {
-        maxPoolSize: 30,
-        serverSelectionTimeoutMS: 5000,
-        socketTimeoutMS: 45000,
+mongoose.connect(dbUrl, {
+    maxPoolSize: 5,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+})
+    .then(() => {
+        console.log("✅ DB Connected");
+        server.listen(PORT, () => {
+            console.log(`🚀 Server running on port ${PORT}`);
+        });
     })
-        .then(() => {
-            console.log("✅ DB Connected");
-            server.listen(PORT, () => {
-                console.log(`🚀 Server running on port ${PORT}`);
-            });
-        })
-        .catch((err) => console.log(err));
-}
+    .catch((err) => console.log(err));

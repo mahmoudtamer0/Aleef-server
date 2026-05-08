@@ -35,7 +35,7 @@ export = (io: any, socket: any) => {
             let chat = await Chat.findOne({
                 chatType: "chatbot",
                 "members.memberId": socket.user.id
-            });
+            }).lean();
 
 
             if (!chat) {
@@ -63,7 +63,7 @@ export = (io: any, socket: any) => {
             });
 
 
-            io.to(socket.user.id).emit("chat_response", {
+            socket.emit("chat_response", {
                 _id: message._id,
                 text: message.text,
                 sender: {
@@ -76,7 +76,8 @@ export = (io: any, socket: any) => {
             const res = await botresponse;
             const dataTofetch: any = await res.json();
 
-            io.to(socket.user.id).emit("chat_response", {
+
+            socket.emit("chat_response", {
                 message: dataTofetch?.Response,
                 sender: {
                     _id: BOT_ID,
