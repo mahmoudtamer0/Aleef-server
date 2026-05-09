@@ -17,7 +17,7 @@ export const addPetSchema = Joi.object({
 
     gender: Joi.string().valid("male", "female").required(),
 
-    weight: Joi.number().min(0).max(40).required(),
+    weight: Joi.number().min(0).max(40).optional(),
 
     profilePic: Joi.string().uri().optional(),
 
