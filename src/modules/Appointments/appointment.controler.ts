@@ -85,3 +85,19 @@ export const getPrevAppoinments = catchAsync(async (req, res, next) => {
     })
 
 })
+
+
+export const endAppoinment = catchAsync(async (req, res, next) => {
+
+    const doctor = req.user;
+    const files = req.files
+    const { appointmentId } = req.params;
+    const { medicalRecord, vaccination, upCommingVaccination } = req.body;
+
+    const appointment = await appointmentServices.endAppointment(doctor, appointmentId, medicalRecord, vaccination, upCommingVaccination, files);
+
+    return res.status(201).json({
+        status: "success",
+        appointment,
+    })
+})

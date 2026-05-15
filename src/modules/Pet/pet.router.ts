@@ -1,8 +1,8 @@
 import express from "express";
-import { addPet, getMyPets, getPetProfile } from "./pet.controler";
+import { addPet, editPet, getMyPets, getPetProfile } from "./pet.controler";
 import { upload } from "../../middlewares/petsUploads"
 import validate from "../../middlewares/userValidate";
-import { addPetSchema } from "./pet.validation";
+import { addPetSchema, editPetSchema } from "./pet.validation";
 import { verifyToken } from "../../middlewares/verifyToken";
 const router = express.Router()
 
@@ -14,5 +14,11 @@ router.route("/get-my-pets")
 
 router.route("/:petId")
     .get(verifyToken, getPetProfile)
+    .patch(
+        verifyToken,
+        upload.single("profilePic"),
+        validate(editPetSchema),
+        editPet
+    );
 
 export default router

@@ -1,4 +1,6 @@
 import Appointment from "./appointments.schema"
+import MedicalRecord from "../Pet/medicalRecord.schema"
+import Vaccination from "../Pet/vaccination.schema"
 import ApiError from "../../utils/ApiError";
 import Doctor from "../Doctor/doctor.schema";
 import { sendEmail } from "../../utils/sendEmail";
@@ -427,4 +429,232 @@ export const getPrevAppoinments = async (user: any) => {
     }).lean();
 
     return appointments;
+}
+
+// services/appointment.service.ts
+
+export const endAppointment = async (
+    doctor: any,
+    appointmentId: any,
+    medicalRecord: any,
+    vaccination: any,
+    upCommingVaccination: any,
+    files: any,
+) => {
+
+    console.log(appointmentId, doctor.id)
+
+    const appointment = await Appointment.findOne({
+        _id: appointmentId,
+        doctor: doctor.id,
+        status: "confirmed"
+    })
+        .populate("owner", "name email")
+        .populate("pet", "name");
+
+    if (!appointment) {
+        throw new ApiError(404, "Appointment not found or not confirmed");
+    }
+
+    // medical record required
+    if (
+        !medicalRecord?.title ||
+        !medicalRecord?.condition ||
+        !medicalRecord?.description
+    ) {
+        throw new ApiError(400, "Medical record is required");
+    }
+
+    // attachments
+    let attachments: string[] = [];
+
+    if (files && files.length > 0) {
+        attachments = files.map((file: any) => file.path);
+    }
+
+    // create medical record
+    const createdMedicalRecord = await MedicalRecord.create({
+        pet: appointment.pet._id,
+        doctor: doctor.id,
+        title: medicalRecord.title,
+        condition: medicalRecord.condition,
+        description: medicalRecord.description,
+        attachments,
+        date: new Date(),
+    });
+
+    // optional vaccination
+    let createdVaccination = null;
+
+    if (vaccination?.vaccineName) {
+
+        const vaccinExist = await Vaccination.findOne({ pet: appointment.pet._id, vaccineName: vaccination?.vaccineName });
+
+        if (vaccinExist) {
+            vaccinExist.type = "vaccined"
+            vaccinExist.vaccinatedAt = new Date();
+            vaccinExist.nextDueDate = null;
+            createdVaccination = vaccinExist;
+            await vaccinExist.save()
+        } else {
+
+            createdVaccination = await Vaccination.create({
+                pet: appointment.pet._id,
+                type: "vaccined",
+                doctor: doctor.id,
+                vaccineName: vaccination.vaccineName,
+                dose: vaccination?.dose,
+                notes: vaccination?.notes,
+                vaccinatedAt: new Date(),
+                nextDueDate: null,
+            });
+        }
+
+
+    }
+
+    let createdUpCommingVaccination = null;
+
+
+    if (upCommingVaccination?.vaccineName) {
+        createdUpCommingVaccination = await Vaccination.create({
+            pet: appointment.pet._id,
+            doctor: doctor.id,
+            type: "upcomming",
+            vaccineName: upCommingVaccination.vaccineName,
+            vaccinatedAt: null,
+            nextDueDate: upCommingVaccination?.nextDueDate,
+        });
+
+    }
+
+    // finish appointment
+    appointment.status = "completed";
+
+    await appointment.save();
+
+    // send email in background
+    setImmediate(() => {
+
+        sendEmail({
+            email: (appointment.owner as any).email,
+
+            subject: "Appointment Completed Successfully 🐾",
+
+            text: `Hello ${(appointment.owner as any).name}, your appointment for ${(appointment.pet as any).name} has been completed successfully. We'd love to hear your feedback and rating about your experience with the doctor.`,
+
+            message: `
+            <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
+                <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+
+                    <h1 style="color: #267D77; text-align: center; margin-bottom: 10px;">
+                        Aleef
+                    </h1>
+
+                    <h2 style="text-align: center; color: #333;">
+                        Appointment Completed Successfully 🐾
+                    </h2>
+
+                    <p style="color: #555; font-size: 16px;">
+                        Hello <strong>${(appointment.owner as any).name}</strong>,
+                    </p>
+
+                    <p style="color: #555; font-size: 16px;">
+                        Your appointment for 
+                        <strong>${(appointment.pet as any).name}</strong> 
+                        has been completed successfully.
+                    </p>
+
+                    <p style="color: #555; font-size: 16px;">
+                        We hope your pet feels better soon 🐶🐱
+                    </p>
+
+                    <hr style="margin: 20px 0;" />
+
+                    <h3 style="color: #267D77;">
+                        Medical Record Added ✅
+                    </h3>
+
+                    <p style="color:#555;">
+                        Your pet’s medical record has been added to your account and can be viewed anytime.
+                    </p>
+
+                    ${createdVaccination
+                    ? `
+                        <div style="margin-top:20px; padding:15px; background:#f6ffed; border-left:4px solid #52c41a; border-radius:6px;">
+                            <p style="margin:0; color:#135200;">
+                                <strong>Vaccination Added:</strong> ${createdVaccination.vaccineName}
+                            </p>
+                        </div>
+                        `
+                    : ""
+                }
+                ${createdUpCommingVaccination
+                    ? `
+    <div style="margin-top:20px; padding:15px; background:#fffbe6; border-left:4px solid #faad14; border-radius:6px;">
+
+        <p style="margin:0; color:#874d00;">
+            <strong>Upcoming Vaccination Scheduled:</strong> 
+            ${createdUpCommingVaccination.vaccineName}
+        </p>
+
+        <p style="margin-top:8px; color:#ad6800; font-size:14px;">
+            Due Date: 
+           ${createdUpCommingVaccination?.nextDueDate
+                        ? new Date(createdUpCommingVaccination.nextDueDate).toDateString()
+                        : "Not specified"
+                    }
+        </p>
+
+        <p style="margin-top:10px; color:#ad6800; font-size:13px;">
+            Please make sure to visit the clinic on time to keep your pet healthy 🐾
+        </p>
+
+    </div>
+    `
+                    : ""
+                }
+
+                    <div style="margin-top:25px;">
+                        <h3 style="color:#267D77;">
+                            We'd Love Your Feedback ❤️
+                        </h3>
+
+                        <p style="color:#555;">
+                            Please take a moment to rate your experience with the doctor and share your feedback.
+                        </p>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="YOUR_FEEDBACK_PAGE_LINK" style="
+                            display:inline-block;
+                            padding:10px 20px;
+                            background:#267D77;
+                            color:#fff;
+                            text-decoration:none;
+                            border-radius:6px;
+                        ">
+                            Rate Your Experience
+                        </a>
+                    </div>
+
+                    <div style="margin-top: 30px; font-size: 12px; color: #999; text-align: center;">
+                        <p>Thank you for using Aleef 🐾</p>
+                        <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
+                    </div>
+
+                </div>
+            </div>
+            `
+        }).catch(err => {
+            console.error("Email failed:", err);
+        });
+
+    });
+
+    return {
+        medicalRecord: createdMedicalRecord,
+        vaccination: createdVaccination,
+        appointment
+    };
 }

@@ -10,7 +10,7 @@ const medicalRecordSchema = new mongoose.Schema(
 
         doctor: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            ref: "Doctor",
         },
 
         condition: {
@@ -18,9 +18,14 @@ const medicalRecordSchema = new mongoose.Schema(
             required: true,
         },
 
-        treatment: String,
-
-        notes: String,
+        title: {
+            type: String,
+            required: true,
+        },
+        description: {
+            type: String,
+            required: true,
+        },
 
         attachments: [String],
 

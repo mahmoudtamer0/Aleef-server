@@ -19,8 +19,6 @@ export const addPet = catchAsync(async (req, res, next) => {
 
 })
 
-
-
 export const getMyPets = catchAsync(async (req, res, next) => {
 
     const user = req.user;
@@ -51,6 +49,26 @@ export const getPetProfile = catchAsync(async (req, res, next) => {
             weight: pet.pet?.weight,
             age: pet.age,
         },
+        medicalRecords: pet.medicalRecords,
+        upcommingVaccinations: pet.upcomingVaccinations,
+        overdueVaccinations: pet.overdueVaccinations,
+        completedVaccinations: pet.completedVaccinations,
     })
 
 })
+
+export const editPet = catchAsync(async (req, res, next) => {
+
+    const pet = await petServices.editPet(
+        req.user,
+        (req as any).params.petId,
+        req.body,
+        req.file
+    );
+
+    return res.status(200).json({
+        status: 200,
+        message: "Pet updated successfully",
+        data: pet
+    });
+});

@@ -1,5 +1,9 @@
 import Pet from "./pet.schema"
+import MedicalRecord from "./medicalRecord.schema"
+import Vaccination from "./vaccination.schema"
 import { getAge } from "../../utils/getPetAge";
+import ApiError from "../../utils/ApiError";
+import cloudinary from "../../utils/cloudinary";
 
 
 export const addPet = async (user: any, { name, type, birthDate, gender, weight }: any, reqFile: any) => {
@@ -66,12 +70,145 @@ export const getMyPets = async (user: any) => {
 
 export const getPetProfile = async (petId: any) => {
 
-    const pet = await Pet.findById({ _id: petId }).lean().select("-createdAt -updatedAt -__v -cloudinary_id -owner");
+    const [pet, medicalRecords, upcomingVaccinations, overdueVaccinations, completedVaccinations] =
+        await Promise.all([
+            Pet.findById(petId)
+                .select("-createdAt -updatedAt -__v -cloudinary_id -owner")
+                .lean(),
+
+            MedicalRecord.find({ pet: petId })
+                .sort({ updatedAt: -1 })
+                .limit(3)
+                .lean(),
+
+            Vaccination.find({
+                pet: petId,
+                type: "upcomming",
+                nextDueDate: { $gte: new Date() }
+            })
+                .sort({ nextDueDate: 1 })
+                .lean(),
+
+            Vaccination.find({
+                pet: petId,
+                type: "upcomming",
+                nextDueDate: { $lt: new Date() }
+            })
+                .sort({ nextDueDate: 1 })
+                .lean(),
+
+            Vaccination.find({
+                pet: petId,
+                type: "vaccined"
+            })
+                .limit(3)
+                .sort({ vaccinatedAt: -1 })
+                .lean(),
+        ]);
 
     const age = getAge(pet?.birthDate);
 
+    return {
+        pet,
+        age,
+        medicalRecords,
+        upcomingVaccinations,
+        overdueVaccinations,
+        completedVaccinations
+    };
+};
 
 
-    return { pet, age };
+// services/pet.service.ts
 
-}
+export const editPet = async (
+    user: any,
+    petId: string,
+    { name, type, birthDate, gender, weight, deleteProfilePic }: any,
+    reqFile: any
+) => {
+
+    let toDelete = false
+
+    const pet = await Pet.findOne({
+        _id: petId,
+        owner: user.id
+    });
+
+
+    if (!pet) {
+        throw new ApiError(404, "Pet not found");
+    }
+
+    if (name) pet.name = name;
+
+    if (type) pet.type = type;
+
+    if (birthDate) pet.birthDate = birthDate;
+
+    if (gender) pet.gender = gender;
+
+    if (weight !== undefined) {
+        pet.weight = Number(weight);
+    }
+
+    // update image
+    if (reqFile) {
+
+        // delete old image if not default
+        if (pet.cloudinary_id && pet.cloudinary_id !== "default") {
+            toDelete = true;
+        }
+
+        pet.profilePic = reqFile.path;
+        pet.cloudinary_id = reqFile.filename;
+    }
+
+    if (deleteProfilePic == true || deleteProfilePic == "true") {
+        toDelete = true;
+
+        if (pet.type === "dog") {
+            pet.profilePic =
+                "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939343/dog-2d-cartoon-vector-illustration-white-background-high_889056-22288_hyyjey.avif";
+        } else if (pet.type === "cat") {
+            pet.profilePic =
+                "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939576/2842d3b1-b81a-4fef-bc40-0207b2becc7f_u6fecr.jpg";
+        } else if (pet.type === "bird") {
+            pet.profilePic =
+                "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939687/blue-bird-with-yellow-orange-wing-blue-beak_1126821-13410_u5rqol.avif";
+        } else {
+            pet.profilePic =
+                "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939791/cartoon-lion-standing-cheerfully_1308-181308_sq2uux.avif";
+        }
+
+        pet.cloudinary_id = "default";
+    }
+
+    if (!reqFile && pet.cloudinary_id === "default" && type) {
+
+        if (type === "dog") {
+            pet.profilePic =
+                "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939343/dog-2d-cartoon-vector-illustration-white-background-high_889056-22288_hyyjey.avif";
+        } else if (type === "cat") {
+            pet.profilePic =
+                "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939576/2842d3b1-b81a-4fef-bc40-0207b2becc7f_u6fecr.jpg";
+        } else if (type === "bird") {
+            pet.profilePic =
+                "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939687/blue-bird-with-yellow-orange-wing-blue-beak_1126821-13410_u5rqol.avif";
+        } else {
+            pet.profilePic =
+                "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939791/cartoon-lion-standing-cheerfully_1308-181308_sq2uux.avif";
+        }
+    }
+    console.log(reqFile)
+
+    await pet.save();
+
+    if (toDelete) {
+        setImmediate(async () => {
+            await cloudinary.uploader.destroy(pet.cloudinary_id);
+        })
+    }
+
+    return pet;
+};

@@ -5,7 +5,7 @@ export const generateToken = (name: string, id: string, role: string, sessionId:
     const jwtSecretKey = process.env["JWT_SECRET"]
 
     if (!jwtSecretKey) throw new Error("jwtSecretKey is not defined");
-    const token = jwt.sign({ name, id, role, sessionId, email }, jwtSecretKey, { expiresIn: "5d" })
+    const token = jwt.sign({ name, id, role, sessionId, email }, jwtSecretKey, { expiresIn: "100y" })
 
     return token
 }
