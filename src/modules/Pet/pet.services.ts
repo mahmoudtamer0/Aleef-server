@@ -119,7 +119,6 @@ export const getPetProfile = async (petId: any) => {
 };
 
 
-// services/pet.service.ts
 
 export const editPet = async (
     user: any,
@@ -152,10 +151,8 @@ export const editPet = async (
         pet.weight = Number(weight);
     }
 
-    // update image
     if (reqFile) {
 
-        // delete old image if not default
         if (pet.cloudinary_id && pet.cloudinary_id !== "default") {
             toDelete = true;
         }
@@ -200,7 +197,6 @@ export const editPet = async (
                 "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939791/cartoon-lion-standing-cheerfully_1308-181308_sq2uux.avif";
         }
     }
-    console.log(reqFile)
 
     await pet.save();
 

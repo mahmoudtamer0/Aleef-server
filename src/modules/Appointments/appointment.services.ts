@@ -431,7 +431,6 @@ export const getPrevAppoinments = async (user: any) => {
     return appointments;
 }
 
-// services/appointment.service.ts
 
 export const endAppointment = async (
     doctor: any,
@@ -442,7 +441,6 @@ export const endAppointment = async (
     files: any,
 ) => {
 
-    console.log(appointmentId, doctor.id)
 
     const appointment = await Appointment.findOne({
         _id: appointmentId,
@@ -456,7 +454,6 @@ export const endAppointment = async (
         throw new ApiError(404, "Appointment not found or not confirmed");
     }
 
-    // medical record required
     if (
         !medicalRecord?.title ||
         !medicalRecord?.condition ||
@@ -465,14 +462,12 @@ export const endAppointment = async (
         throw new ApiError(400, "Medical record is required");
     }
 
-    // attachments
     let attachments: string[] = [];
 
     if (files && files.length > 0) {
         attachments = files.map((file: any) => file.path);
     }
 
-    // create medical record
     const createdMedicalRecord = await MedicalRecord.create({
         pet: appointment.pet._id,
         doctor: doctor.id,
@@ -483,7 +478,6 @@ export const endAppointment = async (
         date: new Date(),
     });
 
-    // optional vaccination
     let createdVaccination = null;
 
     if (vaccination?.vaccineName) {
@@ -528,12 +522,10 @@ export const endAppointment = async (
 
     }
 
-    // finish appointment
     appointment.status = "completed";
 
     await appointment.save();
 
-    // send email in background
     setImmediate(() => {
 
         sendEmail({

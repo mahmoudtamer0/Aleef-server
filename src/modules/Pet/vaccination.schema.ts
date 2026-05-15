@@ -50,4 +50,7 @@ const vaccinationSchema = new mongoose.Schema(
     }
 );
 
+vaccinationSchema.index({ pet: 1, vaccineName: 1 });
+vaccinationSchema.index({ pet: 1, type: 1 });
+
 export default mongoose.model("Vaccination", vaccinationSchema);

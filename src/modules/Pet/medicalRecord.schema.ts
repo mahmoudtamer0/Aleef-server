@@ -37,4 +37,6 @@ const medicalRecordSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
+medicalRecordSchema.index({ pet: 1, updatedAt: -1 });
+
 export default mongoose.model("MedicalRecord", medicalRecordSchema);
