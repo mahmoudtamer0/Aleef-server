@@ -24,7 +24,6 @@ export const doctorRegister = async ({ email, name, password, phone, specializat
         throw new ApiError(400, "this email already in use");
     }
     let doctor;
-    console.log(reqFiles)
 
     const hashedPassword = await bcrypt.hash(password, 10)
     if (!reqFiles.profilePic || !reqFiles.IdentityVerificationImage || !reqFiles.NationalIdFront || !reqFiles.NationalIdBack) {

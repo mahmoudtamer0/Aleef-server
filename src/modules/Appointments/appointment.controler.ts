@@ -32,11 +32,33 @@ export const getActiveAppointment = catchAsync(async (req, res, next) => {
 })
 
 
+export const getAppointmentsRequestsForDoctor = catchAsync(async (req, res, next) => {
+
+    const user = req.user;
+
+    const appointments = await appointmentServices.getAppointmentsRequestsForDoctor(user, req.params);
+
+    return res.status(200).json({
+        status: "success",
+        appointments,
+    })
+
+})
+
+
 export const getAppointmentDetails = catchAsync(async (req, res, next) => {
 
     const { appointmentId } = req.params;
 
-    const appointment = await appointmentServices.getAppointmentDetails(appointmentId);
+    const user = req.user;
+    let appointment = null;
+
+    if (user?.role == "USER" || user?.role == "ADMIN") {
+        appointment = await appointmentServices.getAppointmentDetailsForUser(appointmentId);
+    } else {
+        appointment = await appointmentServices.getAppointmentDetailsForDoctor(user, appointmentId);
+    }
+
 
     return res.status(200).json({
         status: "success",

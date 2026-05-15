@@ -134,8 +134,24 @@ export const getActiveAppointment = async (user: any) => {
 
 }
 
+export const getAppointmentsRequestsForDoctor = async (doctor: any, params: any) => {
 
-export const getAppointmentDetails = async (appointmentId: any) => {
+    const { page } = params;
+    const limit = 5;
+
+    const skip = (page - 1) * limit;
+
+    const appoinments = await Appointment.find({ doctor: doctor.id, status: "pending" })
+        .limit(limit)
+        .skip(skip)
+        .populate("pet", "name type gender profilePic").populate("owner", "name").lean()
+        .sort({ createdAt: -1 });
+
+    return appoinments
+}
+
+
+export const getAppointmentDetailsForUser = async (appointmentId: any) => {
 
     const appointment = await Appointment.findOne({ _id: appointmentId }).lean().populate({
         path: "pet",
@@ -146,6 +162,20 @@ export const getAppointmentDetails = async (appointmentId: any) => {
     });
 
     return appointment;
+
+}
+
+export const getAppointmentDetailsForDoctor = async (doctor: any, appointmentId: any) => {
+
+    const appoinment = await Appointment.findOne({ _id: appointmentId, doctor: doctor.id })
+        .populate("pet", "name type profilePic birthdate gender weight")
+        .populate("owner", "name")
+        .select("-createdAt -updatedAt -rejectionReason -expiresAt")
+        .lean()
+
+    if (!appoinment) throw new ApiError(404, "appointment not found");
+
+    return appoinment;
 
 }
 
