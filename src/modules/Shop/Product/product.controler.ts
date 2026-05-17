@@ -69,3 +69,22 @@ export const calculateCart = catchAsync(async (req, res, next) => {
         totalCart: totalCart.totalCart,
     })
 })
+
+
+export const editProduct = catchAsync(async (req, res, next) => {
+
+    const { prodId } = req.params
+
+    const product = await productService.editProduct(
+        {
+            prodId,
+            ...req.body
+        },
+        req.files
+    );
+
+    res.status(200).json({
+        message: "product updated successfully",
+        product
+    });
+});

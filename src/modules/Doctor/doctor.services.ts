@@ -424,8 +424,10 @@ export const getAllDoctors = async () => {
 }
 
 export const getDoctor = async (doctorId: any) => {
+
     const doctor = await Doctor.findById(doctorId).lean().select("name email about phone city specialization status profilePic rating ratingsCount address appointmentFee");
 
+    console.log(doctor)
     const reviews = await DoctorReview.find({ doctor: doctorId })
         .populate({
             path: "user",

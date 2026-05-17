@@ -4,7 +4,7 @@ import { allowTo } from "../../../middlewares/allowTo"
 import { upload } from "../../../middlewares/productsUploads"
 import validate from "../../../middlewares/userValidate"
 import { addProductValidation, calculateCartSchema } from "./product.validation"
-import { addManyProducts, addProduct, calculateCart, getProduct, getProducts } from "./product.controler"
+import { addManyProducts, addProduct, calculateCart, editProduct, getProduct, getProducts } from "./product.controler"
 
 
 const router = express.Router()
@@ -30,5 +30,14 @@ router.route("/many-products")
 
 router.route("/:prodId")
     .get(verifyToken, getProduct)
+    .patch(
+        verifyToken,
+        allowTo("ADMIN"),
+        upload.fields([
+            { name: "thumbnail", maxCount: 1 },
+            { name: "productImages", maxCount: 5 }
+        ]), editProduct
+    )
+
 
 export default router

@@ -16,6 +16,20 @@ export const bookAppointment = catchAsync(async (req, res, next) => {
 
 })
 
+export const getAllAppoinments = catchAsync(async (req, res, next) => {
+
+    const appointments = await appointmentServices.getAllAppoinments(req.query);
+
+    return res.status(200).json({
+        status: "success",
+        appointments: appointments.appointments,
+        results: appointments.results,
+        page: appointments.page,
+        totalPages: appointments.totalPages,
+        totalAppointments: appointments.totalAppointments
+    })
+})
+
 
 
 export const getActiveAppointment = catchAsync(async (req, res, next) => {

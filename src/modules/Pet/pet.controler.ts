@@ -19,11 +19,17 @@ export const addPet = catchAsync(async (req, res, next) => {
 
 })
 
-export const getMyPets = catchAsync(async (req, res, next) => {
+
+export const getUserPets = catchAsync(async (req, res, next) => {
 
     const user = req.user;
+    let userId: any = user?.id;
 
-    const pets = await petServices.getMyPets(user);
+    if (user?.role == "ADMIN" && req.params["userId"]) {
+        userId = req.params["userId"]
+    }
+
+    const pets = await petServices.getUserPets(userId);
 
     return res.status(200).json({
         status: "success",

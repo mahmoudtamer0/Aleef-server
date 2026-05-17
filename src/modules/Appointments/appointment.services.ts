@@ -120,6 +120,166 @@ export const bookAppointment = async (user: any, { pet, doctor, date, time, reas
 
 }
 
+export const getAllAppoinments = async (reqQuery: any) => {
+    const {
+        page = "1",
+        limit = "10",
+        search = "",
+        status
+    } = reqQuery;
+
+    const currentPage = Number(page);
+    const perPage = Number(limit);
+
+    const pipeline: any[] = [
+
+        // owner
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "owner"
+            }
+        },
+
+        // doctor
+        {
+            $lookup: {
+                from: "doctors",
+                localField: "doctor",
+                foreignField: "_id",
+                as: "doctor"
+            }
+        },
+
+        // pet
+        {
+            $lookup: {
+                from: "pets",
+                localField: "pet",
+                foreignField: "_id",
+                as: "pet"
+            }
+        },
+
+        {
+            $unwind: {
+                path: "$owner",
+                preserveNullAndEmptyArrays: true
+            }
+        },
+
+        {
+            $unwind: {
+                path: "$doctor",
+                preserveNullAndEmptyArrays: true
+            }
+        },
+
+        {
+            $unwind: {
+                path: "$pet",
+                preserveNullAndEmptyArrays: true
+            }
+        }
+    ];
+
+    // SEARCH
+    if (search) {
+        pipeline.push({
+            $match: {
+                $or: [
+
+                    // appointment reason
+                    {
+                        reason: {
+                            $regex: search,
+                            $options: "i"
+                        }
+                    },
+
+                    // owner name
+                    {
+                        "user.name": {
+                            $regex: search,
+                            $options: "i"
+                        }
+                    },
+
+                    // doctor name
+                    {
+                        "doctor.name": {
+                            $regex: search,
+                            $options: "i"
+                        }
+                    },
+
+                    // pet name
+                    {
+                        "pet.name": {
+                            $regex: search,
+                            $options: "i"
+                        }
+                    }
+                ]
+            }
+        });
+    }
+
+    // STATUS FILTER
+    if (status) {
+        pipeline.push({
+            $match: {
+                status
+            }
+        });
+    }
+
+    // SORT
+    pipeline.push({
+        $sort: {
+            appointmentDate: -1
+        }
+    });
+
+    pipeline.push({
+        $skip: (currentPage - 1) * perPage
+    });
+
+    pipeline.push({
+        $limit: perPage
+    });
+
+    const appointments = await Appointment.aggregate(pipeline);
+
+    const countPipeline = pipeline.filter(
+        (stage) =>
+            !("$skip" in stage) &&
+            !("$limit" in stage) &&
+            !("$sort" in stage)
+    );
+
+    countPipeline.push({
+        $count: "total"
+    });
+
+    const totalResult = await Appointment.aggregate(countPipeline);
+
+    const totalAppointments = totalResult[0]?.total || 0;
+
+
+    return {
+        totalAppointments,
+        results: appointments.length,
+        page: currentPage,
+        totalPages: Math.ceil(totalAppointments / perPage),
+        appointments,
+        currentPage
+    }
+
+}
+
 export const getActiveAppointment = async (user: any) => {
 
     const appointment = await Appointment.findOne({ owner: user.id }).lean().populate({
@@ -680,3 +840,4 @@ export const endAppointment = async (
         appointment
     };
 }
+

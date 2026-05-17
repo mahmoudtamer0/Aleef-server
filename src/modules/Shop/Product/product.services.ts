@@ -10,15 +10,20 @@ export const addProduct = async ({ title, description, originalPrice, discount, 
 
 
 
-    const finalPrice = await generateFinalPrice(Number(originalPrice), Number(discount))
+    const finalPrice = await generateFinalPrice(Number(originalPrice), Number(discount));
 
-    const newProduct = await Product.create({
+    const findCat = await Category.findOne({ name: category.trim().toLowerCase() })
+    if (!findCat) {
+        throw new ApiError(400, "invalid category")
+    }
+
+    const newProduct: any = await Product.create({
         title,
         description,
         originalPrice: Number(originalPrice),
         finalPrice: Number(finalPrice),
         discount: Number(discount),
-        category: category,
+        category: [findCat._id],
         stock: stock,
         buys: buys,
     })
@@ -234,3 +239,61 @@ export const calculateCart = async (cart: any) => {
     }
 
 }
+
+export const editProduct = async (
+    { prodId, title, description, originalPrice, discount, category, stock, buys }: any,
+    reqFiles: any
+) => {
+
+    const product = await Product.findById(prodId);
+
+    if (!product) {
+        throw new ApiError(404, "product not found");
+    }
+
+    let finalPrice = product.finalPrice;
+
+    if (originalPrice || discount !== undefined) {
+        finalPrice = await generateFinalPrice(
+            Number(originalPrice || product.originalPrice),
+            Number(discount ?? product.discount)
+        );
+    }
+
+    if (title !== undefined) product.title = title;
+    if (description !== undefined) product.description = description;
+    if (originalPrice !== undefined) product.originalPrice = Number(originalPrice);
+    if (discount !== undefined) product.discount = Number(discount);
+    if (category !== undefined) product.category = category;
+    if (stock !== undefined) product.stock = Number(stock);
+    if (buys !== undefined) product.buys = Number(buys);
+
+    product.finalPrice = Number(finalPrice);
+
+    if (reqFiles?.productImages?.length > 0) {
+
+        const images = reqFiles.productImages.map(
+            (img: { path: string; filename: string }) => ({
+                url: img.path,
+                cloudinary_id: img.filename
+            })
+        );
+
+        product.productImages = images;
+    }
+
+    if (reqFiles?.thumbnail?.length > 0) {
+        product.thumbnail = {
+            url: reqFiles.thumbnail[0].path,
+            cloudinary_id: reqFiles.thumbnail[0].filename
+        };
+    }
+
+    await product.save();
+
+    const updatedProduct = await Product.findById(product._id)
+        .populate("category");
+
+    return updatedProduct;
+
+};
