@@ -76,7 +76,10 @@ export const getAppointmentDetails = catchAsync(async (req, res, next) => {
 
     return res.status(200).json({
         status: "success",
-        appointment,
+        appoinment: {
+            ...appointment.appointment,
+            chatId: appointment.chat?._id
+        }
     })
 
 })

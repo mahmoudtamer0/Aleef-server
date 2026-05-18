@@ -319,23 +319,49 @@ export const getAppointmentDetailsForUser = async (appointmentId: any) => {
     }).populate({
         path: "doctor",
         select: "name profilePic specialization rating ratingsCount city address"
-    });
+    }).lean();
 
-    return appointment;
+    if (!appointment) throw new ApiError(404, "appointment not found");
+
+    let chat = null;
+
+    if (appointment.status === "confirmed") {
+        chat = await Chat.findOne({
+            "members.memberId": {
+                $all: [appointment.doctor._id, appointment.owner]
+            },
+            chatType: "personal"
+        }).lean().select("_id")
+    }
+
+
+    return { appointment, chat };
 
 }
 
 export const getAppointmentDetailsForDoctor = async (doctor: any, appointmentId: any) => {
 
-    const appoinment = await Appointment.findOne({ _id: appointmentId, doctor: doctor.id })
+    const appointment = await Appointment.findOne({ _id: appointmentId, doctor: doctor.id })
         .populate("pet", "name type profilePic birthdate gender weight")
         .populate("owner", "name")
         .select("-createdAt -updatedAt -rejectionReason -expiresAt")
         .lean()
 
-    if (!appoinment) throw new ApiError(404, "appointment not found");
+    if (!appointment) throw new ApiError(404, "appointment not found");
 
-    return appoinment;
+    let chat = null;
+
+    if (appointment.status === "confirmed") {
+        chat = await Chat.findOne({
+            "members.memberId": {
+                $all: [appointment.doctor._id, appointment.owner]
+            },
+            chatType: "personal"
+        }).lean().select("_id")
+    }
+
+
+    return { appointment, chat };
 
 }
 
