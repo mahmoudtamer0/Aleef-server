@@ -339,60 +339,132 @@ export const getAppointmentDetailsForDoctor = async (doctor: any, appointmentId:
 
 }
 
+
 export const approveAppointment = async (doctor: any, appointmentId: any) => {
     const io = getIO();
 
-    const appointment = await Appointment.findOne({ _id: appointmentId, doctor: doctor.id, status: "pending" });
+    const appointment = await Appointment.findOneAndUpdate(
+        {
+            _id: appointmentId,
+            doctor: doctor.id,
+            status: "pending"
+        },
+        {
+            status: "confirmed"
+        },
+        {
+            new: true
+        }
+    ).lean();
 
     if (!appointment) {
         throw new ApiError(404, "appointment not found");
     }
 
-    const findAnotherAppointmentForThisDoc = await Appointment.findOne({ doctor: doctor.id, time: appointment.time, date: appointment.date, status: "confirmed" }).lean().select("_id");
-    if (findAnotherAppointmentForThisDoc) {
-        throw new ApiError(400, "sorry this time is not available for this doctor, please ask the patient to select another time slot");
-    }
-
-    appointment.status = "confirmed";
-    await appointment.save();
-
-    const userProfile = await User.findById(appointment.owner).lean().select("email name")
-
-
-    let chat = await Chat.findOne({
-        "members.memberId": { $all: [doctor.id, appointment.owner] },
-        chatType: "personal"
+    const findAnotherAppointmentForThisDoc = await Appointment.findOne({
+        doctor: doctor.id,
+        time: appointment.time,
+        date: appointment.date,
+        status: "confirmed",
+        _id: { $ne: appointment._id }
     })
+        .lean()
+        .select("_id");
 
-    if (!chat) {
-        chat = await Chat.create({
-            members: [
-                { memberId: doctor.id, memberModel: "Doctor" },
-                { memberId: appointment.owner, memberModel: "User" }
-            ],
-            chatType: "personal",
-        });
-    } else {
-        chat.status = "active";
-        await chat.save();
+    if (findAnotherAppointmentForThisDoc) {
+
+        await Appointment.updateOne(
+            { _id: appointment._id },
+            { status: "pending" }
+        );
+
+        throw new ApiError(
+            400,
+            "sorry this time is not available for this doctor, please ask the patient to select another time slot"
+        );
     }
+
+
+
+    const [userProfile, chat] = await Promise.all([
+
+        User.findById(appointment.owner)
+            .lean()
+            .select("email name"),
+
+        Chat.findOneAndUpdate(
+            {
+                "members.memberId": {
+                    $all: [doctor.id, appointment.owner]
+                },
+                chatType: "personal"
+            },
+            {
+                $setOnInsert: {
+                    members: [
+                        {
+                            memberId: doctor.id,
+                            memberModel: "Doctor"
+                        },
+                        {
+                            memberId: appointment.owner,
+                            memberModel: "User"
+                        }
+                    ],
+                    chatType: "personal",
+                },
+
+                $set: {
+                    status: "active"
+                }
+            },
+            {
+                upsert: true,
+                new: true
+            }
+        )
+
+    ]);
 
     const message = await Message.create({
-        chatId: chat && chat._id,
+        chatId: chat._id,
         sender: doctor.id,
         senderModel: "Doctor",
-        text: `Hello ${userProfile?.name}, I am ${doctor.name} for your help regarding your appointment for ${appointment.reason} on ${appointment.date} at ${appointment.time}, how can I help you ? `
-    })
+        text: `Your appointment on ${appointment.date} at ${appointment.time} has been confirmed by the doctor.`
+    });
 
-    await UnreadMessage.create({
-        chatId: chat._id,
-        userId: appointment.owner,
-        lastMessage: message.text,
-        unreadCount: 1,
-    })
+    await Promise.all([
 
-    chat.lastMessage = message._id;
-    await chat.save();
+        UnreadMessage.updateOne(
+            {
+                chatId: chat._id,
+                userId: appointment.owner,
+            },
+            {
+                $inc: {
+                    unreadCount: 1
+                },
+
+                $set: {
+                    lastMessage: message.text
+                }
+            },
+            {
+                upsert: true
+            }
+        ),
+
+        Chat.updateOne(
+            {
+                _id: chat._id
+            },
+            {
+                lastMessage: message._id
+            }
+        )
+
+
+    ])
 
 
     if (userProfile) {
