@@ -78,3 +78,13 @@ export const editPet = catchAsync(async (req, res, next) => {
         data: pet
     });
 });
+
+export const deletePet = catchAsync(async (req, res, next) => {
+
+    await petServices.deletePet(req.user, (req as any).params.petId);
+
+    return res.status(204).json({
+        status: "success",
+        message: "Pet deleted successfully"
+    })
+});

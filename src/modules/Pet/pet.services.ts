@@ -208,3 +208,29 @@ export const editPet = async (
 
     return pet;
 };
+
+
+
+export const deletePet = async (user: any, petId: string) => {
+
+    const pet = await Pet.findOneAndDelete({
+        _id: petId,
+        owner: user.id
+    });
+
+    if (!pet) {
+        throw new ApiError(404, "Pet not found");
+    }
+
+    if (pet.cloudinary_id && pet.cloudinary_id !== "default") {
+        setImmediate(async () => {
+            await cloudinary.uploader.destroy(pet.cloudinary_id);
+        })
+    }
+
+    await MedicalRecord.deleteMany({ pet: petId });
+    await Vaccination.deleteMany({ pet: petId });
+
+    return;
+
+}

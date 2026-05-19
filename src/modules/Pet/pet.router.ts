@@ -1,5 +1,5 @@
 import express from "express";
-import { addPet, editPet, getUserPets, getPetProfile } from "./pet.controler";
+import { addPet, editPet, getUserPets, getPetProfile, deletePet } from "./pet.controler";
 import { upload } from "../../middlewares/petsUploads"
 import validate from "../../middlewares/userValidate";
 import { addPetSchema, editPetSchema } from "./pet.validation";
@@ -24,6 +24,7 @@ router.route("/:petId")
         upload.single("profilePic"),
         validate(editPetSchema),
         editPet
-    );
+    )
+    .delete(verifyToken, deletePet)
 
 export default router
