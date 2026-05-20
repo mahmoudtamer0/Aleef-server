@@ -7,10 +7,6 @@ import { sendEmail } from "../../../utils/sendEmail";
 import mongoose from "mongoose";
 
 
-
-
-
-
 export const createOrder = async (cart: any, shippingAddress: any, paymentMethod: string, reqUser: any) => {
 
 
@@ -213,4 +209,214 @@ export const getMyPreviousOrders = async (user: any) => {
     ]);
 
     return orders;
+}
+
+
+export const getAllOrders = async (reqQuery: any) => {
+
+    interface FilterType {
+        status?: any;
+        $or?: Array<{
+            "shippingAddress.address"?: {
+                $regex: string;
+                $options: string;
+            };
+            "shippingAddress.city"?: {
+                $regex: string;
+                $options: string;
+            };
+            "user.name"?: {
+                $regex: string;
+                $options: string;
+            };
+            "user.email"?: {
+                $regex: string;
+                $options: string;
+            };
+            "user.phone"?: {
+                $regex: string;
+                $options: string;
+            };
+            "user._id"?: {
+                $regex: string;
+                $options: string;
+            };
+            _id?: any;
+        }>;
+    }
+    interface SortType {
+        updatedAt?: number;
+        totalPrice?: number;
+    }
+
+    const { status, search, sort } = reqQuery;
+    let filter: FilterType = {};
+    let toSort: SortType = {}
+
+    const page = reqQuery.page * 1 || 1;
+    const limit = reqQuery.limit < 10 ? reqQuery.limit * 1 || 10 : 10;
+    const skip = (page - 1) * limit
+
+
+    if (status && status != "") {
+        console.log(status)
+        filter.status = status
+    }
+
+    if (sort && sort != "") {
+        if (sort == "newest") {
+            toSort.updatedAt = -1
+        } else if (sort == "oldest") {
+            toSort.updatedAt = 1
+        } else if (sort == "cheapest") {
+            toSort.totalPrice = 1
+        } else if (sort == "priciest") {
+            toSort.totalPrice = -1
+        } else {
+            toSort.updatedAt = -1
+        }
+    } else {
+        toSort.updatedAt = -1
+    }
+
+    if (search) {
+        const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+        filter.$or = [
+            {
+                "shippingAddress.city": {
+                    $regex: safeSearch,
+                    $options: "i"
+                }
+            },
+            {
+                "shippingAddress.address": {
+                    $regex: safeSearch,
+                    $options: "i"
+                }
+            },
+            {
+                "user.name": {
+                    $regex: safeSearch,
+                    $options: "i"
+                }
+            },
+            {
+                "user.email": {
+                    $regex: safeSearch,
+                    $options: "i"
+                }
+            },
+            {
+                "user.phone": {
+                    $regex: safeSearch,
+                    $options: "i"
+                }
+            }
+        ];
+
+        // search by order id
+        if (mongoose.Types.ObjectId.isValid(search)) {
+            filter.$or.push({
+                _id: new mongoose.Types.ObjectId(search)
+            });
+        }
+    }
+
+    const orders = await Order.aggregate([
+        {
+            $lookup: {
+                from: "users",
+                localField: "user",
+                foreignField: "_id",
+                as: "user"
+            }
+        },
+        {
+            $match: filter
+        },
+        {
+            $unwind: "$user"
+        },
+        {
+            $project: {
+                totalOrder: "$totalPrice",
+                shippingAddress: 1,
+                paymentMethod: 1,
+                status: 1,
+                "user.name": 1,
+                "user.email": 1,
+                "user._id": 1,
+                "user.phone": 1,
+                "user.profilePic": 1
+            }
+        },
+        {
+            $sort: toSort
+        },
+        {
+            $skip: skip
+        },
+        {
+            $limit: limit
+        }
+    ]);
+
+    //  const orders = await Order.find(filter).populate("user", "name email").sort(toSort).skip(skip).limit(limit).lean();
+
+    const total = await Order.countDocuments(filter).lean();
+
+    return {
+        orders,
+        totalOrders: total,
+        results: orders.length,
+        totalPages: Math.ceil(total / limit),
+        page
+    };
+}
+
+
+export const getAllOrderDetailsForAdmin = async (orderId: any) => {
+    const order = await Order.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(orderId)
+            }
+        },
+        {
+            $lookup: {
+                from: "orderitems",
+                localField: "_id",
+                foreignField: "order",
+                as: "items"
+            }
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "user",
+                foreignField: "_id",
+                as: "user"
+            }
+        },
+        {
+            $unwind: "$user"
+        },
+        {
+            $project: {
+                totalOrder: "$totalPrice",
+                shippingAddress: 1,
+                paymentMethod: 1,
+                status: 1,
+                items: 1,
+                "user.name": 1,
+                "user.email": 1,
+                "user._id": 1,
+                "user.phone": 1,
+                "user.profilePic": 1
+            }
+        }
+    ]);
+
+    return order[0];
 }

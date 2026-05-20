@@ -8,8 +8,6 @@ export = (io: any, socket: any) => {
 
     socket.on("chat_send", async (data: { message: string }) => {
         try {
-            console.log("Received message from client:", data.message);
-
             if (socket.user.role === "DOCTOR") {
                 io.to(socket.user.id).emit("error_message", {
                     errMessage: "Doctors can't chat with chatbot :)"

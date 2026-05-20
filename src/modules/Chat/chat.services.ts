@@ -175,4 +175,15 @@ export const getChatbotMessages = async (user: any) => {
         chatId: chat._id,
         messages: messagesToSend
     };
-}; 
+};
+
+export const getAllChats = async () => {
+
+    const chats = await Chat.find({ chatType: { $ne: "chatbot" } }).populate({
+        path: "members.memberId",
+        select: "name profilePic"
+    }).lean();
+
+
+    return chats;
+};

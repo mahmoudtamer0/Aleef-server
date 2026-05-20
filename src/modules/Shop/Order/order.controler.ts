@@ -35,3 +35,27 @@ export const getMyPreviousOrders = catchAsync(async (req, res, next) => {
         orders: orders
     })
 })
+
+export const getAllOrders = catchAsync(async (req, res, next) => {
+    const reqQuery = req.query
+    const orders = await orderService.getAllOrders(reqQuery)
+
+    return res.status(200).json({
+        status: "success",
+        orders: orders.orders,
+        totalOrders: orders.totalOrders,
+        totalPages: orders.totalPages,
+        results: orders.results,
+        page: orders.page
+    })
+})
+
+export const getAllOrderDetailsForAdmin = catchAsync(async (req, res, next) => {
+    const { orderId } = req.params
+    const order = await orderService.getAllOrderDetailsForAdmin(orderId)
+
+    return res.status(200).json({
+        status: "success",
+        order: order
+    })
+})

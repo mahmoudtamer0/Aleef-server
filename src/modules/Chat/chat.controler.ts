@@ -39,3 +39,14 @@ export const getChatbotMessages = catchAsync(async (req, res, next) => {
         chatId: messages.chatId
     })
 })
+
+
+export const getAllChats = catchAsync(async (req, res, next) => {
+
+    const chats = await chatServices.getAllChats();
+    return res.status(200).json({
+        status: "success",
+        chats,
+    });
+
+})

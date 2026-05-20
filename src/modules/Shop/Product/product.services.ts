@@ -97,11 +97,11 @@ export const getProducts = async (reqQuery: any) => {
     let toSort = {}
 
     const page = reqQuery.page * 1 || 1;
-    const limit = reqQuery.limit * 1 || 10;
+    const limit = reqQuery.limit < 8 ? reqQuery.limit * 1 || 8 : 8;
     const skip = (page - 1) * limit
 
     if (category && category != "") {
-        const findCat = await Category.findOne({ name: category })
+        const findCat = await Category.findOne({ name: category }).select("_id").lean();
         if (findCat) {
             filter.category = findCat._id.toString()
         } else {
@@ -181,10 +181,10 @@ export const getProducts = async (reqQuery: any) => {
                 ratingsQuantity: 1
             }
         }
-    ]);
+    ])
 
 
-    const total = await Product.countDocuments(filter)
+    const total = await Product.countDocuments(filter).lean();
 
     return {
         products,
@@ -223,7 +223,6 @@ export const calculateCart = async (cart: any) => {
         const item = cart[i]
 
         const product = await Product.findOne({ _id: item.productId }).lean().select("_id finalPrice");
-        console.log("product:", product)
         if (!product) {
             throw new ApiError(404, "not found");
         }
