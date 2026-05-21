@@ -1,4 +1,3 @@
-import e from "express";
 import catchAsync from "../../utils/catchAsync";
 import * as chatServices from "./chat.services"
 
