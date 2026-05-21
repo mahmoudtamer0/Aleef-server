@@ -1,3 +1,4 @@
+import e from "express";
 import catchAsync from "../../utils/catchAsync";
 import * as chatServices from "./chat.services"
 
@@ -43,10 +44,23 @@ export const getChatbotMessages = catchAsync(async (req, res, next) => {
 
 export const getAllChats = catchAsync(async (req, res, next) => {
 
-    const chats = await chatServices.getAllChats();
+    const chats = await chatServices.getAllChats(req.query);
     return res.status(200).json({
         status: "success",
-        chats,
+        chats: chats.chats,
+        totalChats: chats.totalChats,
+        totalPages: chats.totalPages,
+        results: chats.results,
+        page: chats.page,
     });
 
 })
+
+export const getChatMessagesForAdmin = catchAsync(async (req, res, next) => {
+    const { chatId } = req.params;
+    const messages = await chatServices.getChatMessagesForAdmin(chatId);
+    return res.status(200).json({
+        status: "success",
+        messages: messages,
+    })
+}); 

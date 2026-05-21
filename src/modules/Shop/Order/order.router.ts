@@ -10,7 +10,7 @@ const router = express.Router()
 
 router.route("/")
     .post(verifyToken, validate(orderValidationSchema), createOrder)
-    .get(verifyToken, allowTo("ADMIN"), getAllOrders)
+    .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllOrders)
 
 
 router.route("/my-upcoming-orders")
@@ -20,6 +20,6 @@ router.route("/my-previous-orders")
     .get(verifyToken, getMyPreviousOrders)
 
 router.route("/:orderId")
-    .get(verifyToken, allowTo("ADMIN"), getAllOrderDetailsForAdmin)
+    .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllOrderDetailsForAdmin)
 
 export default router

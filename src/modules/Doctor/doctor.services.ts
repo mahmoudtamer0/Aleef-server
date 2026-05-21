@@ -414,14 +414,216 @@ export const getAllDoctorsRequests = async () => {
 
 }
 
+export const getAllDoctors = async (reqQuery: any) => {
 
-export const getAllDoctors = async () => {
+    const {
+        search,
+        status,
+        sort
+    } = reqQuery;
 
-    const docotrs = await Doctor.find({ isEmailVerified: true, status: { $ne: "pending" } }).lean().select("name email phone city specialization status profilePic address rating ratingsCount appointmentFee").sort({ createdAt: -1 })
+    const page = Number(reqQuery.page) || 1;
+    const limit = Number(reqQuery.limit) || 10;
 
-    return docotrs
+    const skip = (page - 1) * limit;
 
-}
+    const matchFilter: any = {
+        isEmailVerified: true,
+        status: { $ne: "pending" }
+    };
+
+    // search
+    if (search) {
+
+        matchFilter.$or = [
+            {
+                name: {
+                    $regex: search,
+                    $options: "i"
+                }
+            },
+            {
+                email: {
+                    $regex: search,
+                    $options: "i"
+                }
+            },
+            {
+                phone: {
+                    $regex: search,
+                    $options: "i"
+                }
+            },
+            {
+                city: {
+                    $regex: search,
+                    $options: "i"
+                }
+            },
+            {
+                specialization: {
+                    $regex: search,
+                    $options: "i"
+                }
+            }
+        ];
+    }
+
+    // status filter
+    if (status && status !== "all") {
+        matchFilter.status = status;
+    }
+
+    let sortStage: any = {
+        createdAt: -1
+    };
+
+    if (sort === "appointments") {
+        sortStage = {
+            totalAppointments: -1
+        };
+    }
+
+    if (sort === "completed") {
+        sortStage = {
+            completedAppointments: -1
+        };
+    }
+
+    if (sort === "cancelled") {
+        sortStage = {
+            cancelledAppointments: -1
+        };
+    }
+
+    if (sort === "rejected") {
+        sortStage = {
+            rejectedAppointments: -1
+        };
+    }
+
+    if (sort === "rating") {
+        sortStage = {
+            rating: -1
+        };
+    }
+
+    const doctors = await Doctor.aggregate([
+
+        {
+            $match: matchFilter
+        },
+
+        {
+            $lookup: {
+                from: "appointments",
+                localField: "_id",
+                foreignField: "doctor",
+                as: "appointments"
+            }
+        },
+
+        {
+            $addFields: {
+
+                totalAppointments: {
+                    $size: "$appointments"
+                },
+
+                completedAppointments: {
+                    $size: {
+                        $filter: {
+                            input: "$appointments",
+                            as: "appointment",
+                            cond: {
+                                $eq: [
+                                    "$$appointment.status",
+                                    "completed"
+                                ]
+                            }
+                        }
+                    }
+                },
+
+                cancelledAppointments: {
+                    $size: {
+                        $filter: {
+                            input: "$appointments",
+                            as: "appointment",
+                            cond: {
+                                $eq: [
+                                    "$$appointment.status",
+                                    "cancelled"
+                                ]
+                            }
+                        }
+                    }
+                },
+
+                rejectedAppointments: {
+                    $size: {
+                        $filter: {
+                            input: "$appointments",
+                            as: "appointment",
+                            cond: {
+                                $eq: [
+                                    "$$appointment.status",
+                                    "rejected"
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+
+        {
+            $sort: sortStage
+        },
+
+        {
+            $skip: skip
+        },
+
+        {
+            $limit: limit
+        },
+
+        {
+            $project: {
+                name: 1,
+                email: 1,
+                phone: 1,
+                city: 1,
+                specialization: 1,
+                status: 1,
+                profilePic: 1,
+                address: 1,
+                rating: 1,
+                ratingsCount: 1,
+                appointmentFee: 1,
+
+                totalAppointments: 1,
+                completedAppointments: 1,
+                cancelledAppointments: 1,
+                rejectedAppointments: 1,
+
+                createdAt: 1
+            }
+        }
+
+    ]);
+
+    const totalDoctors = await Doctor.countDocuments(matchFilter);
+
+    return {
+        doctors,
+        totalDoctors,
+        page: page,
+        totalPages: Math.ceil(totalDoctors / limit),
+        results: doctors.length
+    };
+};
 
 export const getDoctor = async (doctorId: any) => {
 

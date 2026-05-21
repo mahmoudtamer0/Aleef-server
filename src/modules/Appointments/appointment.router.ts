@@ -10,7 +10,7 @@ const router = express.Router()
 
 router.route("/")
     .post(verifyToken, upload.single("profilePic"), validate(addAppointmentSchema), bookAppointment)
-    .get(verifyToken, allowTo("ADMIN"), getAllAppoinments)
+    .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllAppoinments)
 
 router.route("/get-my-active-appointment")
     .get(verifyToken, getActiveAppointment)

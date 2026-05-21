@@ -28,7 +28,7 @@ router.route("/me")
     .get(verifyToken, getME)
 
 router.route("/get-all-users")
-    .get(verifyToken, allowTo("ADMIN"), getAllUsers)
+    .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllUsers)
 
 router.patch(
     "/edit-user-profile",
@@ -44,6 +44,6 @@ router.route("/baan-user/:userId")
     .post(verifyToken, allowTo("ADMIN"), banUser)
 
 router.route("/:userId")
-    .get(verifyToken, allowTo("ADMIN"), getUserToAdmin)
+    .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getUserToAdmin)
 
 export default router

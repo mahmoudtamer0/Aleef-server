@@ -2,6 +2,7 @@ import Chat from "./chat.schema";
 import Message from "./message.shema";
 import UnreadMessage from "./unreadMessages";
 import { BOT_ID } from "../../constants/bot";
+import mongoose from "mongoose";
 
 export const getChats = async (user: any) => {
 
@@ -177,13 +178,147 @@ export const getChatbotMessages = async (user: any) => {
     };
 };
 
-export const getAllChats = async () => {
+export const getAllChats = async (reqQuery: any) => {
 
-    const chats = await Chat.find({ chatType: { $ne: "chatbot" } }).populate({
-        path: "members.memberId",
-        select: "name profilePic"
-    }).lean();
+    const { search } = reqQuery;
+    const filter: any = {};
+
+    const page = Number(reqQuery.page) || 1;
+    const limit = Number(reqQuery.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    if (search) {
+        filter.$or = [
+            { "memberDetails.name": { $regex: search, $options: "i" } }
+        ];
+
+        if (mongoose.Types.ObjectId.isValid(search)) {
+            filter.$or.push({ "memberDetails._id": new mongoose.Types.ObjectId(search) });
+        }
+    }
+
+    const chats = await Chat.aggregate([
+        {
+            $lookup: {
+                from: "users",
+                localField: "members.memberId",
+                foreignField: "_id",
+                as: "users"
+            }
+        },
+        {
+            $lookup: {
+                from: "doctors",
+                localField: "members.memberId",
+                foreignField: "_id",
+                as: "doctors"
+            }
+        },
+        {
+            $addFields: {
+                memberDetails: {
+                    $concatArrays: ["$users", "$doctors"]
+                }
+            }
+        },
+        {
+            $match: { ...filter, chatType: { $ne: "chatbot" } }
+        },
+        {
+            $sort: { updatedAt: -1 }
+        },
+        {
+            $skip: skip
+        },
+        {
+            $limit: limit
+        },
+        {
+            $project:
+            {
+                "memberDetails.name": 1,
+                "memberDetails.profilePic": 1,
+                "memberDetails._id": 1,
+                chatType: 1,
+            }
+        }
+    ])
+
+    const totalResult = await Chat.aggregate([
+        {
+            $lookup: {
+                from: "users",
+                localField: "members.memberId",
+                foreignField: "_id",
+                as: "users"
+            }
+        },
+        {
+            $lookup: {
+                from: "doctors",
+                localField: "members.memberId",
+                foreignField: "_id",
+                as: "doctors"
+            }
+        },
+        {
+            $addFields: {
+                memberDetails: {
+                    $concatArrays: ["$users", "$doctors"]
+                }
+            }
+        },
+        {
+            $match: {
+                ...filter,
+                chatType: { $ne: "chatbot" }
+            }
+        },
+        {
+            $count: "total"
+        }
+    ]);
+
+    const total = totalResult[0]?.total || 0;
+
+    return {
+        chats,
+        totalChats: total,
+        results: chats.length,
+        totalPages: Math.ceil(total / limit),
+        page
+    };
 
 
-    return chats;
+};
+
+
+
+export const getChatMessagesForAdmin = async (chatId: any) => {
+
+    const chat = await Chat.findById(chatId)
+        .populate({
+            path: "members.memberId",
+            select: "name profilePic"
+        })
+        .lean();
+
+    if (!chat) throw new Error("Chat not found");
+
+    const messages = await Message.find(
+        { chatId },
+        { __v: false }
+    )
+        .populate({
+            path: "sender",
+            select: "name profilePic"
+        })
+        .sort({ createdAt: 1 })
+        .lean();
+
+
+    return {
+        chatId,
+        messages
+    };
 };

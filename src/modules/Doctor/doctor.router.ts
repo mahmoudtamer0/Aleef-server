@@ -28,13 +28,13 @@ router.route("/resend-otp")
     .post(validate(resendOtpSchema), resendOtp)
 
 router.route("/get-doctors-requests")
-    .get(verifyToken, allowTo("ADMIN"), getAllDoctorsRequests)
+    .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllDoctorsRequests)
 
 router.route("/get-all-doctors")
-    .get(verifyToken, allowTo("ADMIN"), getAllDoctors)
+    .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllDoctors)
 
 router.route("/get-available-doctors")
-    .get(verifyToken, getAllDoctors)
+    .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllDoctors)
 
 
 router.route("/approve-request/:doctorId")

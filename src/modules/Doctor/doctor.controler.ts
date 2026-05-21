@@ -91,11 +91,15 @@ export const approveDoctorRequest = catchAsync(async (req, res, next) => {
 
 export const getAllDoctors = catchAsync(async (req, res, next) => {
 
-    const doctors = await doctorService.getAllDoctors()
+    const doctors = await doctorService.getAllDoctors(req.query)
 
     return res.status(200).json({
         status: "success",
-        doctors: doctors,
+        doctors: doctors.doctors,
+        totalDoctors: doctors.totalDoctors,
+        page: doctors.page,
+        totalPages: doctors.totalPages,
+        results: doctors.results
     })
 
 })
