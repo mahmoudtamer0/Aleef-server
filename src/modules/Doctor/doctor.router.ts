@@ -34,7 +34,7 @@ router.route("/get-all-doctors")
     .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllDoctors)
 
 router.route("/get-available-doctors")
-    .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllDoctors)
+    .get(verifyToken, getAllDoctors)
 
 
 router.route("/approve-request/:doctorId")
