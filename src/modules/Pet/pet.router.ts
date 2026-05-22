@@ -14,7 +14,7 @@ router.route("/get-my-pets")
     .get(verifyToken, getUserPets)
 
 router.route("/get-user-pets/:userId")
-    .get(verifyToken, allowTo("ADMIN"), getUserPets)
+    .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getUserPets)
 
 
 router.route("/:petId")

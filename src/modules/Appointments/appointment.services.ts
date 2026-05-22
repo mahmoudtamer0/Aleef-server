@@ -420,10 +420,25 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
 
         Chat.findOneAndUpdate(
             {
-                "members.memberId": {
-                    $all: [doctor.id, appointment.owner]
-                },
-                chatType: "personal"
+                chatType: "personal",
+                $and: [
+                    {
+                        members: {
+                            $elemMatch: {
+                                memberId: doctor.id,
+                                memberModel: "Doctor"
+                            }
+                        }
+                    },
+                    {
+                        members: {
+                            $elemMatch: {
+                                memberId: appointment.owner,
+                                memberModel: "User"
+                            }
+                        }
+                    }
+                ]
             },
             {
                 $setOnInsert: {
