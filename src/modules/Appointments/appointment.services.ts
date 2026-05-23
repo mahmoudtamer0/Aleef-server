@@ -282,7 +282,7 @@ export const getAllAppoinments = async (reqQuery: any) => {
 
 export const getActiveAppointment = async (user: any) => {
 
-    const appointment = await Appointment.findOne({ owner: user.id }).lean().populate({
+    const appointment = await Appointment.findOne({ owner: user.id, status: { $in: ["pending", "confirmed"] } }).lean().populate({
         path: "pet",
         select: "name type gender profilePic"
     }).populate({
