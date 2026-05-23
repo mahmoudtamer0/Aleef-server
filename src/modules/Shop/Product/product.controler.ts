@@ -58,7 +58,8 @@ export const getProduct = catchAsync(async (req, res, next) => {
 export const calculateCart = catchAsync(async (req, res, next) => {
 
     const { cart } = req.body
-    const totalCart = await productService.calculateCart(cart)
+    const user = req.user
+    const totalCart = await productService.calculateCart(cart, user)
 
     return res.status(200).json({
         status: "success",
@@ -67,6 +68,7 @@ export const calculateCart = catchAsync(async (req, res, next) => {
         taxPercent: totalCart.taxPercent,
         taxPayed: totalCart.tax,
         totalCart: totalCart.totalCart,
+        address: totalCart.address
     })
 })
 

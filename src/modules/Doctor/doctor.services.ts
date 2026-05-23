@@ -432,7 +432,6 @@ export const getAllDoctors = async (reqQuery: any) => {
         status: { $ne: "pending" }
     };
 
-    // search
     if (search) {
 
         matchFilter.$or = [
@@ -469,7 +468,6 @@ export const getAllDoctors = async (reqQuery: any) => {
         ];
     }
 
-    // status filter
     if (status && status !== "all") {
         matchFilter.status = status;
     }

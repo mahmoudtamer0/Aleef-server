@@ -1,6 +1,7 @@
 import ApiError from "../../../utils/ApiError"
 import { generateFinalPrice } from "../../../utils/generateFinalPrice"
 import Category from "../Categories/categories.schema"
+import Address from "../Order/address.schema"
 import Product from "./product.schema"
 
 
@@ -198,22 +199,19 @@ export const getProducts = async (reqQuery: any) => {
 
 export const getProduct = async ({ prodId }: any) => {
 
-    const getProduct = await Product.findById(prodId).lean().select("-__v -createdAt -updatedAt").populate({
+    const product = await Product.findById(prodId).select("-__v -createdAt -updatedAt").populate({
         path: "category",
-    })
+    }).lean();
 
-    if (!getProduct) throw new ApiError(404, "not found");
+    if (!product) throw new ApiError(404, "not found");
 
-    const product = {
-        ...getProduct,
-        productImages: [getProduct.thumbnail, ...getProduct.productImages]
-    }
+    product.productImages.unshift(product.thumbnail);
 
     return product
 
 }
 
-export const calculateCart = async (cart: any) => {
+export const calculateCart = async (cart: any, user: any) => {
 
     let subTotal = 0;
     let delivery = 20;
@@ -229,12 +227,20 @@ export const calculateCart = async (cart: any) => {
         subTotal += item.quantity * product.finalPrice;
     }
 
+    const address = await Address.findOne({ user: user.id }).lean().select("street city phone");
+
+
     return {
         subTotal,
         delivery,
         taxPercent: "14%",
         tax: Math.floor(subTotal * tax),
-        totalCart: subTotal + delivery + Math.floor(subTotal * tax)
+        totalCart: subTotal + delivery + Math.floor(subTotal * tax),
+        address: address ? {
+            address: address.address,
+            city: address.city,
+            phone: address.phone
+        } : null
     }
 
 }

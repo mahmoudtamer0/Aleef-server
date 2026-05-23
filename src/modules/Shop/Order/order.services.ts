@@ -5,6 +5,7 @@ import OrderItems from "./orderItems";
 import User from "../../User/user.schema";
 import { sendEmail } from "../../../utils/sendEmail";
 import mongoose from "mongoose";
+import Address from "./address.schema";
 
 
 export const createOrder = async (cart: any, shippingAddress: any, paymentMethod: string, reqUser: any) => {
@@ -14,7 +15,7 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
     let delivery = 20;
     let tax = 0.14;
 
-    const user = await User.findById(reqUser.id).lean().select("email name")
+    const user = await User.findById(reqUser.id).lean().select("email name");
     if (!user) {
         throw new ApiError(404, "user not found");
     }
@@ -37,35 +38,39 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
     }
 
 
-    const order = new Order({
-        user: user._id,
-        shippingAddress,
-        paymentMethod,
-        subTotal: subTotal,
-        delivery: delivery,
-        taxPayed: Math.floor(subTotal * tax),
-        totalPrice: subTotal + delivery + Math.floor(subTotal * tax)
-    })
+    const [order] = await Promise.all([
+        new Order({
+            user: user._id,
+            shippingAddress,
+            paymentMethod,
+            subTotal: subTotal,
+            delivery: delivery,
+            taxPayed: Math.floor(subTotal * tax),
+            totalPrice: subTotal + delivery + Math.floor(subTotal * tax)
+        }).save(),
 
-    await order.save()
+        Address.findOneAndUpdate(
+            { user: user._id },
+            { ...shippingAddress, user: user._id },
+            { upsert: true, new: true }
+        )
+    ])
+
 
     for (const item of cart) {
-        const product = products.find(prod => prod._id.toString() == item.productId)
+        const product = products.find(prod => prod._id.toString() == item.productId).lean().select("_id title finalPrice thumbnail.url");
 
-        const orderItem = new OrderItems({
-            order: order._id,
-            product: product._id,
-            title: product.title,
-            image: product.thumbnail.url,
-            price: product.finalPrice,
-            quantity: item.quantity
-        })
-
-        await orderItem.save()
-
-        product.stock -= item.quantity;
-        product.buys += 1;
-        await product.save();
+        await Promise.all([
+            OrderItems.create({
+                order: order._id,
+                product: product._id,
+                title: product.title,
+                image: product.thumbnail.url,
+                price: product.finalPrice,
+                quantity: item.quantity
+            }),
+            Product.updateOne({ _id: product._id }, { $inc: { stock: -item.quantity, buys: 1 } }),
+        ])
     }
 
     setImmediate(() => {
@@ -139,7 +144,6 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
 
 
 }
-
 
 
 export const getMyUpComingOrders = async (user: any) => {
@@ -362,7 +366,6 @@ export const getAllOrders = async (reqQuery: any) => {
         }
     ]);
 
-    //  const orders = await Order.find(filter).populate("user", "name email").sort(toSort).skip(skip).limit(limit).lean();
 
     const total = await Order.countDocuments(filter).lean();
 

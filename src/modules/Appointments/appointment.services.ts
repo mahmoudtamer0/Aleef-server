@@ -282,13 +282,13 @@ export const getAllAppoinments = async (reqQuery: any) => {
 
 export const getActiveAppointment = async (user: any) => {
 
-    const appointment = await Appointment.findOne({ owner: user.id, status: { $in: ["pending", "confirmed"] } }).lean().populate({
+    const appointment = await Appointment.findOne({ owner: user.id, status: { $in: ["pending", "confirmed"] } }).select("pet doctor date time status").populate({
         path: "pet",
-        select: "name type gender profilePic"
+        select: "name type gender"
     }).populate({
         path: "doctor",
         select: "name profilePic specialization"
-    });
+    }).lean();
 
     return appointment;
 
@@ -727,8 +727,12 @@ export const rejectAppointment = async (doctor: any, appointmentId: any, rejecti
 
 export const getPrevAppoinments = async (user: any) => {
 
-    const appointments = await Appointment.find({ owner: user.id, status: { $in: ["cancelled", "completed"] } }).lean().populate({
-        path: "doctor pet", select: "name profilePic specialization"
+    const appointments = await Appointment.find({ owner: user.id, status: { $in: ["cancelled", "completed"] } }).select("pet doctor reason date time status").populate({
+        path: "doctor",
+        select: "name profilePic specialization"
+    }).populate({
+        path: "pet",
+        select: "name"
     }).lean();
 
     return appointments;

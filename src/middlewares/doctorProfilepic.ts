@@ -4,19 +4,31 @@ import cloudinary from "../utils/cloudinary";
 import { Request } from "express";
 import { FileFilterCallback } from "multer";
 
-const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
+const doctorStorage = new CloudinaryStorage({
+    cloudinary,
     params: async (req, file) => {
         return {
             folder: "aleef/doctors",
-            format: undefined,
+
+            transformation: [
+                {
+                    width: 300,
+                    height: 300,
+                    crop: "fill",
+                    gravity: "auto",
+                    quality: "auto",
+                    fetch_format: "auto",
+                    flags: "progressive"
+                }
+            ],
+
             public_id: `${Date.now()}-${file.originalname.split(".")[0]}`
-        }
+        };
     }
 });
 
 export const upload = multer({
-    storage: storage,
+    storage: doctorStorage,
 
     fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
 
