@@ -58,7 +58,11 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
 
 
     for (const item of cart) {
-        const product = products.find(prod => prod._id.toString() == item.productId).lean().select("_id title finalPrice thumbnail.url");
+        const product = products.find(prod => prod._id.toString() == item.productId);
+
+        if (!product) {
+            throw new ApiError(404, "not found this product");
+        }
 
         await Promise.all([
             OrderItems.create({
@@ -144,6 +148,7 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
 
 
 }
+
 
 
 export const getMyUpComingOrders = async (user: any) => {
