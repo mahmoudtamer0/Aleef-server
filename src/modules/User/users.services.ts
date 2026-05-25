@@ -22,7 +22,7 @@ export const register = async ({ email, name, password, phone }: any) => {
     const hashedPassword = await hashPassword(password);
 
     if (findUser && findUser.isEmailVerified == false) {
-        findUser.name = name
+        findUser.name = name.toLowerCase()
         findUser.phone = phone
         findUser.password = hashedPassword
         findUser.emailVerificationCode = hashedOtp
@@ -31,7 +31,7 @@ export const register = async ({ email, name, password, phone }: any) => {
     } else {
         user = await User.create({
             email: email,
-            name: name,
+            name: name.toLowerCase(),
             phone: phone,
             password: hashedPassword,
             emailVerificationCode: hashedOtp,

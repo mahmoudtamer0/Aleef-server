@@ -230,9 +230,10 @@ export const getProducts = async (reqQuery: any, user: any) => {
 
 export const getProduct = async ({ prodId }: any) => {
 
-    const product = await Product.findById(prodId).select("-__v -createdAt -updatedAt").populate({
-        path: "category",
-    }).lean();
+    const product = await Product.findById(prodId)
+        .select("title originalPrice finalPrice discount description category stock thumbnail productImages buys averageRate ratingsQuantity")
+        .populate({ path: "category", select: "name -_id" })
+        .lean();
 
     if (!product) throw new ApiError(404, "not found");
 

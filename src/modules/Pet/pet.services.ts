@@ -10,7 +10,7 @@ export const addPet = async (user: any, { name, type, birthDate, gender, weight 
 
     const pet = await Pet.create({
         owner: user.id,
-        name,
+        name: name.toLowerCase(),
         type,
         birthDate,
         gender
