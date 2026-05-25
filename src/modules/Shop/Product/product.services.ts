@@ -1,5 +1,6 @@
 import ApiError from "../../../utils/ApiError"
 import { generateFinalPrice } from "../../../utils/generateFinalPrice"
+import Pet from "../../Pet/pet.schema"
 import Category from "../Categories/categories.schema"
 import Address from "../Order/address.schema"
 import Product from "./product.schema"
@@ -64,7 +65,7 @@ export const addManyProducts = async (products: any) => {
     return;
 }
 
-export const getProducts = async (reqQuery: any) => {
+export const getProducts = async (reqQuery: any, user: any) => {
     interface FilterType {
         category?: string;
         finalPrice?: {
@@ -96,6 +97,8 @@ export const getProducts = async (reqQuery: any) => {
     } = reqQuery;
     let filter: FilterType = {};
     let toSort = {}
+    let typePriority: string | null = null;
+
 
     const page = reqQuery.page * 1 || 1;
     const limit = reqQuery.limit < 8 ? reqQuery.limit * 1 || 8 : 8;
@@ -108,6 +111,16 @@ export const getProducts = async (reqQuery: any) => {
         } else {
             filter.category = ""
         }
+    } else {
+        const lastPet = await Pet.findOne({ user: user.id })
+            .sort({ createdAt: -1 })
+            .select("type")
+            .lean();
+
+        if (lastPet) {
+            typePriority = lastPet.type;
+        }
+
     }
 
     if (minPrice || maxPrice) {
@@ -155,12 +168,26 @@ export const getProducts = async (reqQuery: any) => {
             }
         },
         {
+            $addFields: {
+                petPriority: {
+                    $cond: [
+                        { $eq: ["$type", typePriority] },
+                        1,
+                        0
+                    ]
+                }
+            }
+        },
+        {
             $match: {
                 ...filter,
             }
         },
         {
-            $sort: toSort
+            $sort: {
+                petPriority: -1,
+                ...toSort
+            }
         },
         {
             $skip: skip

@@ -30,7 +30,7 @@ export const addManyProducts = catchAsync(async (req, res, next) => {
 
 export const getProducts = catchAsync(async (req, res, next) => {
 
-    const products = await productService.getProducts(req.query)
+    const products = await productService.getProducts(req.query, req.user)
 
     return res.status(201).json({
         status: "success",
