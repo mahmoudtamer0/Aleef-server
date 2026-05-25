@@ -33,7 +33,7 @@ export const getAvailableSlots = async (doctor: any, doctorId: string, date: str
 
     const bookedAppointments = await Appointment.find({
         doctor: doctorId,
-        status: "confirmed",
+        status: "accepted",
         date: {
             $gte: startOfDay,
             $lte: endOfDay,

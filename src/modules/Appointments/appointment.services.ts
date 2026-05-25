@@ -22,7 +22,7 @@ export const bookAppointment = async (user: any, { pet, doctor, date, time, reas
         throw new ApiError(404, "user not found");
     }
 
-    const checkIfAnyAppointmentsForThisUser = await Appointment.findOne({ owner: user.id, status: { $in: ["pending", "confirmed"] } }).lean().select("_id");
+    const checkIfAnyAppointmentsForThisUser = await Appointment.findOne({ owner: user.id, status: { $in: ["pending", "accepted"] } }).lean().select("_id");
 
     const doctorProfile = await Doctor.findById(doctor).lean().select("name city address appointmentFee status");
 
@@ -35,7 +35,7 @@ export const bookAppointment = async (user: any, { pet, doctor, date, time, reas
     }
 
 
-    const checkIfAnyAppointmentsForThisDoc = await Appointment.findOne({ doctor: doctor, time: time, date: date, status: "confirmed" }).lean().select("_id")
+    const checkIfAnyAppointmentsForThisDoc = await Appointment.findOne({ doctor: doctor, time: time, date: date, status: "accepted" }).lean().select("_id")
 
     if (checkIfAnyAppointmentsForThisDoc) {
         throw new ApiError(400, "sorry this time is not available for this doctor, please select another time slot");
@@ -91,13 +91,13 @@ export const bookAppointment = async (user: any, { pet, doctor, date, time, reas
         <div style="background:#fff3cd; padding:15px; border-radius:8px; margin-top:20px;">
             <p style="margin:0; color:#856404; font-size:14px;">
                 ⚠️ Your appointment is currently <strong>pending confirmation</strong> from the doctor.  
-                You will receive another email once it is confirmed.
+                You will receive another email once it is accepted.
             </p>
         </div>
 
         <div style="text-align: center; margin-top: 30px;">
             <p style="color: #777; font-size: 14px;">
-                Please arrive on time once your appointment is confirmed 🐶🐱
+                Please arrive on time once your appointment is accepted 🐶🐱
             </p>
         </div>
 
@@ -279,7 +279,7 @@ export const getAllAppoinments = async (reqQuery: any) => {
 
 export const getActiveAppointment = async (user: any) => {
 
-    const appointment = await Appointment.findOne({ owner: user.id, status: { $in: ["pending", "confirmed"] } }).select("pet doctor date time status").populate({
+    const appointment = await Appointment.findOne({ owner: user.id, status: { $in: ["pending", "accepted"] } }).select("pet doctor date time status").populate({
         path: "pet",
         select: "name type gender"
     }).populate({
@@ -322,7 +322,7 @@ export const getAppointmentDetailsForUser = async (appointmentId: any) => {
 
     let chat = null;
 
-    if (appointment.status === "confirmed") {
+    if (appointment.status === "accepted") {
         chat = await Chat.findOne({
             "members.memberId": {
                 $all: [appointment.doctor._id, appointment.owner]
@@ -348,7 +348,7 @@ export const getAppointmentDetailsForDoctor = async (doctor: any, appointmentId:
 
     let chat = null;
 
-    if (appointment.status === "confirmed") {
+    if (appointment.status === "accepted") {
         chat = await Chat.findOne({
             "members.memberId": {
                 $all: [appointment.doctor._id, appointment.owner]
@@ -373,7 +373,7 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
             status: "pending"
         },
         {
-            status: "confirmed"
+            status: "accepted"
         },
         {
             new: true
@@ -388,7 +388,7 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
         doctor: doctor.id,
         time: appointment.time,
         date: appointment.date,
-        status: "confirmed",
+        status: "accepted",
         _id: { $ne: appointment._id }
     })
         .lean()
@@ -468,7 +468,7 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
         chatId: chat._id,
         sender: doctor.id,
         senderModel: "Doctor",
-        text: `Your appointment on ${appointment.date} at ${appointment.time} has been confirmed by the doctor.`
+        text: `Your appointment on ${appointment.date} at ${appointment.time} has been accepted by the doctor.`
     });
 
     await Promise.all([
@@ -531,7 +531,7 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
 
             await Notification.create({
                 userId: userProfile._id,
-                title: "Appointment Confirmed",
+                title: "Appointment accepted",
                 body: `Doctor ${doctor.name} has accepted your appoinment`,
                 type: "APPOINTMENT",
                 data: {
@@ -543,8 +543,8 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
 
             sendEmail({
                 email: userProfile.email,
-                subject: "Appointment Confirmed ✅",
-                text: `Hello ${userProfile.name}, your appointment is confirmed on ${appointment.date} at ${appointment.time}.`,
+                subject: "Appointment accepted ✅",
+                text: `Hello ${userProfile.name}, your appointment is accepted on ${appointment.date} at ${appointment.time}.`,
                 message: `
     <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
         <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
@@ -552,11 +552,11 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
             <h1 style="color: #267D77; text-align: center; margin-bottom: 10px;">Aleef</h1>
 
             <h2 style="text-align: center; color: #333;">
-                Your Appointment is Confirmed! ✅
+                Your Appointment is accepted! ✅
             </h2>
 
             <p style="color: #555; font-size: 16px;">
-                Hello <strong>${userProfile.name}</strong>, your appointment has been confirmed by the doctor.
+                Hello <strong>${userProfile.name}</strong>, your appointment has been accepted by the doctor.
             </p>
 
             <hr style="margin: 20px 0;" />
@@ -648,7 +648,7 @@ export const rejectAppointment = async (doctor: any, appointmentId: any, rejecti
             sendEmail({
                 email: userProfile.email,
                 subject: "Appointment Update ❗",
-                text: `Hello ${userProfile.name}, your appointment request on ${appointment.date} at ${appointment.time} could not be confirmed. Reason: ${appointment.rejectionReason || "Doctor is not available at this time"}.`,
+                text: `Hello ${userProfile.name}, your appointment request on ${appointment.date} at ${appointment.time} could not be accepted. Reason: ${appointment.rejectionReason || "Doctor is not available at this time"}.`,
                 message: `
         <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
             <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
@@ -656,7 +656,7 @@ export const rejectAppointment = async (doctor: any, appointmentId: any, rejecti
                 <h1 style="color: #267D77; text-align: center; margin-bottom: 10px;">Aleef</h1>
     
                 <h2 style="text-align: center; color: #333;">
-                    Appointment Not Confirmed ❗
+                    Appointment Not accepted ❗
                 </h2>
     
                 <p style="color: #555; font-size: 16px;">
@@ -664,7 +664,7 @@ export const rejectAppointment = async (doctor: any, appointmentId: any, rejecti
                 </p>
     
                 <p style="color: #555; font-size: 16px;">
-                    We’re sorry, but your appointment request could not be confirmed by the doctor.
+                    We’re sorry, but your appointment request could not be accepted by the doctor.
                 </p>
     
                 <hr style="margin: 20px 0;" />
@@ -749,13 +749,13 @@ export const endAppointment = async (
     const appointment = await Appointment.findOne({
         _id: appointmentId,
         doctor: doctor.id,
-        status: "confirmed"
+        status: "accepted"
     })
         .populate("owner", "name email")
         .populate("pet", "name");
 
     if (!appointment) {
-        throw new ApiError(404, "Appointment not found or not confirmed");
+        throw new ApiError(404, "Appointment not found or not accepted");
     }
 
     if (
