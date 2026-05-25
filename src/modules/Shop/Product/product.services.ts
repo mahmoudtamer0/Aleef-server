@@ -112,7 +112,7 @@ export const getProducts = async (reqQuery: any, user: any) => {
             filter.category = ""
         }
     } else {
-        const lastPet = await Pet.findOne({ user: user.id })
+        const lastPet = await Pet.findOne({ owner: user.id })
             .sort({ createdAt: -1 })
             .select("type")
             .lean();
@@ -120,7 +120,6 @@ export const getProducts = async (reqQuery: any, user: any) => {
         if (lastPet) {
             typePriority = lastPet.type;
         }
-
     }
 
     if (minPrice || maxPrice) {
@@ -171,7 +170,12 @@ export const getProducts = async (reqQuery: any, user: any) => {
             $addFields: {
                 petPriority: {
                     $cond: [
-                        { $eq: ["$type", typePriority] },
+                        {
+                            $in: [
+                                typePriority + "s",
+                                "$category.name"
+                            ]
+                        },
                         1,
                         0
                     ]
