@@ -140,3 +140,24 @@ export const endAppoinment = catchAsync(async (req, res, next) => {
         appointment,
     })
 })
+
+export const changeAppoinmentStatus = catchAsync(async (req, res, next) => {
+
+    const { appointmentId } = req.params;
+    const { status } = req.body;
+    await appointmentServices.changeAppoinmentStatus(appointmentId, status);
+
+    return res.status(200).json({
+        status: "success",
+    })
+})
+
+export const getAppoinmentDetailsForAdmin = catchAsync(async (req, res, next) => {
+    const { appointmentId } = req.params;
+
+    const appointment = await appointmentServices.getAppoinmentDetailsForAdmin(appointmentId);
+    return res.status(200).json({
+        status: "success",
+        appointment,
+    })
+})

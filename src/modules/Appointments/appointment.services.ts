@@ -185,13 +185,11 @@ export const getAllAppoinments = async (reqQuery: any) => {
         }
     ];
 
-    // SEARCH
     if (search) {
         pipeline.push({
             $match: {
                 $or: [
 
-                    // appointment reason
                     {
                         reason: {
                             $regex: search,
@@ -199,9 +197,8 @@ export const getAllAppoinments = async (reqQuery: any) => {
                         }
                     },
 
-                    // owner name
                     {
-                        "user.name": {
+                        "owner.name": {
                             $regex: search,
                             $options: "i"
                         }
@@ -239,7 +236,7 @@ export const getAllAppoinments = async (reqQuery: any) => {
     // SORT
     pipeline.push({
         $sort: {
-            appointmentDate: -1
+            updatedAt: -1
         }
     });
 
@@ -958,3 +955,29 @@ export const endAppointment = async (
     };
 }
 
+
+export const changeAppoinmentStatus = async (appointmentId: any, status: any) => {
+
+    const appointment = await Appointment.findByIdAndUpdate(appointmentId, { status }, { new: true });
+
+    if (!appointment) {
+        throw new ApiError(404, "Appointment not found");
+    }
+
+    return;
+}
+
+export const getAppoinmentDetailsForAdmin = async (appointmentId: any) => {
+
+    const appointment = await Appointment.findById(appointmentId)
+        .populate("owner", "name email profilePic")
+        .populate("doctor", "name specialization profilePic")
+        .populate("pet", "name type gender profilePic")
+        .lean();
+
+    if (!appointment) {
+        throw new ApiError(404, "Appointment not found");
+    }
+
+    return appointment;
+}
