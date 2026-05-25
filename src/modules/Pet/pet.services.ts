@@ -49,7 +49,7 @@ export const addPet = async (user: any, { name, type, birthDate, gender, weight 
 
 export const getUserPets = async (userId: any) => {
 
-    const pets = await Pet.find({ owner: userId }).lean().select("name type gender profilePic birthDate weight")
+    const pets = (await Pet.find({ owner: userId }).sort({ updatedAt: -1 }).lean().select("name type gender profilePic birthDate weight updatedAt"));
     const realPets = []
     for (let i = 0; i < pets.length; i++) {
         const pet = pets[i]
