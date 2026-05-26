@@ -6,7 +6,7 @@ export const sendNotification = async (userId: string, title: string, body: stri
     const sessions = await Session.find({
         userId,
         fcmToken: { $ne: null }
-    });
+    }).select("fcmToken");
 
     const tokens = sessions
         .map(s => s.fcmToken)

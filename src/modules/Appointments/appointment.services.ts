@@ -964,6 +964,99 @@ export const changeAppoinmentStatus = async (appointmentId: any, status: any) =>
         throw new ApiError(404, "Appointment not found");
     }
 
+    if (status === "accepted") {
+        const [chat] = await Promise.all([
+
+            Chat.findOneAndUpdate(
+                {
+                    chatType: "personal",
+                    $and: [
+                        {
+                            members: {
+                                $elemMatch: {
+                                    memberId: appointment.doctor,
+                                    memberModel: "Doctor"
+                                }
+                            }
+                        },
+                        {
+                            members: {
+                                $elemMatch: {
+                                    memberId: appointment.owner,
+                                    memberModel: "User"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    $setOnInsert: {
+                        members: [
+                            {
+                                memberId: appointment.doctor,
+                                memberModel: "Doctor"
+                            },
+                            {
+                                memberId: appointment.owner,
+                                memberModel: "User"
+                            }
+                        ],
+                        chatType: "personal",
+                    },
+
+                    $set: {
+                        status: "active"
+                    }
+                },
+                {
+                    upsert: true,
+                    new: true
+                }
+            )
+
+        ]);
+
+        const message = await Message.create({
+            chatId: chat._id,
+            sender: appointment.doctor,
+            senderModel: "Doctor",
+            text: `Your appointment on ${appointment.date} at ${appointment.time} has been accepted by the doctor.`
+        });
+
+        await Promise.all([
+
+            UnreadMessage.updateOne(
+                {
+                    chatId: chat._id,
+                    userId: appointment.owner,
+                },
+                {
+                    $inc: {
+                        unreadCount: 1
+                    },
+
+                    $set: {
+                        lastMessage: message.text
+                    }
+                },
+                {
+                    upsert: true
+                }
+            ),
+
+            Chat.updateOne(
+                {
+                    _id: chat._id
+                },
+                {
+                    lastMessage: message._id
+                }
+            )
+
+
+        ])
+    }
+
     return;
 }
 
