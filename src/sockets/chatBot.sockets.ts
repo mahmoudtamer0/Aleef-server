@@ -8,6 +8,13 @@ export = (io: any, socket: any) => {
 
     socket.on("chat_send", async (data: { message: string }) => {
         try {
+            const chatBotApiKey = process.env["CHATBOT_API_KEY"];
+            if (!chatBotApiKey) {
+                io.to(socket.user.id).emit("error_message", {
+                    errMessage: "Chatbot API key is not configured"
+                });
+                return;
+            }
             if (socket.user.role === "DOCTOR") {
                 io.to(socket.user.id).emit("error_message", {
                     errMessage: "Doctors can't chat with chatbot :)"
@@ -16,8 +23,7 @@ export = (io: any, socket: any) => {
             }
 
 
-
-            const botresponse = fetch("https://chatbot-production-a866.up.railway.app/chat", {
+            const botresponse = fetch(chatBotApiKey, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
