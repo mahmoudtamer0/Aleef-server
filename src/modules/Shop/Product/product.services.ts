@@ -237,7 +237,7 @@ export const getProductsMongo = async () => {
 
 }
 
-export const getProductsSql = async () => {
+export const getProductsSql = async (): Promise<QueryResult> => {
 
     const products = await pool.query(`
     SELECT 
