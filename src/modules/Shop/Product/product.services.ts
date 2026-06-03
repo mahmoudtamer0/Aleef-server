@@ -1,10 +1,11 @@
+import pool from "../../../db"
 import ApiError from "../../../utils/ApiError"
 import { generateFinalPrice } from "../../../utils/generateFinalPrice"
 import Pet from "../../Pet/pet.schema"
 import Category from "../Categories/categories.schema"
 import Address from "../Order/address.schema"
 import Product from "./product.schema"
-
+import { QueryResult } from "pg";
 
 
 
@@ -225,6 +226,34 @@ export const getProducts = async (reqQuery: any, user: any) => {
         totalPages: Math.ceil(total / limit),
         page
     }
+
+}
+
+export const getProductsMongo = async () => {
+
+    const products = await Product.find().populate("category").limit(10).lean();
+
+    return products;
+
+}
+
+export const getProductsSql = async () => {
+
+    const products = await pool.query(`
+    SELECT 
+        p.id, p.title, p.description, p.originalprice, p.finalprice,
+        p.discount, p.stock, p.buys, p.thumbnail_url, p.thumbnail_cloudinary_id,
+        p.averagerate, p.ratingsquantity, p.createdat, p.updatedat,
+        json_agg(DISTINCT jsonb_build_object('url', i.url, 'cloudinary_id', i.cloudinary_id)) AS images,
+        json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name)) AS categories
+    FROM products p
+    LEFT JOIN product_categories pc ON p.id = pc.product_id
+    LEFT JOIN categories c ON pc.category_id = c.id
+    LEFT JOIN product_images i ON p.id = i.product_id
+    GROUP BY p.id
+    LIMIT 10
+`);
+    return products;
 
 }
 

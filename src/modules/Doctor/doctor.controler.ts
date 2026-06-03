@@ -68,7 +68,15 @@ export const getAllDoctorsRequests = catchAsync(async (req, res, next) => {
 
 export const getDoctor = catchAsync(async (req, res, next) => {
     const { doctorId } = req.params
-    const doctor = await doctorService.getDoctor(doctorId)
+    const user = req.user;
+
+    let doctor;
+
+    if (user?.role == "ADMIN") {
+        doctor = await doctorService.getDoctorForAdmin(doctorId)
+    } else {
+        doctor = await doctorService.getDoctor(doctorId)
+    }
 
     return res.status(200).json({
         status: "success",

@@ -430,10 +430,7 @@ export const getAllDoctors = async (reqQuery: any) => {
 
     const skip = (page - 1) * limit;
 
-    const matchFilter: any = {
-        isEmailVerified: true,
-        status: { $ne: "pending" }
-    };
+    const matchFilter: any = {}
 
     if (search) {
 
@@ -609,6 +606,7 @@ export const getAllDoctors = async (reqQuery: any) => {
                 cancelledAppointments: 1,
                 rejectedAppointments: 1,
 
+
                 createdAt: 1
             }
         }
@@ -630,7 +628,18 @@ export const getDoctor = async (doctorId: any) => {
 
     const doctor = await Doctor.findById(doctorId).lean().select("name email about phone city specialization status profilePic rating ratingsCount address appointmentFee");
 
-    console.log(doctor)
+    const reviews = await DoctorReview.find({ doctor: doctorId })
+        .populate({
+            path: "user",
+            select: "name profilePic"
+        });
+    return { doctor, reviews }
+}
+
+export const getDoctorForAdmin = async (doctorId: any) => {
+
+    const doctor = await Doctor.findById(doctorId).lean().select("-password -createdAt -updatedAt -role -slotDuration -emailVerificationCode -emailVerificationExpires -cloudinary_id -__v");
+
     const reviews = await DoctorReview.find({ doctor: doctorId })
         .populate({
             path: "user",

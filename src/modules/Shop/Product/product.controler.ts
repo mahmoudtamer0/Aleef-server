@@ -43,6 +43,26 @@ export const getProducts = catchAsync(async (req, res, next) => {
 
 })
 
+export const getProductsSql = catchAsync(async (req, res, next) => {
+
+    const products = await productService.getProductsSql()
+    return res.status(201).json({
+        status: "success",
+        products: products.rows,
+    })
+
+})
+
+export const getProductsMongo = catchAsync(async (req, res, next) => {
+
+    const products = await productService.getProductsMongo()
+
+    return res.status(201).json({
+        status: "success",
+        products,
+    })
+})
+
 
 export const getProduct = catchAsync(async (req, res, next) => {
 
