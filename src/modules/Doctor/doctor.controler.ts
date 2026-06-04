@@ -44,7 +44,7 @@ export const login = catchAsync(async (req, res, next) => {
         status: "success",
         message: "User logined. Please verify your email.",
         token: doctor.token,
-        user: {
+        doctor: {
             id: doctor.findUser._id,
             name: doctor.findUser.name,
             email: doctor.findUser.email,
