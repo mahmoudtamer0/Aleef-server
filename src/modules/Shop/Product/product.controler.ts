@@ -1,6 +1,9 @@
 import catchAsync from "../../../utils/catchAsync";
 import * as productService from "./product.services"
 
+
+
+
 export const addProduct = catchAsync(async (req, res, next) => {
 
     const createProduct = await productService.addProduct(req.body, req.files)
@@ -9,20 +12,6 @@ export const addProduct = catchAsync(async (req, res, next) => {
         status: "success",
         message: "product added successfuly",
         createProduct
-    })
-
-})
-
-
-export const addManyProducts = catchAsync(async (req, res, next) => {
-
-    const { products } = req.body
-
-    await productService.addManyProducts(products)
-
-    return res.status(201).json({
-        status: "success",
-        message: "products added successfuly",
     })
 
 })
@@ -58,8 +47,7 @@ export const getProduct = catchAsync(async (req, res, next) => {
 export const calculateCart = catchAsync(async (req, res, next) => {
 
     const { cart } = req.body
-    const user = req.user
-    const totalCart = await productService.calculateCart(cart, user)
+    const totalCart = await productService.calculateCart(cart)
 
     return res.status(200).json({
         status: "success",
@@ -68,25 +56,23 @@ export const calculateCart = catchAsync(async (req, res, next) => {
         taxPercent: totalCart.taxPercent,
         taxPayed: totalCart.tax,
         totalCart: totalCart.totalCart,
-        address: totalCart.address
+        // address: totalCart.address
     })
 })
+
 
 
 export const editProduct = catchAsync(async (req, res, next) => {
 
     const { prodId } = req.params
 
-    const product = await productService.editProduct(
-        {
-            prodId,
-            ...req.body
-        },
+    await productService.editProduct(
+        prodId,
+        req.body,
         req.files
     );
 
     res.status(200).json({
         message: "product updated successfully",
-        product
     });
 });
