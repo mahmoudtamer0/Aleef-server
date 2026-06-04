@@ -4,7 +4,7 @@ import { allowTo } from "../../../middlewares/allowTo"
 import { upload } from "../../../middlewares/productsUploads"
 import validate from "../../../middlewares/userValidate"
 import { addProductValidation, calculateCartSchema } from "./product.validation"
-import { addManyProducts, addProduct, calculateCart, editProduct, getProduct, getProducts, getProductsMongo, getProductsSql } from "./product.controler"
+import { addManyProducts, addProduct, calculateCart, editProduct, getProduct, getProducts } from "./product.controler"
 
 
 const router = express.Router()
@@ -20,7 +20,7 @@ router.route("/")
         validate(addProductValidation),
         addProduct
     )
-    .get(verifyToken, getProducts)
+    .get(getProducts)
 
 router.route("/calculate-cart")
     .post(verifyToken, validate(calculateCartSchema), calculateCart)
@@ -28,14 +28,9 @@ router.route("/calculate-cart")
 router.route("/many-products")
     .post(addManyProducts)
 
-router.route("/products-sql")
-    .get(getProductsSql)
-
-router.route("/products-mongo")
-    .get(getProductsMongo)
 
 router.route("/:prodId")
-    .get(verifyToken, getProduct)
+    .get(getProduct)
     .patch(
         verifyToken,
         allowTo("ADMIN"),
