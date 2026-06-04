@@ -1,7 +1,7 @@
 import pool from "../../../db"
 import ApiError from "../../../utils/ApiError"
 import { generateFinalPrice } from "../../../utils/generateFinalPrice"
-import Pet from "../../Pet/pet.schema"
+// import Pet from "../../Pet/pet.schema"
 import Category from "../Categories/categories.schema"
 import Address from "../Order/address.schema"
 import Product from "./product.schema"
