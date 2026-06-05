@@ -364,9 +364,9 @@ export const getProducts = async (reqQuery: any): Promise<any> => {
 
 //sql version
 export const getProduct = async ({ prodId }: any) => {
-    const product = await pool.query(`SELECT title, "originalPrice", "finalPrice",
+    const product = await pool.query(`SELECT products.id, title, "originalPrice", "finalPrice",
         discount, description, stock, buys,
-        averageRate, ratingsQuantity,
+        CAST("averageRate" AS FLOAT) AS "averageRate", "ratingsQuantity",
         jsonb_build_object('url', thumbnail_url, 'cloudinary_id', thumbnail_cloudinary_id) AS thumbnail,
         json_agg(DISTINCT jsonb_build_object('url', i.url, 'cloudinary_id', i.cloudinary_id)) AS "productImages",
         json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name)) AS category
