@@ -49,13 +49,7 @@ const authLimiter = rateLimit({
 app.use(cookieParser());
 
 app.use(apiLimiter)
-app.use('/api/v1', (req, res, next) => {
-    res.status(200).json({
-        status: "success",
-        message: "Welcome to Aleef API"
-    })
-    next();
-});
+
 app.use('/api/v1/users/login', authLimiter)
 app.use('/api/v1/users', usersRouter)
 app.use('/api/v1/doctors', doctorRouter)
@@ -64,7 +58,13 @@ app.use('/api/v1/orders', ordersRouter)
 app.use('/api/v1/pets', petsRouter)
 app.use('/api/v1/appointments', appointmentsRouter)
 app.use('/api/v1/chats', chatRouter)
-
+app.use('/api/v1', (req, res, next) => {
+    res.status(200).json({
+        status: "success",
+        message: "Welcome to Aleef API"
+    })
+    next();
+});
 //Global Error Handler
 app.use(globalErrorHandler);
 
