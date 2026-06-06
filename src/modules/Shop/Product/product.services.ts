@@ -1,10 +1,7 @@
+import { getCache, setCache } from "../../../cache";
 import pool from "../../../db"
 import ApiError from "../../../utils/ApiError"
 import { generateFinalPrice } from "../../../utils/generateFinalPrice"
-// import Pet from "../../Pet/pet.schema"
-// import Category from "../Categories/categories.schema"
-// import Address from "../Order/address.schema"
-// import Product from "./product.schema"
 
 
 //mongo version
@@ -267,6 +264,11 @@ export const getProducts = async (reqQuery: any): Promise<any> => {
         search,
         sort } = reqQuery;
 
+    const cached = getCache(`products_${reqQuery.page}_${reqQuery.limit}_${reqQuery.sort}_${reqQuery.category}_${reqQuery.minPrice}_${reqQuery.maxPrice}_${reqQuery.search}`);
+    if (cached) {
+        return cached;
+    }
+
     const filters: string[] = []
 
     const page = reqQuery.page * 1 || 1;
@@ -279,7 +281,8 @@ export const getProducts = async (reqQuery: any): Promise<any> => {
         p.discount, p.stock, p.buys,
         p."averageRate", p."ratingsQuantity", p."createdAt", p."updatedAt",
         jsonb_build_object('url', p.thumbnail_url, 'cloudinary_id', p.thumbnail_cloudinary_id) AS thumbnail,
-        json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name)) AS categories
+        json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name)) AS categories,
+        COUNT(*) OVER() AS total_count
     FROM products p
     LEFT JOIN product_categories pc ON p.id = pc.product_id
     LEFT JOIN categories c ON pc.category_id = c.id
@@ -320,27 +323,19 @@ export const getProducts = async (reqQuery: any): Promise<any> => {
     mainQuery += ` LIMIT ${limit} OFFSET ${offset}`
 
 
+    const products = await pool.query(mainQuery);
 
-    let countQuery = `SELECT COUNT(DISTINCT p.id) AS total FROM products p`;
-
-    if (filters.length > 0) {
-        countQuery += ` LEFT JOIN product_categories pc ON p.id = pc.product_id
-        LEFT JOIN categories c ON pc.category_id = c.id WHERE ${filters.join(" AND ")}`
-    }
-
-
-    const [products, totalCount] = await Promise.all([
-        pool.query(mainQuery),
-        pool.query(countQuery)
-    ])
-
-
-    return {
+    const response = {
         products: products.rows,
         results: products.rowCount,
-        totalProducts: totalCount.rows[0].total,
-        totalPages: Math.ceil(totalCount.rows[0].total / limit),
+        totalProducts: products.rows[0].total_count,
+        totalPages: Math.ceil(products.rows[0].total_count / limit),
         page
+    };
+
+    setCache(`products_${reqQuery.page}_${reqQuery.limit}_${reqQuery.sort}_${reqQuery.category}_${reqQuery.minPrice}_${reqQuery.maxPrice}_${reqQuery.search}`, response, 500);
+    return {
+        ...response
     };
 
 }

@@ -23,11 +23,7 @@ export const getProducts = catchAsync(async (req, res, next) => {
 
     return res.status(201).json({
         status: "success",
-        products: products.products,
-        results: products.results,
-        page: products.page,
-        totalPages: products.totalPages,
-        totalProducts: products.totalProducts
+        ...products
     })
 
 })
