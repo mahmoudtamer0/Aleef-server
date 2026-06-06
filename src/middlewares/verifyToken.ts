@@ -1,7 +1,8 @@
 import jwt from "jsonwebtoken";
 import catchAsync from "../utils/catchAsync";
 import ApiError from "../utils/ApiError";
-import Session from "../modules/User/session.schema";
+import pool from "../db";
+import { getCache, setCache } from "../cache";
 
 export const verifyToken = catchAsync(async (req, res, next) => {
 
@@ -28,10 +29,17 @@ export const verifyToken = catchAsync(async (req, res, next) => {
         return next(new ApiError(401, "Session expired. Please login again."));
     }
 
-    const session = await Session.findById(decoded.sessionId).lean().select("_id")
+    const cacheKey = `session:${decoded.sessionId}`;
+    const cachedSession = getCache(cacheKey);
 
-    if (!session) return next(new ApiError(401, "Session expired. Please login again."));
-
+    if (!cachedSession) {
+        const session = await pool.query("SELECT user_id FROM sessions WHERE id = $1", [decoded.sessionId]);
+        if (session.rowCount === 0) {
+            return next(new ApiError(401, "Session expired. Please login again."));
+        }
+        console.log("cached session")
+        setCache(cacheKey, session.rows[0], 60 * 60);
+    }
 
     req.user = decoded;
     next();

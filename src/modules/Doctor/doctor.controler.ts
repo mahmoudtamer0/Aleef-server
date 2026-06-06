@@ -57,7 +57,7 @@ export const login = catchAsync(async (req, res, next) => {
 
 export const getAllDoctorsRequests = catchAsync(async (req, res, next) => {
 
-    const doctors = await doctorService.getAllDoctorsRequests()
+    const doctors = await doctorService.getAllDoctorsRequests(req.query)
 
     return res.status(200).json({
         status: "success",
@@ -73,7 +73,7 @@ export const getDoctor = catchAsync(async (req, res, next) => {
     let doctor;
 
     if (user?.role == "ADMIN") {
-        doctor = await doctorService.getDoctorForAdmin(doctorId)
+        doctor = await doctorService.getDoctor(doctorId)
     } else {
         doctor = await doctorService.getDoctor(doctorId)
     }

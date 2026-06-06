@@ -1,9 +1,23 @@
+import pool from "../db";
 import { formatDate } from "./date";
 
-export const getNextDays = (doctor: any, daysCount = 7) => {
+
+export const getNextDays = async (doctorId: string, daysCount = 7) => {
     const result: any[] = [];
 
-    if (!doctor?.workingHours) return result;
+    const workingHours = await pool.query(
+        `SELECT day_of_week, start_time, end_time, is_available 
+         FROM doctor_schedules
+         WHERE doctor_id = $1`,
+        [doctorId]
+    );
+
+    if (!workingHours.rows.length) return { result: [], scheduleMap: {} };
+
+    const scheduleMap: Record<string, any> = {};
+    for (const row of workingHours.rows) {
+        scheduleMap[row.day_of_week.toLowerCase()] = row;
+    }
 
     const baseDate = new Date();
     baseDate.setHours(0, 0, 0, 0);
@@ -19,26 +33,20 @@ export const getNextDays = (doctor: any, daysCount = 7) => {
             .toLocaleString("en-US", { weekday: "long" })
             .toLowerCase();
 
-        const schedule = doctor.workingHours?.[dayName];
+        const schedule = scheduleMap[dayName];
 
-        if (schedule?.isAvailable) {
+        if (schedule?.is_available) {
             if (i === 0) {
                 const now = new Date();
-                const currentHour = now.getHours();
-                const currentMinute = now.getMinutes();
-
-                const [endH, endM] = schedule.end.split(":").map(Number);
-
+                const [endH, endM] = schedule.end_time.split(":").map(Number);
                 const workdayOver =
-                    currentHour > endH ||
-                    (currentHour === endH && currentMinute >= endM);
-
+                    now.getHours() > endH ||
+                    (now.getHours() === endH && now.getMinutes() >= endM);
                 if (workdayOver) continue;
             }
             result.push({
                 date: formatDate(currentDate),
                 dayName,
-
                 display: currentDate.toLocaleDateString("en-US", {
                     weekday: "short",
                     day: "numeric",
@@ -49,5 +57,5 @@ export const getNextDays = (doctor: any, daysCount = 7) => {
         }
     }
 
-    return result;
+    return { result, scheduleMap };
 };

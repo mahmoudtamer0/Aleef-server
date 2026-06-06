@@ -389,13 +389,65 @@ export const approveDoctorRequest = async (doctorId: any) => {
 
 }
 
-export const getAllDoctorsRequests = async () => {
+export const getAllDoctorsRequests = async (reqQuery: any) => {
+    const { search } = reqQuery;
 
+    const page = Number(reqQuery.page) || 1;
+    const limit = Number(reqQuery.limit) || 10;
+    const offset = (page - 1) * limit;
 
+    const status = "pending";
 
-    const docotrs = await Doctor.find({ isEmailVerified: true, status: "pending" }).lean().select("name phone city specialization status appointmentFee").sort({ createdAt: 1 })
+    const cacheKey = `doctors:${page}_${limit}_${status}_${search}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
 
-    return docotrs
+    const filters: string[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (search && search !== "") {
+        filters.push(`(
+            d.name ILIKE $${paramIndex} OR 
+            d.email ILIKE $${paramIndex} OR 
+            d.phone ILIKE $${paramIndex} OR 
+            d.city ILIKE $${paramIndex} OR 
+            d.specialization ILIKE $${paramIndex}
+        )`);
+        params.push(`%${search}%`);
+        paramIndex++;
+    }
+
+    const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
+
+    const mainQuery = `
+        SELECT
+            d.id, d.name, d.email, d.phone, d.city, d.specialization,
+            d.status, d."profilePic", d.address, d.rating, d."ratingsCount",
+            d."appointmentFee", d."createdAt",
+            COUNT(*) OVER() AS total_count
+        FROM doctors d
+        ${whereClause}
+        GROUP BY d.id
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+
+    params.push(limit, offset);
+
+    const result = await pool.query(mainQuery, params);
+
+    const totalDoctors = result.rows[0]?.total_count ?? 0;
+
+    const response = {
+        doctors: result.rows,
+        results: result.rowCount,
+        totalDoctors: Number(totalDoctors),
+        totalPages: Math.ceil(Number(totalDoctors) / limit),
+        page
+    };
+
+    setCache(cacheKey, response, 300);
+    return response;
 
 }
 
@@ -443,7 +495,7 @@ export const getAllDoctors = async (reqQuery: any) => {
 
     const mainQuery = `
         SELECT
-            d.name, d.email, d.phone, d.city, d.specialization,
+            d.id, d.name, d.email, d.phone, d.city, d.specialization,
             d.status, d."profilePic", d.address, d.rating, d."ratingsCount",
             d."appointmentFee", d."createdAt",
             COUNT(a.id) AS total_appointments,
@@ -452,7 +504,7 @@ export const getAllDoctors = async (reqQuery: any) => {
             COUNT(CASE WHEN a.status = 'rejected' THEN 1 END) AS rejected_appointments,
             COUNT(*) OVER() AS total_count
         FROM doctors d
-        LEFT JOIN appointments a ON d.id = a.doctor_id
+        LEFT JOIN appointments a ON d.id = a.doctor
         ${whereClause}
         GROUP BY d.id
         ${orderClause}
@@ -476,16 +528,33 @@ export const getAllDoctors = async (reqQuery: any) => {
     setCache(cacheKey, response, 300);
     return response;
 };
+
+
 export const getDoctor = async (doctorId: any) => {
 
-    const doctor = await Doctor.findById(doctorId).lean().select("name email about phone city specialization status profilePic rating ratingsCount address appointmentFee");
+    const doctorResult = await pool.query(`
+        SELECT id, name, email, phone, city, specialization, status, 
+            "profilePic", address, rating, "ratingsCount", 
+            "appointmentFee", "createdAt"
+        FROM doctors 
+        WHERE id = $1
+    `, [doctorId])
 
-    const reviews = await DoctorReview.find({ doctor: doctorId })
-        .populate({
-            path: "user",
-            select: "name profilePic"
-        });
-    return { doctor, reviews }
+    if (!doctorResult.rows.length) throw new ApiError(404, "Doctor not found");
+
+    const reviewsResult = await pool.query(`
+        SELECT r.id, r.rate, r.comment, r."createdAt",
+            u.name AS user_name, u."profilePic" AS user_pic
+        FROM doctor_reviews r
+        JOIN users u ON r."user" = u.id
+        WHERE r.doctor = $1
+        ORDER BY r."createdAt" DESC
+    `, [doctorId])
+
+    return {
+        doctor: doctorResult.rows[0],
+        reviews: reviewsResult.rows
+    }
 }
 
 export const getDoctorForAdmin = async (doctorId: any) => {
@@ -510,28 +579,30 @@ export const getAvailableDoctors = async () => {
 
 }
 
-export const getDoctorSchedual = async (doctorId: any) => {
-    const doctor = await Doctor.findById(doctorId)
-        .lean()
-        .select("-password -about -createdAt -updatedAt -role -slotDuration -emailVerificationCode -emailVerificationExpires -cloudinary_id -IdentityVerificationImage -NationalIdFront -NationalIdBack -__v");
+export const getDoctorSchedual = async (doctorId: any): Promise<any> => {
 
-    if (!doctor) {
-        throw new ApiError(404, "Doctor not found");
-    }
+    const cacheKey = `doctor_schedual:${doctorId}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
 
-    const doctorDays = getNextDays(doctor);
+    const doctorResult = await pool.query(
+        `SELECT id, name, specialization, city, address, "profilePic", 
+                rating, "ratingsCount", "appointmentFee", "slotduration"
+         FROM doctors WHERE id = $1`,
+        [doctorId]
+    );
+
+    if (!doctorResult.rows.length) throw new ApiError(404, "Doctor not found");
+    const doctor = doctorResult.rows[0];
+
+    const { result: doctorDays, scheduleMap } = await getNextDays(doctorId);
 
     let firstDaySlots: string[] = [];
-
     if (doctorDays.length > 0) {
-        firstDaySlots = await getAvailableSlots(
-            doctor,
-            doctorId,
-            doctorDays[0].date
-        );
+        firstDaySlots = await getAvailableSlots(doctorId, doctorDays[0].date, scheduleMap, doctor.slotduration);
     }
 
-    return {
+    const response = {
         doctor: {
             name: doctor.name,
             specialization: doctor.specialization,
@@ -544,28 +615,51 @@ export const getDoctorSchedual = async (doctorId: any) => {
         },
         doctorDays,
         firstDaySlots,
-    };
+    }
+
+    setCache(cacheKey, response, 800);
+
+    return response;
 };
 
 
-export const getDoctorSlots = async (doctorId: any, date: any) => {
+export const getDoctorSlots = async (doctorId: any, date: any): Promise<any> => {
 
-    const doctor = await Doctor.findById(doctorId).lean();
+    const cacheKey = `doctor_slots_${date}:${doctorId}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
 
-    if (!doctor) {
-        throw new ApiError(404, "Doctor not found");
+    const doctorResult = await pool.query(
+        `SELECT id, "slotduration" FROM doctors WHERE id = $1`,
+        [doctorId]
+    );
+
+    if (!doctorResult.rows.length) throw new ApiError(404, "Doctor not found");
+
+    const workingHours = await pool.query(
+        `SELECT day_of_week, start_time, end_time, is_available 
+         FROM doctor_schedules 
+         WHERE doctor_id = $1`,
+        [doctorId]
+    );
+
+    const scheduleMap: Record<string, any> = {};
+    for (const row of workingHours.rows) {
+        scheduleMap[row.day_of_week.toLowerCase()] = row;
     }
 
     const slots = await getAvailableSlots(
-        doctor,
         doctorId,
-        date as string
+        date,
+        scheduleMap,
+        doctorResult.rows[0].slotduration
     );
 
-    return {
-        date,
-        slots,
-    };
+    const response = { date, slots };
+
+    setCache(cacheKey, response, 500);
+
+    return response;
 };
 
 export const addReviewToDoctor = async (user: any, doctorId: any, { comment, rate }: any) => {

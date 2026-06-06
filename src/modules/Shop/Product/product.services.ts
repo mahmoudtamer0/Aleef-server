@@ -360,6 +360,13 @@ export const getProducts = async (reqQuery: any): Promise<any> => {
 
 //sql version
 export const getProduct = async ({ prodId }: any) => {
+
+    const cached = getCache(`product:${prodId}`);
+    if (cached) {
+        return cached;
+    }
+
+
     const product = await pool.query(`SELECT products.id, title, "originalPrice", "finalPrice",
         discount, description, stock, buys,
         CAST("averageRate" AS FLOAT) AS "averageRate", "ratingsQuantity",
@@ -380,7 +387,11 @@ export const getProduct = async ({ prodId }: any) => {
         product.rows[0].productImages.unshift(product.rows[0].thumbnail);
     }
 
-    return product.rows[0];
+    const response = product.rows[0];
+
+    setCache(`product:${prodId}`, response, 500);
+    return response;
+
 }
 
 //mongo version
