@@ -34,7 +34,7 @@ router.route("/get-all-doctors")
     .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllDoctors)
 
 router.route("/get-available-doctors")
-    .get(verifyToken, getAllDoctors)
+    .get(getAllDoctors)
 
 
 router.route("/approve-request/:doctorId")
@@ -42,6 +42,7 @@ router.route("/approve-request/:doctorId")
 
 router.route("/:doctorId/schedual")
     .get(verifyToken, getDoctorSchedual)
+
 router.route("/:doctorId/slots")
     .get(verifyToken, getDoctorSlots)
 

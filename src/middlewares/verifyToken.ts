@@ -33,14 +33,16 @@ export const verifyToken = catchAsync(async (req, res, next) => {
     const cachedSession = getCache(cacheKey);
 
     if (!cachedSession) {
+        console.log("not cached session")
         const session = await pool.query("SELECT user_id FROM sessions WHERE id = $1", [decoded.sessionId]);
         if (session.rowCount === 0) {
             return next(new ApiError(401, "Session expired. Please login again."));
         }
-        console.log("cached session")
+
         setCache(cacheKey, session.rows[0], 60 * 60);
     }
 
+    console.log("cached session")
     req.user = decoded;
     next();
 })

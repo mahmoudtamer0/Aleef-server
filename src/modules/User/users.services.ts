@@ -7,6 +7,7 @@ import deleteProfilPic from "../../utils/deleteProfile";
 import { checkPassword } from "../../utils/checkPassword";
 import pool from "../../db";
 import { hashPassword } from "../../utils/hashPassword";
+import { clearCache } from "../../cache";
 
 
 //mongo Version
@@ -709,6 +710,7 @@ export const banUser = async (req: any) => {
 export const logOut = async (user: any) => {
     try {
         await pool.query("DELETE FROM sessions WHERE id = $1", [user.sessionId]);
+        clearCache(`session:${user.sessionId}`);
         return "success"
     } catch (err) {
         throw new ApiError(500, "error")
