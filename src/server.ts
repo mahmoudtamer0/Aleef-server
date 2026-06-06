@@ -15,32 +15,6 @@ if (!dbUrl) throw new Error("DB_URL is not defined");
 
 const PORT = process.env["PORT"] || 3000;
 
-// mongoose.connect(dbUrl, {
-//     maxPoolSize: 5,
-//     serverSelectionTimeoutMS: 5000,
-//     socketTimeoutMS: 45000,
-// })
-//     .then(() => {
-//         console.log("✅ DB Connected");
-//         server.listen(PORT, () => {
-//             console.log(`🚀 Server running on port ${PORT}`);
-//         });
-//     })
-//     .catch((err) => console.log(err));
-
-
-
-// pool.connect()
-//     .then((client) => {
-//         client.release();
-//         console.log("✅ DB Connected");
-//         server.listen(4000, () => {
-//             console.log(`🚀 Server running on port ${PORT}`);
-//         });
-//     })
-//     .catch((err) => console.log(err));
-
-
 
 Promise.all([
     mongoose.connect(dbUrl, {
@@ -59,10 +33,13 @@ Promise.all([
     })
     .catch((err) => console.log(err));
 
-setInterval(async () => {
-    pool.query("SELECT 1").then(() => {
-        console.log("✅ PostgreSQL warmed up");
-    });
-}, 2 * 60 * 1000);
+
+if (process.env["NODE_ENV"] === "production") {
+    setInterval(async () => {
+        pool.query("SELECT 1").then(() => {
+            console.log("✅ PostgreSQL warmed up");
+        });
+    }, 5 * 60 * 1000);
+}
 
 
