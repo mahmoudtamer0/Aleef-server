@@ -41,5 +41,3 @@ if (process.env["NODE_ENV"] === "production") {
         });
     }, 5 * 60 * 1000);
 }
-
-
