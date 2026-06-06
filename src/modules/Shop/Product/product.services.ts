@@ -264,8 +264,9 @@ export const getProducts = async (reqQuery: any): Promise<any> => {
         search,
         sort } = reqQuery;
 
-    const cached = getCache(`products_${reqQuery.page}_${reqQuery.limit}_${reqQuery.sort}_${reqQuery.category}_${reqQuery.minPrice}_${reqQuery.maxPrice}_${reqQuery.search}`);
+    const cached = getCache(`products:${reqQuery.page}_${reqQuery.limit}_${reqQuery.sort}_${reqQuery.category}_${reqQuery.minPrice}_${reqQuery.maxPrice}_${reqQuery.search}`);
     if (cached) {
+        console.log("cached")
         return cached;
     }
 
@@ -333,7 +334,7 @@ export const getProducts = async (reqQuery: any): Promise<any> => {
         page
     };
 
-    setCache(`products_${reqQuery.page}_${reqQuery.limit}_${reqQuery.sort}_${reqQuery.category}_${reqQuery.minPrice}_${reqQuery.maxPrice}_${reqQuery.search}`, response, 500);
+    setCache(`products:${reqQuery.page}_${reqQuery.limit}_${reqQuery.sort}_${reqQuery.category}_${reqQuery.minPrice}_${reqQuery.maxPrice}_${reqQuery.search}`, response, 500);
     return {
         ...response
     };
