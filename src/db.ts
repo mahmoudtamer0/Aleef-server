@@ -1,7 +1,7 @@
 import { Pool } from "pg";
 import 'dotenv/config';
 
-const dbUrl = process.env["DATABASE_PUBLIC_URL"];
+const dbUrl = process.env["DATABASE_URL"];
 if (!dbUrl) throw new Error("SQL_DB_URL is not defined");
 
 const pool = new Pool({
