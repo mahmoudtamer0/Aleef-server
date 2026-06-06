@@ -15,8 +15,8 @@ export const doctorRegister = catchAsync(async (req, res, next) => {
 })
 
 export const verifyEmail = catchAsync(async (req, res, next) => {
-    const device = req.headers["user-agent"] || ""
-    await doctorService.verifyEmail(req.body, device)
+
+    await doctorService.verifyEmail(req.body)
 
     return res.status(200).json({
         status: "success",
@@ -45,11 +45,11 @@ export const login = catchAsync(async (req, res, next) => {
         message: "User logined. Please verify your email.",
         token: doctor.token,
         doctor: {
-            id: doctor.findUser._id,
-            name: doctor.findUser.name,
-            email: doctor.findUser.email,
-            phone: doctor.findUser.phone,
-            profilePic: doctor.findUser.profilePic,
+            id: doctor.doctor._id,
+            name: doctor.doctor.name,
+            email: doctor.doctor.email,
+            phone: doctor.doctor.phone,
+            profilePic: doctor.doctor.profilePic,
         }
     })
 
