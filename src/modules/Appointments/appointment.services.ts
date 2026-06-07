@@ -1,11 +1,6 @@
-import Appointment from "./appointments.schema"
-import MedicalRecord from "../Pet/medicalRecord.schema"
-import Vaccination from "../Pet/vaccination.schema"
 import ApiError from "../../utils/ApiError";
 import { sendEmail } from "../../utils/sendEmail";
-import User from "../User/user.schema";
 import { getIO } from "../../sockets/socket";
-import Notification from "../User/notification.schema";
 import pool from "../../db";
 import { clearCache, getCache, setCache } from "../../cache";
 
@@ -315,28 +310,17 @@ export const getAppointmentDetailsForUser = async (appointmentId: any) => {
 
     if (appointment.rows.length === 0) throw new ApiError(404, "appointment not found");
 
-
-
-    // const appointment = await Appointment.findOne({ _id: appointmentId }).lean().populate({
-    //     path: "pet",
-    //     select: "name type gender profilePic"
-    // }).populate({
-    //     path: "doctor",
-    //     select: "name profilePic specialization rating ratingsCount city address"
-    // }).lean();
-
-
     let chat = null;
-
-    // if (appointment.status === "accepted") {
-    //     chat = await Chat.findOne({
-    //         "members.memberId": {
-    //             $all: [appointment.doctor._id, appointment.owner]
-    //         },
-    //         chatType: "personal"
-    //     }).lean().select("_id")
-    // }
-
+    if (appointment.rows[0].status === "accepted") {
+        const chatResult = await pool.query(
+            `SELECT c.id FROM chats c
+             JOIN chat_members cm1 ON c.id = cm1."chatId" AND cm1.member_id = $1
+             JOIN chat_members cm2 ON c.id = cm2."chatId" AND cm2.member_id = $2
+             WHERE c.chat_type = 'personal' LIMIT 1`,
+            [appointment.rows[0].owner, appointment.rows[0].doctor]
+        );
+        chat = chatResult.rows[0] || null;
+    }
     const response = { appointment: appointment.rows[0], chat };
 
     setCache(cacheKey, response, 500);
@@ -801,130 +785,130 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
     // return appointment;
 }
 
-export const rejectAppointment = async (doctor: any, appointmentId: any, rejectionReason: string) => {
+// export const rejectAppointment = async (doctor: any, appointmentId: any, rejectionReason: string) => {
 
-    const io = getIO();
-    const appointment = await Appointment.findOne({ _id: appointmentId, doctor: doctor.id, status: "pending" });
-    if (!appointment) {
-        throw new ApiError(404, "Appointment not found or not pending");
-    }
-    appointment.status = "rejected";
-    appointment.expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-    appointment.rejectionReason = rejectionReason;
-    await appointment.save();
+//     const io = getIO();
+//     const appointment = await Appointment.findOne({ _id: appointmentId, doctor: doctor.id, status: "pending" });
+//     if (!appointment) {
+//         throw new ApiError(404, "Appointment not found or not pending");
+//     }
+//     appointment.status = "rejected";
+//     appointment.expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+//     appointment.rejectionReason = rejectionReason;
+//     await appointment.save();
 
-    const userProfile = await User.findById(appointment.owner).lean().select("email name")
-    if (userProfile) {
+//     const userProfile = await User.findById(appointment.owner).lean().select("email name")
+//     if (userProfile) {
 
-        setImmediate(async () => {
+//         setImmediate(async () => {
 
-            let isOnline = false;
+//             let isOnline = false;
 
-            try {
-                const sockets = await io.in(`user:${userProfile._id.toString()} `).fetchSockets();
-                isOnline = sockets.length > 0;
-            } catch (err) {
-                isOnline = false;
-            }
+//             try {
+//                 const sockets = await io.in(`user:${userProfile._id.toString()} `).fetchSockets();
+//                 isOnline = sockets.length > 0;
+//             } catch (err) {
+//                 isOnline = false;
+//             }
 
-            if (isOnline) {
-                io.to(`user:${userProfile._id.toString()} `).emit("notification", {
-                    type: "APPOINTMENT_REJECTED",
-                    title: "Appointment Rejected ❗",
-                    body: rejectionReason,
-                    data: {
-                        appointmentId: appointment._id,
-                        date: appointment.date,
-                    }
-                })
-            }
+//             if (isOnline) {
+//                 io.to(`user:${userProfile._id.toString()} `).emit("notification", {
+//                     type: "APPOINTMENT_REJECTED",
+//                     title: "Appointment Rejected ❗",
+//                     body: rejectionReason,
+//                     data: {
+//                         appointmentId: appointment._id,
+//                         date: appointment.date,
+//                     }
+//                 })
+//             }
 
-            await Notification.create({
-                userId: userProfile._id,
-                title: "Appointment Rejected ❗",
-                body: rejectionReason,
-                type: "APPOINTMENT",
-                data: {
-                    appointmentId: appointment._id,
-                    date: appointment.date,
-                }
-            })
+//             await Notification.create({
+//                 userId: userProfile._id,
+//                 title: "Appointment Rejected ❗",
+//                 body: rejectionReason,
+//                 type: "APPOINTMENT",
+//                 data: {
+//                     appointmentId: appointment._id,
+//                     date: appointment.date,
+//                 }
+//             })
 
-            sendEmail({
-                email: userProfile.email,
-                subject: "Appointment Update ❗",
-                text: `Hello ${userProfile.name}, your appointment request on ${appointment.date} at ${appointment.time} could not be accepted.Reason: ${appointment.rejectionReason || "Doctor is not available at this time"}.`,
-                message: `
-        < div style = "font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;" >
-            <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" >
+//             sendEmail({
+//                 email: userProfile.email,
+//                 subject: "Appointment Update ❗",
+//                 text: `Hello ${userProfile.name}, your appointment request on ${appointment.date} at ${appointment.time} could not be accepted.Reason: ${appointment.rejectionReason || "Doctor is not available at this time"}.`,
+//                 message: `
+//         < div style = "font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;" >
+//             <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" >
 
-                <h1 style="color: #267D77; text-align: center; margin-bottom: 10px;" > Aleef </h1>
+//                 <h1 style="color: #267D77; text-align: center; margin-bottom: 10px;" > Aleef </h1>
 
-                    < h2 style = "text-align: center; color: #333;" >
-                        Appointment Not accepted ❗
-    </h2>
+//                     < h2 style = "text-align: center; color: #333;" >
+//                         Appointment Not accepted ❗
+//     </h2>
 
-        < p style = "color: #555; font-size: 16px;" >
-            Hello < strong > ${userProfile.name} </strong>,
-                </p>
+//         < p style = "color: #555; font-size: 16px;" >
+//             Hello < strong > ${userProfile.name} </strong>,
+//                 </p>
 
-                < p style = "color: #555; font-size: 16px;" >
-                    We’re sorry, but your appointment request could not be accepted by the doctor.
-                </p>
+//                 < p style = "color: #555; font-size: 16px;" >
+//                     We’re sorry, but your appointment request could not be accepted by the doctor.
+//                 </p>
 
-                        < hr style = "margin: 20px 0;" />
+//                         < hr style = "margin: 20px 0;" />
 
-                            <h3 style="color: #267D77;" > Request Details </h3>
+//                             <h3 style="color: #267D77;" > Request Details </h3>
 
-                                < p > <strong>Date: </strong> ${appointment.date}</p >
-                                    <p><strong>Time: </strong> ${appointment.time}</p >
-                                        <p><strong>Reason: </strong> ${appointment.reason}</p >
+//                                 < p > <strong>Date: </strong> ${appointment.date}</p >
+//                                     <p><strong>Time: </strong> ${appointment.time}</p >
+//                                         <p><strong>Reason: </strong> ${appointment.reason}</p >
 
-                                            ${appointment.rejectionReason
-                        ? `
-                        <div style="margin-top:15px; padding:12px; background:#fff4f4; border-left:4px solid #ff4d4f; border-radius:6px;">
-                            <p style="margin:0; color:#a8071a; font-size:14px;">
-                                <strong>Doctor's Note:</strong> ${appointment.rejectionReason}
-                            </p>
-                        </div>
-                        `
-                        : ""
-                    }
+//                                             ${appointment.rejectionReason
+//                         ? `
+//                         <div style="margin-top:15px; padding:12px; background:#fff4f4; border-left:4px solid #ff4d4f; border-radius:6px;">
+//                             <p style="margin:0; color:#a8071a; font-size:14px;">
+//                                 <strong>Doctor's Note:</strong> ${appointment.rejectionReason}
+//                             </p>
+//                         </div>
+//                         `
+//                         : ""
+//                     }
 
-    <div style="text-align: center; margin-top: 30px;" >
-        <p style="color: #777; font-size: 14px;" >
-            Please try selecting another available time slot 🗓️
-    </p>
-        </div>
+//     <div style="text-align: center; margin-top: 30px;" >
+//         <p style="color: #777; font-size: 14px;" >
+//             Please try selecting another available time slot 🗓️
+//     </p>
+//         </div>
 
-        < div style = "text-align: center; margin-top: 20px;" >
-            <a href="YOUR_BOOKING_PAGE_LINK" style = "
-    display: inline - block;
-    padding: 10px 20px;
-    background:#267D77;
-    color: #fff;
-    text - decoration: none;
-    border - radius: 6px;
-    ">
-                        Book Another Appointment
-        </a>
-        </div>
+//         < div style = "text-align: center; margin-top: 20px;" >
+//             <a href="YOUR_BOOKING_PAGE_LINK" style = "
+//     display: inline - block;
+//     padding: 10px 20px;
+//     background:#267D77;
+//     color: #fff;
+//     text - decoration: none;
+//     border - radius: 6px;
+//     ">
+//                         Book Another Appointment
+//         </a>
+//         </div>
 
-        < div style = "margin-top: 30px; font-size: 12px; color: #999; text-align: center;" >
-            <p>If you have any questions, feel free to contact support.</p>
-                <p> & copy; ${new Date().getFullYear()} Aleef.All rights reserved.</p>
-                    </div>
+//         < div style = "margin-top: 30px; font-size: 12px; color: #999; text-align: center;" >
+//             <p>If you have any questions, feel free to contact support.</p>
+//                 <p> & copy; ${new Date().getFullYear()} Aleef.All rights reserved.</p>
+//                     </div>
 
-                    </div>
-                    </div>
-                        `
-            }).catch(err => {
-                console.error("Email failed:", err);
-            });
-        })
-    }
-    return appointment;
-}
+//                     </div>
+//                     </div>
+//                         `
+//             }).catch(err => {
+//                 console.error("Email failed:", err);
+//             });
+//         })
+//     }
+//     return appointment;
+// }
 
 
 export const getPrevAppointments = async (user: any) => {
@@ -957,216 +941,151 @@ export const endAppointment = async (
     upCommingVaccination: any,
     files: any,
 ) => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
 
+        const appointmentResult = await client.query(
+            `SELECT a.id, a.date, a.time, a.status,
+                jsonb_build_object('id', u.id, 'name', u.name, 'email', u.email) AS owner,
+                jsonb_build_object('id', p.id, 'name', p.name) AS pet
+             FROM appointments a
+             JOIN users u ON a.owner = u.id
+             JOIN pets p ON a.pet = p.id
+             WHERE a.id = $1 AND a.doctor = $2 AND a.status = 'accepted'`,
+            [appointmentId, doctor.id]
+        );
 
-    const appointment = await Appointment.findOne({
-        _id: appointmentId,
-        doctor: doctor.id,
-        status: "accepted"
-    })
-        .populate("owner", "name email")
-        .populate("pet", "name");
+        if (!appointmentResult.rows.length) throw new ApiError(404, "Appointment not found or not accepted");
 
-    if (!appointment) {
-        throw new ApiError(404, "Appointment not found or not accepted");
-    }
+        const appointment = appointmentResult.rows[0];
 
-    if (
-        !medicalRecord?.title ||
-        !medicalRecord?.condition ||
-        !medicalRecord?.description
-    ) {
-        throw new ApiError(400, "Medical record is required");
-    }
-
-    let attachments: string[] = [];
-
-    if (files && files.length > 0) {
-        attachments = files.map((file: any) => file.path);
-    }
-
-    const createdMedicalRecord = await MedicalRecord.create({
-        pet: appointment.pet._id,
-        doctor: doctor.id,
-        title: medicalRecord.title,
-        condition: medicalRecord.condition,
-        description: medicalRecord.description,
-        attachments,
-        date: new Date(),
-    });
-
-    let createdVaccination = null;
-
-    if (vaccination?.vaccineName) {
-
-        const vaccinExist = await Vaccination.findOne({ pet: appointment.pet._id, vaccineName: vaccination?.vaccineName });
-
-        if (vaccinExist) {
-            vaccinExist.type = "vaccined"
-            vaccinExist.vaccinatedAt = new Date();
-            vaccinExist.nextDueDate = null;
-            createdVaccination = vaccinExist;
-            await vaccinExist.save()
-        } else {
-
-            createdVaccination = await Vaccination.create({
-                pet: appointment.pet._id,
-                type: "vaccined",
-                doctor: doctor.id,
-                vaccineName: vaccination.vaccineName,
-                dose: vaccination?.dose,
-                notes: vaccination?.notes,
-                vaccinatedAt: new Date(),
-                nextDueDate: null,
-            });
+        if (!medicalRecord?.title || !medicalRecord?.condition || !medicalRecord?.description) {
+            throw new ApiError(400, "Medical record is required");
         }
 
+        const attachments: string[] = files?.length > 0 ? files.map((f: any) => f.path) : [];
 
-    }
+        const medicalRecordResult = await client.query(
+            `INSERT INTO medical_records (pet, doctor, title, condition, description, attachments, date)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW())
+             RETURNING *`,
+            [appointment.pet.id, doctor.id, medicalRecord.title, medicalRecord.condition, medicalRecord.description, attachments]
+        );
 
-    let createdUpCommingVaccination = null;
+        let createdVaccination = null;
 
+        if (vaccination?.vaccineName) {
+            const vaccinExist = await client.query(
+                `SELECT id FROM vaccinations WHERE pet = $1 AND "vaccineName" = $2`,
+                [appointment.pet.id, vaccination.vaccineName]
+            );
 
-    if (upCommingVaccination?.vaccineName) {
-        createdUpCommingVaccination = await Vaccination.create({
-            pet: appointment.pet._id,
-            doctor: doctor.id,
-            type: "upcomming",
-            vaccineName: upCommingVaccination.vaccineName,
-            vaccinatedAt: null,
-            nextDueDate: upCommingVaccination?.nextDueDate,
-        });
+            if (vaccinExist.rows.length) {
+                const updated = await client.query(
+                    `UPDATE vaccinations SET type = 'vaccined', "vaccinatedAt" = NOW(), "nextDueDate" = NULL, "updatedAt" = NOW()
+                     WHERE id = $1 RETURNING *`,
+                    [vaccinExist.rows[0].id]
+                );
+                createdVaccination = updated.rows[0];
+            } else {
+                const created = await client.query(
+                    `INSERT INTO vaccinations (pet, doctor, type, "vaccineName", dose, notes, "vaccinatedAt")
+                     VALUES ($1, $2, 'vaccined', $3, $4, $5, NOW())
+                     RETURNING *`,
+                    [appointment.pet.id, doctor.id, vaccination.vaccineName, vaccination?.dose || null, vaccination?.notes || null]
+                );
+                createdVaccination = created.rows[0];
+            }
+        }
 
-    }
+        let createdUpCommingVaccination = null;
 
-    appointment.status = "completed";
+        if (upCommingVaccination?.vaccineName) {
+            const created = await client.query(
+                `INSERT INTO vaccinations (pet, doctor, type, "vaccineName", "nextDueDate")
+                 VALUES ($1, $2, 'upcomming', $3, $4)
+                 RETURNING *`,
+                [appointment.pet.id, doctor.id, upCommingVaccination.vaccineName, upCommingVaccination?.nextDueDate || null]
+            );
+            createdUpCommingVaccination = created.rows[0];
+        }
 
-    await appointment.save();
+        await client.query(
+            `UPDATE appointments SET status = 'completed', "updatedAt" = NOW() WHERE id = $1`,
+            [appointmentId]
+        );
 
-    setImmediate(() => {
+        await client.query("COMMIT");
 
-        sendEmail({
-            email: (appointment.owner as any).email,
+        clearCache(`appointment_details_user:${appointmentId}`);
+        clearCache(`appointment_details_doctor:${appointmentId}`);
+        clearCache(`activeAppointment:${appointment.owner.id}`);
+        clearCache(`prevAppointments:${appointment.owner.id}`);
+        clearCache(`pet_profile:${appointment.pet.id}`);
+        clearCache(`appointments:`);
 
-            subject: "Appointment Completed Successfully 🐾",
+        setImmediate(() => {
+            sendEmail({
+                email: appointment.owner.email,
+                subject: "Appointment Completed Successfully 🐾",
+                text: `Hello ${appointment.owner.name}, your appointment for ${appointment.pet.name} has been completed successfully.`,
+                message: `
+                <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
+                    <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
 
-            text: `Hello ${(appointment.owner as any).name}, your appointment for ${(appointment.pet as any).name} has been completed successfully.We'd love to hear your feedback and rating about your experience with the doctor.`,
+                        <h1 style="color: #267D77; text-align: center; margin-bottom: 10px;">Aleef</h1>
+                        <h2 style="text-align: center; color: #333;">Appointment Completed Successfully 🐾</h2>
 
-            message: `
-            <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
-                <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <p style="color: #555; font-size: 16px;">Hello <strong>${appointment.owner.name}</strong>,</p>
+                        <p style="color: #555; font-size: 16px;">Your appointment for <strong>${appointment.pet.name}</strong> has been completed successfully.</p>
+                        <p style="color: #555; font-size: 16px;">We hope your pet feels better soon 🐶🐱</p>
 
-                    <h1 style="color: #267D77; text-align: center; margin-bottom: 10px;">
-                        Aleef
-                    </h1>
+                        <hr style="margin: 20px 0;" />
 
-                    <h2 style="text-align: center; color: #333;">
-                        Appointment Completed Successfully 🐾
-                    </h2>
+                        <h3 style="color: #267D77;">Medical Record Added ✅</h3>
+                        <p style="color:#555;">Your pet's medical record has been added to your account and can be viewed anytime.</p>
 
-                    <p style="color: #555; font-size: 16px;">
-                        Hello <strong>${(appointment.owner as any).name}</strong>,
-                    </p>
-
-                    <p style="color: #555; font-size: 16px;">
-                        Your appointment for 
-                        <strong>${(appointment.pet as any).name}</strong> 
-                        has been completed successfully.
-                    </p>
-
-                    <p style="color: #555; font-size: 16px;">
-                        We hope your pet feels better soon 🐶🐱
-                    </p>
-
-                    <hr style="margin: 20px 0;" />
-
-                    <h3 style="color: #267D77;">
-                        Medical Record Added ✅
-                    </h3>
-
-                    <p style="color:#555;">
-                        Your pet’s medical record has been added to your account and can be viewed anytime.
-                    </p>
-
-                    ${createdVaccination
-                    ? `
+                        ${createdVaccination ? `
                         <div style="margin-top:20px; padding:15px; background:#f6ffed; border-left:4px solid #52c41a; border-radius:6px;">
-                            <p style="margin:0; color:#135200;">
-                                <strong>Vaccination Added:</strong> ${createdVaccination.vaccineName}
-                            </p>
+                            <p style="margin:0; color:#135200;"><strong>Vaccination Added:</strong> ${createdVaccination.vaccineName}</p>
+                        </div>` : ""}
+
+                        ${createdUpCommingVaccination ? `
+                        <div style="margin-top:20px; padding:15px; background:#fffbe6; border-left:4px solid #faad14; border-radius:6px;">
+                            <p style="margin:0; color:#874d00;"><strong>Upcoming Vaccination Scheduled:</strong> ${createdUpCommingVaccination.vaccineName}</p>
+                            <p style="margin-top:8px; color:#ad6800; font-size:14px;">Due Date: ${createdUpCommingVaccination?.nextDueDate ? new Date(createdUpCommingVaccination.nextDueDate).toDateString() : "Not specified"}</p>
+                            <p style="margin-top:10px; color:#ad6800; font-size:13px;">Please make sure to visit the clinic on time to keep your pet healthy 🐾</p>
+                        </div>` : ""}
+
+                        <div style="margin-top:25px;">
+                            <h3 style="color:#267D77;">We'd Love Your Feedback ❤️</h3>
+                            <p style="color:#555;">Please take a moment to rate your experience with the doctor.</p>
                         </div>
-                        `
-                    : ""
-                }
-                ${createdUpCommingVaccination
-                    ? `
-    <div style="margin-top:20px; padding:15px; background:#fffbe6; border-left:4px solid #faad14; border-radius:6px;">
 
-        <p style="margin:0; color:#874d00;">
-            <strong>Upcoming Vaccination Scheduled:</strong> 
-            ${createdUpCommingVaccination.vaccineName}
-        </p>
+                        <div style="margin-top: 30px; font-size: 12px; color: #999; text-align: center;">
+                            <p>Thank you for using Aleef 🐾</p>
+                            <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
+                        </div>
 
-        <p style="margin-top:8px; color:#ad6800; font-size:14px;">
-            Due Date: 
-           ${createdUpCommingVaccination?.nextDueDate
-                        ? new Date(createdUpCommingVaccination.nextDueDate).toDateString()
-                        : "Not specified"
-                    }
-        </p>
-
-        <p style="margin-top:10px; color:#ad6800; font-size:13px;">
-            Please make sure to visit the clinic on time to keep your pet healthy 🐾
-        </p>
-
-    </div>
-    `
-                    : ""
-                }
-
-                    <div style="margin-top:25px;">
-                        <h3 style="color:#267D77;">
-                            We'd Love Your Feedback ❤️
-                        </h3>
-
-                        <p style="color:#555;">
-                            Please take a moment to rate your experience with the doctor and share your feedback.
-                        </p>
                     </div>
-
-                    <div style="text-align: center; margin-top: 30px;">
-                        <a href="YOUR_FEEDBACK_PAGE_LINK" style="
-                            display:inline-block;
-                            padding:10px 20px;
-                            background:#267D77;
-                            color:#fff;
-                            text-decoration:none;
-                            border-radius:6px;
-                        ">
-                            Rate Your Experience
-                        </a>
-                    </div>
-
-                    <div style="margin-top: 30px; font-size: 12px; color: #999; text-align: center;">
-                        <p>Thank you for using Aleef 🐾</p>
-                        <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
-                    </div>
-
-                </div>
-            </div>
-            `
-        }).catch(err => {
-            console.error("Email failed:", err);
+                </div>`
+            }).catch(err => console.error("Email failed:", err));
         });
 
-    });
+        return {
+            medicalRecord: medicalRecordResult.rows[0],
+            vaccination: createdVaccination,
+            appointment
+        };
 
-    return {
-        medicalRecord: createdMedicalRecord,
-        vaccination: createdVaccination,
-        appointment
-    };
-}
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
+    }
+};
 
 
 export const changeAppointmentStatus = async (appointmentId: any, status: any) => {

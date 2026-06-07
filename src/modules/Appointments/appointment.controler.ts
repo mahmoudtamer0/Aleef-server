@@ -99,16 +99,16 @@ export const approveAppointment = catchAsync(async (req, res, next) => {
 
 export const rejectAppointment = catchAsync(async (req, res, next) => {
 
-    const doctor = req.user;
-    const { appointmentId } = req.params;
-    const { rejectionReason } = req.body;
+    // const doctor = req.user;
+    // const { appointmentId } = req.params;
+    // const { rejectionReason } = req.body;
 
-    const appointment = await appointmentServices.rejectAppointment(doctor, appointmentId, rejectionReason);
+    // const appointment = await appointmentServices.rejectAppointment(doctor, appointmentId, rejectionReason);
 
-    return res.status(201).json({
-        status: "success",
-        appointment,
-    })
+    // return res.status(201).json({
+    //     status: "success",
+    //     appointment,
+    // })
 })
 
 
@@ -128,17 +128,17 @@ export const getPrevAppoinments = catchAsync(async (req, res, next) => {
 
 export const endAppoinment = catchAsync(async (req, res, next) => {
 
-    const doctor = req.user;
-    const files = req.files
-    const { appointmentId } = req.params;
-    const { medicalRecord, vaccination, upCommingVaccination } = req.body;
+    // const doctor = req.user;
+    // const files = req.files
+    // const { appointmentId } = req.params;
+    // const { medicalRecord, vaccination, upCommingVaccination } = req.body;
 
-    const appointment = await appointmentServices.endAppointment(doctor, appointmentId, medicalRecord, vaccination, upCommingVaccination, files);
+    // const appointment = await appointmentServices.endAppointment(doctor, appointmentId, medicalRecord, vaccination, upCommingVaccination, files);
 
-    return res.status(201).json({
-        status: "success",
-        appointment,
-    })
+    // return res.status(201).json({
+    //     status: "success",
+    //     appointment,
+    // })
 })
 
 export const changeAppoinmentStatus = catchAsync(async (req, res, next) => {

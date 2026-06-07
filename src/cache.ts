@@ -22,13 +22,3 @@ export const clearCache = (key: string) => {
         if (k.startsWith(key)) cache.delete(k);
     }
 };
-
-setInterval(() => {
-    const now = Date.now();
-
-    for (const [key, value] of cache.entries()) {
-        if (now > value.expiresAt) {
-            cache.delete(key);
-        }
-    }
-}, 60 * 1000);

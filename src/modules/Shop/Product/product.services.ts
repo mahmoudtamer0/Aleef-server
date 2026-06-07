@@ -371,14 +371,13 @@ export const getProduct = async ({ prodId }: any) => {
         discount, description, stock, buys,
         CAST("averageRate" AS FLOAT) AS "averageRate", "ratingsQuantity",
         jsonb_build_object('url', thumbnail_url, 'cloudinary_id', thumbnail_cloudinary_id) AS thumbnail,
-        json_agg(DISTINCT jsonb_build_object('url', i.url, 'cloudinary_id', i.cloudinary_id)) AS "productImages",
-        json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name)) AS category
+        json_agg(DISTINCT jsonb_build_object('url', i.url, 'cloudinary_id', i.cloudinary_id)) AS "productImages"
         FROM products
         LEFT JOIN product_images i ON products.id = i.product_id
-        LEFT JOIN product_categories pc ON products.id = pc.product_id
-        LEFT JOIN categories c ON pc.category_id = c.id
         WHERE products.id = $1
         GROUP BY products.id`, [prodId]);
+
+
     if (product.rowCount === 0) {
         throw new ApiError(404, "not found");
     }
@@ -393,6 +392,7 @@ export const getProduct = async ({ prodId }: any) => {
     return response;
 
 }
+
 
 //mongo version
 // export const calculateCart = async (cart: any) => {

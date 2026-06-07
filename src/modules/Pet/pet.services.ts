@@ -51,7 +51,7 @@ export const getUserPets = async (userId: any) => {
         age: getAge(pet.birthDate)
     }));
 
-    setCache(cacheKey, pets, 300);
+    setCache(cacheKey, pets, 500);
     return pets;
 };
 
@@ -70,19 +70,19 @@ export const getPetProfile = async (petId: any) => {
                 [petId]
             ),
             pool.query(
-                `SELECT * FROM medical_records WHERE pet_id = $1 ORDER BY "updatedAt" DESC LIMIT 3`,
+                `SELECT * FROM medical_records WHERE pet = $1 ORDER BY "updatedAt" DESC LIMIT 3`,
                 [petId]
             ),
             pool.query(
-                `SELECT * FROM vaccinations WHERE pet_id = $1 AND type = 'upcomming' AND "nextDueDate" >= NOW() ORDER BY "nextDueDate" ASC`,
+                `SELECT * FROM vaccinations WHERE pet = $1 AND type = 'upcomming' AND "nextDueDate" >= NOW() ORDER BY "nextDueDate" ASC`,
                 [petId]
             ),
             pool.query(
-                `SELECT * FROM vaccinations WHERE pet_id = $1 AND type = 'upcomming' AND "nextDueDate" < NOW() ORDER BY "nextDueDate" ASC`,
+                `SELECT * FROM vaccinations WHERE pet = $1 AND type = 'upcomming' AND "nextDueDate" < NOW() ORDER BY "nextDueDate" ASC`,
                 [petId]
             ),
             pool.query(
-                `SELECT * FROM vaccinations WHERE pet_id = $1 AND type = 'vaccined' ORDER BY "vaccinatedAt" DESC LIMIT 3`,
+                `SELECT * FROM vaccinations WHERE pet = $1 AND type = 'vaccined' ORDER BY "vaccinatedAt" DESC LIMIT 3`,
                 [petId]
             )
         ]);
@@ -195,8 +195,8 @@ export const deletePet = async (user: any, petId: string) => {
     }
 
     await Promise.all([
-        pool.query(`DELETE FROM medical_records WHERE pet_id = $1`, [petId]),
-        pool.query(`DELETE FROM vaccinations WHERE pet_id = $1`, [petId])
+        pool.query(`DELETE FROM medical_records WHERE pet = $1`, [petId]),
+        pool.query(`DELETE FROM vaccinations WHERE pet = $1`, [petId])
     ]);
 
     return;
