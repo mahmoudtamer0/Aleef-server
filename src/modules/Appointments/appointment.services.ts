@@ -787,130 +787,154 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
     // return appointment;
 }
 
-// export const rejectAppointment = async (doctor: any, appointmentId: any, rejectionReason: string) => {
+export const rejectAppointment = async (
+    doctor: any,
+    appointmentId: any,
+    rejectionReason: string
+) => {
 
-//     const io = getIO();
-//     const appointment = await Appointment.findOne({ _id: appointmentId, doctor: doctor.id, status: "pending" });
-//     if (!appointment) {
-//         throw new ApiError(404, "Appointment not found or not pending");
-//     }
-//     appointment.status = "rejected";
-//     appointment.expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-//     appointment.rejectionReason = rejectionReason;
-//     await appointment.save();
+    const io = getIO();
 
-//     const userProfile = await User.findById(appointment.owner).lean().select("email name")
-//     if (userProfile) {
+    const client = await pool.connect();
 
-//         setImmediate(async () => {
+    try {
 
-//             let isOnline = false;
+        await client.query("BEGIN");
 
-//             try {
-//                 const sockets = await io.in(`user:${userProfile._id.toString()} `).fetchSockets();
-//                 isOnline = sockets.length > 0;
-//             } catch (err) {
-//                 isOnline = false;
-//             }
+        const appointment = await client.query(
+            `UPDATE appointments
+             SET status = 'rejected',
+                 "rejectionReason" = $3,
+                 "expiresAt" = NOW() + INTERVAL '3 days'
+             WHERE id = $1
+               AND doctor = $2
+               AND status = 'pending'
+             RETURNING *`,
+            [appointmentId, doctor.id, rejectionReason]
+        );
 
-//             if (isOnline) {
-//                 io.to(`user:${userProfile._id.toString()} `).emit("notification", {
-//                     type: "APPOINTMENT_REJECTED",
-//                     title: "Appointment Rejected ❗",
-//                     body: rejectionReason,
-//                     data: {
-//                         appointmentId: appointment._id,
-//                         date: appointment.date,
-//                     }
-//                 })
-//             }
+        if (appointment.rowCount === 0) {
+            throw new ApiError(404, "Appointment not found or not pending");
+        }
 
-//             await Notification.create({
-//                 userId: userProfile._id,
-//                 title: "Appointment Rejected ❗",
-//                 body: rejectionReason,
-//                 type: "APPOINTMENT",
-//                 data: {
-//                     appointmentId: appointment._id,
-//                     date: appointment.date,
-//                 }
-//             })
+        const userProfile = await client.query(
+            `SELECT id,email,name
+             FROM users
+             WHERE id = $1`,
+            [appointment.rows[0].owner]
+        );
 
-//             sendEmail({
-//                 email: userProfile.email,
-//                 subject: "Appointment Update ❗",
-//                 text: `Hello ${userProfile.name}, your appointment request on ${appointment.date} at ${appointment.time} could not be accepted.Reason: ${appointment.rejectionReason || "Doctor is not available at this time"}.`,
-//                 message: `
-//         < div style = "font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;" >
-//             <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" >
+        if (!userProfile.rows.length) {
+            throw new ApiError(404, "user not found");
+        }
 
-//                 <h1 style="color: #267D77; text-align: center; margin-bottom: 10px;" > Aleef </h1>
+        await client.query("COMMIT");
 
-//                     < h2 style = "text-align: center; color: #333;" >
-//                         Appointment Not accepted ❗
-//     </h2>
+        clearCache(`activeAppointment:${appointment.rows[0].owner}`);
+        clearCache(`appointmentsRequests:${doctor.id}`);
+        clearCache(`appointment_details_user:${appointment.rows[0].id}`);
+        clearCache(`appointment_details_doctor:${appointment.rows[0].id}`);
+        clearCache(`appointments:`);
 
-//         < p style = "color: #555; font-size: 16px;" >
-//             Hello < strong > ${userProfile.name} </strong>,
-//                 </p>
+        setImmediate(async () => {
 
-//                 < p style = "color: #555; font-size: 16px;" >
-//                     We’re sorry, but your appointment request could not be accepted by the doctor.
-//                 </p>
+            let isOnline = false;
 
-//                         < hr style = "margin: 20px 0;" />
+            try {
+                const sockets = await io
+                    .in(`user:${userProfile.rows[0].id.toString()} `)
+                    .fetchSockets();
 
-//                             <h3 style="color: #267D77;" > Request Details </h3>
+                isOnline = sockets.length > 0;
 
-//                                 < p > <strong>Date: </strong> ${appointment.date}</p >
-//                                     <p><strong>Time: </strong> ${appointment.time}</p >
-//                                         <p><strong>Reason: </strong> ${appointment.reason}</p >
+            } catch {
+                isOnline = false;
+            }
 
-//                                             ${appointment.rejectionReason
-//                         ? `
-//                         <div style="margin-top:15px; padding:12px; background:#fff4f4; border-left:4px solid #ff4d4f; border-radius:6px;">
-//                             <p style="margin:0; color:#a8071a; font-size:14px;">
-//                                 <strong>Doctor's Note:</strong> ${appointment.rejectionReason}
-//                             </p>
-//                         </div>
-//                         `
-//                         : ""
-//                     }
+            if (isOnline) {
 
-//     <div style="text-align: center; margin-top: 30px;" >
-//         <p style="color: #777; font-size: 14px;" >
-//             Please try selecting another available time slot 🗓️
-//     </p>
-//         </div>
+                io.to(`user:${userProfile.rows[0].id.toString()} `).emit(
+                    "notification",
+                    {
+                        type: "APPOINTMENT_REJECTED",
+                        title: "Appointment Rejected ❗",
+                        body: rejectionReason,
+                        data: {
+                            appointmentId: appointment.rows[0].id,
+                            date: appointment.rows[0].date,
+                        }
+                    }
+                );
+            }
 
-//         < div style = "text-align: center; margin-top: 20px;" >
-//             <a href="YOUR_BOOKING_PAGE_LINK" style = "
-//     display: inline - block;
-//     padding: 10px 20px;
-//     background:#267D77;
-//     color: #fff;
-//     text - decoration: none;
-//     border - radius: 6px;
-//     ">
-//                         Book Another Appointment
-//         </a>
-//         </div>
+            sendEmail({
+                email: userProfile.rows[0].email,
+                subject: "Appointment Update ❗",
+                text: `Hello ${userProfile.rows[0].name}, your appointment request on ${appointment.rows[0].date} at ${appointment.rows[0].time} could not be accepted.`,
+                message: `
+                <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
 
-//         < div style = "margin-top: 30px; font-size: 12px; color: #999; text-align: center;" >
-//             <p>If you have any questions, feel free to contact support.</p>
-//                 <p> & copy; ${new Date().getFullYear()} Aleef.All rights reserved.</p>
-//                     </div>
+                    <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px;">
 
-//                     </div>
-//                     </div>
-//                         `
-//             }).catch(err => {
-//                 console.error("Email failed:", err);
-//             });
-//         })
-//     }
-//     return appointment;
-// }
+                        <h1 style="color: #267D77; text-align:center;">
+                            Aleef
+                        </h1>
+
+                        <h2 style="text-align:center;">
+                            Appointment Rejected ❗
+                        </h2>
+
+                        <p>
+                            Hello <strong>${userProfile.rows[0].name}</strong>
+                        </p>
+
+                        <p>
+                            Unfortunately, the doctor could not accept your appointment request.
+                        </p>
+
+                        <hr />
+
+                        <p><strong>Date:</strong> ${appointment.rows[0].date}</p>
+                        <p><strong>Time:</strong> ${appointment.rows[0].time}</p>
+                        <p><strong>Reason:</strong> ${appointment.rows[0].reason}</p>
+
+                        ${rejectionReason
+                        ? `
+                            <div style="margin-top:15px;padding:12px;background:#fff4f4;border-left:4px solid #ff4d4f;">
+                                <strong>Doctor's Note:</strong>
+                                ${rejectionReason}
+                            </div>
+                            `
+                        : ""
+                    }
+
+                        <p style="margin-top:20px;">
+                            Please choose another available appointment slot.
+                        </p>
+
+                    </div>
+
+                </div>
+                `
+            }).catch(err => {
+                console.error("Email failed:", err);
+            });
+
+        });
+
+        return appointment.rows[0];
+
+    } catch (err) {
+
+        await client.query("ROLLBACK");
+        throw err;
+
+    } finally {
+
+        client.release();
+
+    }
+};
 
 
 export const getPrevAppointments = async (user: any) => {

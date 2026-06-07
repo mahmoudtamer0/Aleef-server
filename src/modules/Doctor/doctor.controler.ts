@@ -118,7 +118,11 @@ export const getAvailableDoctors = catchAsync(async (req, res, next) => {
 
     return res.status(200).json({
         status: "success",
-        doctors: doctors,
+        doctors: doctors.doctors,
+        totalDoctors: doctors.totalDoctors,
+        page: doctors.page,
+        totalPages: doctors.totalPages,
+        results: doctors.results
     })
 })
 

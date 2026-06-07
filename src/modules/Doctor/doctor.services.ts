@@ -586,6 +586,7 @@ export const getAvailableDoctors = async (reqQuery: any) => {
     };
 
     setCache(cacheKey, response, 500);
+
     return response;
 }
 
