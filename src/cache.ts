@@ -18,7 +18,14 @@ export const setCache = (key: string, data: any, ttlSeconds: number) => {
 };
 
 export const clearCache = (key: string) => {
+    console.log("CLEARING", key);
+
     for (const k of cache.keys()) {
-        if (k.startsWith(key)) cache.delete(k);
+        console.log("CHECK", k);
+
+        if (k.startsWith(key)) {
+            console.log("DELETE", k);
+            cache.delete(k);
+        }
     }
 };

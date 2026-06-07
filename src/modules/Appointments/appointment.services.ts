@@ -252,12 +252,12 @@ export const getAppointmentsRequestsForDoctor = async (doctor: any, params: any)
     const limit = 5;
     const offset = (page - 1) * limit;
 
-    // const cacheKey = `appointmentsRequests:${doctor.id}_${page}_${limit}`;
-    // const cached = getCache(cacheKey);
-    // if (cached) {
-    //     console.log("requests cached")
-    //     return cached;
-    // }
+    const cacheKey = `appointmentsRequests:${doctor.id}_${page}_${limit}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+        console.log("requests cached")
+        return cached;
+    }
 
     const result = await pool.query(
         `SELECT 
@@ -282,7 +282,7 @@ export const getAppointmentsRequestsForDoctor = async (doctor: any, params: any)
         appointments: result.rows,
     };
 
-    // setCache(cacheKey, response, 500);
+    setCache(cacheKey, response, 500);
 
     return response;
 
