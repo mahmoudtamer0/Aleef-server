@@ -3,17 +3,28 @@ import * as orderService from "./order.services"
 
 
 
-export const createOrder = catchAsync(async (req, res, next) => {
+// export const createOrder = catchAsync(async (req, res, next) => {
+//     const user = req.user
+//     const { cart, shippingAddress, paymentMethod } = req.body
+//     const order = await orderService.createOrder(cart, shippingAddress, paymentMethod, user)
+
+//     return res.status(201).json({
+//         status: "success",
+//         order
+//     })
+// })
+
+
+export const createOrderSql = catchAsync(async (req, res, next) => {
     const user = req.user
     const { cart, shippingAddress, paymentMethod } = req.body
-    const order = await orderService.createOrder(cart, shippingAddress, paymentMethod, user)
+    const order = await orderService.createOrderSql(cart, shippingAddress, paymentMethod, user)
 
     return res.status(201).json({
         status: "success",
         order
     })
 })
-
 
 export const getMyUpComingOrders = catchAsync(async (req, res, next) => {
     const user = req.user

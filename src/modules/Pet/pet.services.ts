@@ -1,236 +1,203 @@
-import Pet from "./pet.schema"
-import MedicalRecord from "./medicalRecord.schema"
-import Vaccination from "./vaccination.schema"
 import { getAge } from "../../utils/getPetAge";
 import ApiError from "../../utils/ApiError";
 import cloudinary from "../../utils/cloudinary";
+import pool from "../../db";
+import { clearCache, getCache, setCache } from "../../cache";
 
+
+const DEFAULT_PICS: Record<string, string> = {
+    dog: "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939343/dog-2d-cartoon-vector-illustration-white-background-high_889056-22288_hyyjey.avif",
+    cat: "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939576/2842d3b1-b81a-4fef-bc40-0207b2becc7f_u6fecr.jpg",
+    bird: "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939687/blue-bird-with-yellow-orange-wing-blue-beak_1126821-13410_u5rqol.avif",
+    other: "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939791/cartoon-lion-standing-cheerfully_1308-181308_sq2uux.avif"
+};
+
+const getDefaultPic = (type: string) => DEFAULT_PICS[type] || DEFAULT_PICS["other"];
 
 export const addPet = async (user: any, { name, type, birthDate, gender, weight }: any, reqFile: any) => {
 
-    const pet = await Pet.create({
-        owner: user.id,
-        name: name.toLowerCase(),
-        type,
-        birthDate,
-        gender
-    })
+    const profilePic = reqFile ? reqFile.path : getDefaultPic(type);
+    const cloudinary_id = reqFile ? reqFile.filename : "default";
 
-    if (weight) {
-        pet.weight = Number(weight);
-    }
+    const result = await pool.query(
+        `INSERT INTO pets (owner, name, type, "birthDate", gender, weight, "profilePic", cloudinary_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING *`,
+        [user.id, name.toLowerCase(), type, birthDate || null, gender, weight ? Number(weight) : null, profilePic, cloudinary_id]
+    );
 
-    if (reqFile) {
-        pet.profilePic = reqFile.path;
-        pet.cloudinary_id = reqFile.filename
-    } else {
-        if (pet.type == "dog") {
-            pet.profilePic = "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939343/dog-2d-cartoon-vector-illustration-white-background-high_889056-22288_hyyjey.avif";
-            pet.cloudinary_id = "default"
-        } else if (pet.type == "cat") {
-            pet.profilePic = "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939576/2842d3b1-b81a-4fef-bc40-0207b2becc7f_u6fecr.jpg";
-            pet.cloudinary_id = "default";
-        } else if (pet.type == "bird") {
-            pet.profilePic = "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939687/blue-bird-with-yellow-orange-wing-blue-beak_1126821-13410_u5rqol.avif";
-            pet.cloudinary_id = "default";
-        } else {
-            pet.profilePic = "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939791/cartoon-lion-standing-cheerfully_1308-181308_sq2uux.avif";
-            pet.cloudinary_id = "default";
-        }
-    }
+    clearCache(`pets:${user.id}`);
 
-    await pet.save();
-
-
-    return pet;
-
-}
+    return result.rows[0];
+};
 
 
 export const getUserPets = async (userId: any) => {
 
-    const pets = (await Pet.find({ owner: userId }).sort({ updatedAt: -1 }).lean().select("name type gender profilePic birthDate weight updatedAt"));
-    const realPets = []
-    for (let i = 0; i < pets.length; i++) {
-        const pet = pets[i]
+    const cacheKey = `pets:${userId}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
 
-        const age = getAge(pet?.birthDate);
+    const result = await pool.query(
+        `SELECT id, name, type, gender, "profilePic", "birthDate", weight, "updatedAt"
+         FROM pets
+         WHERE owner = $1
+         ORDER BY "updatedAt" DESC`,
+        [userId]
+    );
 
-        realPets.push({
-            ...pet,
-            age
-        })
-    }
+    const pets = result.rows.map(pet => ({
+        ...pet,
+        age: getAge(pet.birthDate)
+    }));
 
-    return realPets;
-
-}
-
+    setCache(cacheKey, pets, 300);
+    return pets;
+};
 
 
 export const getPetProfile = async (petId: any) => {
 
-    const [pet, medicalRecords, upcomingVaccinations, overdueVaccinations, completedVaccinations] =
+    const cacheKey = `pet_profile:${petId}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
+
+    const [petResult, medicalRecords, upcomingVaccinations, overdueVaccinations, completedVaccinations] =
         await Promise.all([
-            Pet.findById(petId)
-                .select("-createdAt -updatedAt -__v -cloudinary_id -owner")
-                .lean(),
-
-            MedicalRecord.find({ pet: petId })
-                .sort({ updatedAt: -1 })
-                .limit(3)
-                .lean(),
-
-            Vaccination.find({
-                pet: petId,
-                type: "upcomming",
-                nextDueDate: { $gte: new Date() }
-            })
-                .sort({ nextDueDate: 1 })
-                .lean(),
-
-            Vaccination.find({
-                pet: petId,
-                type: "upcomming",
-                nextDueDate: { $lt: new Date() }
-            })
-                .sort({ nextDueDate: 1 })
-                .lean(),
-
-            Vaccination.find({
-                pet: petId,
-                type: "vaccined"
-            })
-                .limit(3)
-                .sort({ vaccinatedAt: -1 })
-                .lean(),
+            pool.query(
+                `SELECT id, name, type, gender, "profilePic", "birthDate", weight
+                 FROM pets WHERE id = $1`,
+                [petId]
+            ),
+            pool.query(
+                `SELECT * FROM medical_records WHERE pet_id = $1 ORDER BY "updatedAt" DESC LIMIT 3`,
+                [petId]
+            ),
+            pool.query(
+                `SELECT * FROM vaccinations WHERE pet_id = $1 AND type = 'upcomming' AND "nextDueDate" >= NOW() ORDER BY "nextDueDate" ASC`,
+                [petId]
+            ),
+            pool.query(
+                `SELECT * FROM vaccinations WHERE pet_id = $1 AND type = 'upcomming' AND "nextDueDate" < NOW() ORDER BY "nextDueDate" ASC`,
+                [petId]
+            ),
+            pool.query(
+                `SELECT * FROM vaccinations WHERE pet_id = $1 AND type = 'vaccined' ORDER BY "vaccinatedAt" DESC LIMIT 3`,
+                [petId]
+            )
         ]);
 
-    const age = getAge(pet?.birthDate);
+    const pet = petResult.rows[0];
+    if (!pet) throw new ApiError(404, "Pet not found");
 
-    return {
+    const response = {
         pet,
-        age,
-        medicalRecords,
-        upcomingVaccinations,
-        overdueVaccinations,
-        completedVaccinations
+        age: getAge(pet.birthDate),
+        medicalRecords: medicalRecords.rows,
+        upcomingVaccinations: upcomingVaccinations.rows,
+        overdueVaccinations: overdueVaccinations.rows,
+        completedVaccinations: completedVaccinations.rows
     };
+
+    setCache(cacheKey, response, 300);
+    return response;
 };
 
 
+export const editPet = async (user: any, petId: string, { name, type, birthDate, gender, weight, deleteProfilePic }: any, reqFile: any) => {
 
-export const editPet = async (
-    user: any,
-    petId: string,
-    { name, type, birthDate, gender, weight, deleteProfilePic }: any,
-    reqFile: any
-) => {
+    const petResult = await pool.query(
+        `SELECT * FROM pets WHERE id = $1 AND owner = $2`,
+        [petId, user.id]
+    );
 
-    let toDelete = false
+    if (!petResult.rows.length) throw new ApiError(404, "Pet not found");
 
-    const pet = await Pet.findOne({
-        _id: petId,
-        owner: user.id
-    });
+    const pet = petResult.rows[0];
+    let toDelete = false;
+    let oldCloudinaryId = pet.cloudinary_id;
 
-
-    if (!pet) {
-        throw new ApiError(404, "Pet not found");
-    }
-
-    if (name) pet.name = name;
-
-    if (type) pet.type = type;
-
-    if (birthDate) pet.birthDate = birthDate;
-
-    if (gender) pet.gender = gender;
-
-    if (weight !== undefined) {
-        pet.weight = Number(weight);
-    }
+    let newProfilePic = pet.profilePic;
+    let newCloudinaryId = pet.cloudinary_id;
 
     if (reqFile) {
-
-        if (pet.cloudinary_id && pet.cloudinary_id !== "default") {
-            toDelete = true;
-        }
-
-        pet.profilePic = reqFile.path;
-        pet.cloudinary_id = reqFile.filename;
+        if (pet.cloudinary_id && pet.cloudinary_id !== "default") toDelete = true;
+        newProfilePic = reqFile.path;
+        newCloudinaryId = reqFile.filename;
     }
 
     if (deleteProfilePic == true || deleteProfilePic == "true") {
         toDelete = true;
-
-        if (pet.type === "dog") {
-            pet.profilePic =
-                "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939343/dog-2d-cartoon-vector-illustration-white-background-high_889056-22288_hyyjey.avif";
-        } else if (pet.type === "cat") {
-            pet.profilePic =
-                "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939576/2842d3b1-b81a-4fef-bc40-0207b2becc7f_u6fecr.jpg";
-        } else if (pet.type === "bird") {
-            pet.profilePic =
-                "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939687/blue-bird-with-yellow-orange-wing-blue-beak_1126821-13410_u5rqol.avif";
-        } else {
-            pet.profilePic =
-                "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939791/cartoon-lion-standing-cheerfully_1308-181308_sq2uux.avif";
-        }
-
-        pet.cloudinary_id = "default";
+        newProfilePic = getDefaultPic(type || pet.type);
+        newCloudinaryId = "default";
     }
 
-    if (!reqFile && pet.cloudinary_id === "default" && type) {
-
-        if (type === "dog") {
-            pet.profilePic =
-                "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939343/dog-2d-cartoon-vector-illustration-white-background-high_889056-22288_hyyjey.avif";
-        } else if (type === "cat") {
-            pet.profilePic =
-                "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939576/2842d3b1-b81a-4fef-bc40-0207b2becc7f_u6fecr.jpg";
-        } else if (type === "bird") {
-            pet.profilePic =
-                "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939687/blue-bird-with-yellow-orange-wing-blue-beak_1126821-13410_u5rqol.avif";
-        } else {
-            pet.profilePic =
-                "https://res.cloudinary.com/ddgniiotg/image/upload/v1775939791/cartoon-lion-standing-cheerfully_1308-181308_sq2uux.avif";
-        }
+    if (!reqFile && newCloudinaryId === "default" && type) {
+        newProfilePic = getDefaultPic(type);
     }
 
-    await pet.save();
+    const updated = await pool.query(
+        `UPDATE pets SET
+            name = COALESCE($1, name),
+            type = COALESCE($2, type),
+            "birthDate" = COALESCE($3, "birthDate"),
+            gender = COALESCE($4, gender),
+            weight = COALESCE($5, weight),
+            "profilePic" = $6,
+            cloudinary_id = $7,
+            "updatedAt" = NOW()
+         WHERE id = $8 AND owner = $9
+         RETURNING *`,
+        [
+            name ? name.toLowerCase() : null,
+            type || null,
+            birthDate || null,
+            gender || null,
+            weight !== undefined ? Number(weight) : null,
+            newProfilePic,
+            newCloudinaryId,
+            petId,
+            user.id
+        ]
+    );
+
+    clearCache(`pets:${user.id}`);
+    clearCache(`pet_profile:${petId}`);
 
     if (toDelete) {
         setImmediate(async () => {
-            await cloudinary.uploader.destroy(pet.cloudinary_id);
-        })
+            await cloudinary.uploader.destroy(oldCloudinaryId);
+        });
     }
 
-    return pet;
+    return updated.rows[0];
 };
-
 
 
 export const deletePet = async (user: any, petId: string) => {
 
-    const pet = await Pet.findOneAndDelete({
-        _id: petId,
-        owner: user.id
-    });
+    const petResult = await pool.query(
+        `DELETE FROM pets WHERE id = $1 AND owner = $2 RETURNING *`,
+        [petId, user.id]
+    );
 
-    if (!pet) {
-        throw new ApiError(404, "Pet not found");
-    }
+    if (!petResult.rows.length) throw new ApiError(404, "Pet not found");
+
+    const pet = petResult.rows[0];
+
+    clearCache(`pets:${user.id}`);
+    clearCache(`pet_profile:${petId}`);
 
     if (pet.cloudinary_id && pet.cloudinary_id !== "default") {
         setImmediate(async () => {
             await cloudinary.uploader.destroy(pet.cloudinary_id);
-        })
+        });
     }
 
-    await MedicalRecord.deleteMany({ pet: petId });
-    await Vaccination.deleteMany({ pet: petId });
+    await Promise.all([
+        pool.query(`DELETE FROM medical_records WHERE pet_id = $1`, [petId]),
+        pool.query(`DELETE FROM vaccinations WHERE pet_id = $1`, [petId])
+    ]);
 
     return;
-
-}
+};

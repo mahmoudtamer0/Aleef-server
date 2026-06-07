@@ -1,88 +1,90 @@
 import ApiError from "../../../utils/ApiError"
-import Order from "./order.schema";
-import Product from "../Product/product.schema"
-import OrderItems from "./orderItems";
-import User from "../../User/user.schema";
 import { sendEmail } from "../../../utils/sendEmail";
-import mongoose from "mongoose";
-import Address from "./address.schema";
+import pool from "../../../db";
+import { clearCache, getCache, setCache } from "../../../cache";
 
+export const createOrderSql = async (cart: any, shippingAddress: any, paymentMethod: string, user: any) => {
 
-export const createOrder = async (cart: any, shippingAddress: any, paymentMethod: string, reqUser: any) => {
+    const client = await pool.connect();
+    try {
+        console.log(cart);
+        await client.query("BEGIN");
 
+        let subTotal = 0;
+        let delivery = 20;
+        let tax = 0.14;
 
-    let subTotal = 0;
-    let delivery = 20;
-    let tax = 0.14;
+        const productIds = cart.map((item: any) => item.productId);
 
-    const user = await User.findById(reqUser.id).lean().select("email name");
-    if (!user) {
-        throw new ApiError(404, "user not found");
-    }
+        const getProducts = await client.query(
+            `SELECT id, "finalPrice", title, thumbnail_url, stock
+        FROM products
+        WHERE id = ANY($1::uuid[])`,
+            [productIds]
+        );
 
-    const products = await Promise.all(cart.map((item: any) => Product.findById(item.productId)));
+        const products = getProducts.rows;
 
-    for (let i = 0; i < products.length; i++) {
-        const product = products[i]
-        const item = cart[i]
-        if (!product) {
-            throw new ApiError(404, "not found this product");
+        const productsMap = new Map(
+            products.map((p: any) => [p.id, p])
+        );
+
+        for (let i = 0; i < cart.length; i++) {
+            const item = cart[i]
+            const product = productsMap.get(item.productId);
+            if (!product) {
+                throw new ApiError(404, "not found");
+            }
+
+            const stockCheck = await client.query(
+                `UPDATE products
+                SET stock = stock - $1, buys = buys + $1
+                WHERE id = $2 AND stock >= $1
+                RETURNING id`,
+                [item.quantity, item.productId]
+            );
+
+            if (stockCheck.rowCount === 0) {
+                throw new ApiError(400, `stock available for ${product.title} is : ${product.stock}`,)
+            }
+
+            subTotal += item.quantity * product.finalPrice;
         }
 
-        if (product.stock < item.quantity) {
-            throw new ApiError(400, `stock available for ${product.title} is : ${product.stock}`,)
+        const order = await client.query(
+            `INSERT INTO orders (user_id, shipping_address, shipping_city, shipping_phone, "paymentMethod", "subTotal", delivery, "taxPayed", "totalOrder")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id`,
+            [user.id, shippingAddress.street, shippingAddress.city, shippingAddress.phone, paymentMethod, subTotal, delivery, Math.floor(subTotal * tax), subTotal + delivery + Math.floor(subTotal * tax)]
+        );
+
+        const orderId = order.rows[0].id;
+
+        for (const item of cart) {
+
+            const product = productsMap.get(item.productId);
+
+            if (!product) {
+                throw new ApiError(404, "not found this product");
+            }
+
+            await client.query(
+                `INSERT INTO order_items ("order", product, title, price, image, quantity, total_price)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                [orderId, product.id, product.title, product.finalPrice, product.thumbnail_url, item.quantity, item.quantity * product.finalPrice]
+            );
         }
 
 
-        subTotal += item.quantity * product.finalPrice;
-    }
+        await client.query("COMMIT");
+        clearCache(`upcomingOrders:${user.id}`);
 
-
-    const [order] = await Promise.all([
-        new Order({
-            user: user._id,
-            shippingAddress,
-            paymentMethod,
-            subTotal: subTotal,
-            delivery: delivery,
-            taxPayed: Math.floor(subTotal * tax),
-            totalPrice: subTotal + delivery + Math.floor(subTotal * tax)
-        }).save(),
-
-        Address.findOneAndUpdate(
-            { user: user._id },
-            { ...shippingAddress, user: user._id },
-            { upsert: true, new: true }
-        )
-    ])
-
-
-    for (const item of cart) {
-        const product = products.find(prod => prod._id.toString() == item.productId);
-
-        if (!product) {
-            throw new ApiError(404, "not found this product");
-        }
-
-        await Promise.all([
-            OrderItems.create({
-                order: order._id,
-                product: product._id,
-                title: product.title,
-                image: product.thumbnail.url,
-                price: product.finalPrice,
-                quantity: item.quantity
-            }),
-            Product.updateOne({ _id: product._id }, { $inc: { stock: -item.quantity, buys: 1 } }),
-        ])
-    }
-
-    setImmediate(() => {
-        sendEmail({
-            email: user.email,
-            subject: "Your Order has been placed 🛍️",
-            text: "",
-            message: `
+        setImmediate(() => {
+            sendEmail({
+                email: user.email,
+                subject: "Your Order has been placed 🛍️",
+                text: "",
+                message: `
 <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
 
     <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
@@ -98,7 +100,7 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
 
         <h3 style="color: #267D77;">Order Details</h3>
 
-        <p><strong>Order ID:</strong> ${order._id}</p>
+        <p><strong>Order ID:</strong> ${orderId}</p>
         <p><strong>Payment Method:</strong> ${paymentMethod}</p>
 
         <h3 style="color: #267D77; margin-top: 20px;">Summary</h3>
@@ -136,297 +138,178 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
 
 </div>
 `
-        }).catch(err => {
-            console.error("Email failed:", err);
+            }).catch(err => {
+                console.error("Email failed:", err);
+            });
         });
-    })
 
 
 
-    return order;
-
-
-
+        return orderId;
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
+    }
 }
 
 
+export const getMyUpcomingOrders = async (user: any) => {
+    const cacheKey = `upcomingOrders:${user.id}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
 
-export const getMyUpComingOrders = async (user: any) => {
+    const result = await pool.query(
+        `SELECT 
+            o.id, o.status, o."paymentMethod", o."totalOrder",
+            o.shipping_address, o.shipping_city, o.shipping_phone,
+            o."createdAt", o."updatedAt",
+            json_agg(jsonb_build_object(
+                'id', oi.id, 'title', oi.title, 'image', oi.image,
+                'quantity', oi.quantity, 'price', oi.price, 'total_price', oi.total_price
+            )) AS items
+        FROM orders o
+        LEFT JOIN order_items oi ON oi.order = o.id
+        WHERE o.user_id = $1 AND o.status IN ('pending', 'shipped')
+        GROUP BY o.id
+        ORDER BY o."updatedAt" DESC`,
+        [user.id]
+    );
 
-    const orders = await Order.aggregate([
-        {
-            $match: {
-                user: new mongoose.Types.ObjectId(user.id),
-                $or: [
-                    { status: "pending" },
-                    { status: "shipped" }
-                ]
-            }
-        },
-        {
-            $lookup: {
-                from: "orderitems",
-                localField: "_id",
-                foreignField: "order",
-                as: "items"
-            }
-        },
-        {
-            $project: {
-                totalOrder: "$totalPrice",
-                shippingAddress: 1,
-                paymentMethod: 1,
-                status: 1,
-                items: 1
-            }
-        }
-    ]);
-
-    return orders;
-}
+    setCache(cacheKey, result.rows, 300);
+    return result.rows;
+};
 
 export const getMyPreviousOrders = async (user: any) => {
+    const cacheKey = `previousOrders:${user.id}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
 
-    const orders = await Order.aggregate([
-        {
-            $match: {
-                user: new mongoose.Types.ObjectId(user.id),
-                $or: [
-                    { status: "cancelled" },
-                    { status: "delivered" }
-                ]
-            }
+    const result = await pool.query(
+        `SELECT 
+            o.id, o.status, o."paymentMethod", o."totalOrder",
+            o.shipping_address, o.shipping_city, o.shipping_phone,
+            o."createdAt", o."updatedAt",
+            json_agg(jsonb_build_object(
+                'id', oi.id, 'title', oi.title, 'image', oi.image,
+                'quantity', oi.quantity, 'price', oi.price, 'total_price', oi.total_price
+            )) AS items
+        FROM orders o
+        LEFT JOIN order_items oi ON oi.order = o.id
+        WHERE o.user_id = $1 AND o.status IN ('cancelled', 'delivered')
+        GROUP BY o.id
+        ORDER BY o."updatedAt" DESC`,
+        [user.id]
+    );
 
-        },
-        {
-            $lookup: {
-                from: "orderitems",
-                localField: "_id",
-                foreignField: "order",
-                as: "items"
-            }
-        },
-        {
-            $project: {
-                totalOrder: "$totalPrice",
-                shippingAddress: 1,
-                paymentMethod: 1,
-                status: 1,
-                items: 1
-            }
-        }
-    ]);
-
-    return orders;
-}
+    setCache(cacheKey, result.rows, 300);
+    return result.rows;
+};
 
 
 export const getAllOrders = async (reqQuery: any) => {
-
-    interface FilterType {
-        status?: any;
-        $or?: Array<{
-            "shippingAddress.address"?: {
-                $regex: string;
-                $options: string;
-            };
-            "shippingAddress.city"?: {
-                $regex: string;
-                $options: string;
-            };
-            "user.name"?: {
-                $regex: string;
-                $options: string;
-            };
-            "user.email"?: {
-                $regex: string;
-                $options: string;
-            };
-            "user.phone"?: {
-                $regex: string;
-                $options: string;
-            };
-            "user._id"?: {
-                $regex: string;
-                $options: string;
-            };
-            _id?: any;
-        }>;
-    }
-    interface SortType {
-        updatedAt?: number;
-        totalPrice?: number;
-    }
-
     const { status, search, sort } = reqQuery;
-    let filter: FilterType = {};
-    let toSort: SortType = {}
 
-    const page = reqQuery.page * 1 || 1;
-    const limit = reqQuery.limit < 10 ? reqQuery.limit * 1 || 10 : 10;
-    const skip = (page - 1) * limit
+    const page = Number(reqQuery.page) || 1;
+    const limit = Number(reqQuery.limit) < 10 ? Number(reqQuery.limit) || 10 : 10;
+    const offset = (page - 1) * limit;
 
+    const cacheKey = `orders:${page}_${limit}_${status}_${search}_${sort}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
 
-    if (status && status != "") {
-        console.log(status)
-        filter.status = status
+    const filters: string[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (status && status !== "") {
+        filters.push(`o.status = $${paramIndex}`);
+        params.push(status);
+        paramIndex++;
     }
 
-    if (sort && sort != "") {
-        if (sort == "newest") {
-            toSort.updatedAt = -1
-        } else if (sort == "oldest") {
-            toSort.updatedAt = 1
-        } else if (sort == "cheapest") {
-            toSort.totalPrice = 1
-        } else if (sort == "priciest") {
-            toSort.totalPrice = -1
-        } else {
-            toSort.updatedAt = -1
-        }
-    } else {
-        toSort.updatedAt = -1
+    if (search && search !== "") {
+        filters.push(`(
+            o.shipping_address ILIKE $${paramIndex} OR
+            o.shipping_city ILIKE $${paramIndex} OR
+            u.name ILIKE $${paramIndex} OR
+            u.email ILIKE $${paramIndex} OR
+            u.phone ILIKE $${paramIndex}
+        )`);
+        params.push(`%${search}%`);
+        paramIndex++;
     }
 
-    if (search) {
-        const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
 
-        filter.$or = [
-            {
-                "shippingAddress.city": {
-                    $regex: safeSearch,
-                    $options: "i"
-                }
-            },
-            {
-                "shippingAddress.address": {
-                    $regex: safeSearch,
-                    $options: "i"
-                }
-            },
-            {
-                "user.name": {
-                    $regex: safeSearch,
-                    $options: "i"
-                }
-            },
-            {
-                "user.email": {
-                    $regex: safeSearch,
-                    $options: "i"
-                }
-            },
-            {
-                "user.phone": {
-                    $regex: safeSearch,
-                    $options: "i"
-                }
-            }
-        ];
+    let orderClause = `ORDER BY o."updatedAt" DESC`;
+    if (sort === "oldest") orderClause = `ORDER BY o."updatedAt" ASC`;
+    if (sort === "cheapest") orderClause = `ORDER BY o."totalOrder" ASC`;
+    if (sort === "priciest") orderClause = `ORDER BY o."totalOrder" DESC`;
 
-        // search by order id
-        if (mongoose.Types.ObjectId.isValid(search)) {
-            filter.$or.push({
-                _id: new mongoose.Types.ObjectId(search)
-            });
-        }
-    }
+    const result = await pool.query(
+        `SELECT
+            o.id, o.status, o."paymentMethod", o."totalOrder",
+            o.shipping_address, o.shipping_city, o.shipping_phone,
+            o."createdAt", o."updatedAt",
+            jsonb_build_object(
+                'id', u.id, 'name', u.name, 'email', u.email,
+                'phone', u.phone, 'profilePic', u."profilePic"
+            ) AS user,
+            COUNT(*) OVER() AS total_count
+        FROM orders o
+        JOIN users u ON o.user_id = u.id
+        ${whereClause}
+        ${orderClause}
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+        [...params, limit, offset]
+    );
 
-    const orders = await Order.aggregate([
-        {
-            $lookup: {
-                from: "users",
-                localField: "user",
-                foreignField: "_id",
-                as: "user"
-            }
-        },
-        {
-            $match: filter
-        },
-        {
-            $unwind: "$user"
-        },
-        {
-            $project: {
-                totalOrder: "$totalPrice",
-                shippingAddress: 1,
-                paymentMethod: 1,
-                status: 1,
-                createdAt: 1,
-                "user.name": 1,
-                "user.email": 1,
-                "user._id": 1,
-                "user.phone": 1,
-                "user.profilePic": 1
-            }
-        },
-        {
-            $sort: toSort
-        },
-        {
-            $skip: skip
-        },
-        {
-            $limit: limit
-        }
-    ]);
+    const total = Number(result.rows[0]?.total_count ?? 0);
 
-
-    const total = await Order.countDocuments(filter).lean();
-
-    return {
-        orders,
+    const response = {
+        orders: result.rows,
         totalOrders: total,
-        results: orders.length,
+        results: result.rowCount,
         totalPages: Math.ceil(total / limit),
         page
     };
-}
+
+    setCache(cacheKey, response, 200);
+    return response;
+};
 
 
 export const getAllOrderDetailsForAdmin = async (orderId: any) => {
-    const order = await Order.aggregate([
-        {
-            $match: {
-                _id: new mongoose.Types.ObjectId(orderId)
-            }
-        },
-        {
-            $lookup: {
-                from: "orderitems",
-                localField: "_id",
-                foreignField: "order",
-                as: "items"
-            }
-        },
-        {
-            $lookup: {
-                from: "users",
-                localField: "user",
-                foreignField: "_id",
-                as: "user"
-            }
-        },
-        {
-            $unwind: "$user"
-        },
-        {
-            $project: {
-                totalOrder: "$totalPrice",
-                shippingAddress: 1,
-                paymentMethod: 1,
-                status: 1,
-                createdAt: 1,
-                items: 1,
-                "user.name": 1,
-                "user.email": 1,
-                "user._id": 1,
-                "user.phone": 1,
-                "user.profilePic": 1
-            }
-        }
-    ]);
+    const cacheKey = `order_details_admin:${orderId}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
 
-    return order[0];
-}
+    const result = await pool.query(
+        `SELECT
+            o.id, o.status, o."paymentMethod", o."totalOrder",
+            o."subTotal", o.delivery, o."taxPayed",
+            o.shipping_address, o.shipping_city, o.shipping_phone,
+            o."createdAt", o."updatedAt",
+            jsonb_build_object(
+                'id', u.id, 'name', u.name, 'email', u.email,
+                'phone', u.phone, 'profilePic', u."profilePic"
+            ) AS user,
+            json_agg(jsonb_build_object(
+                'id', oi.id, 'title', oi.title, 'image', oi.image,
+                'quantity', oi.quantity, 'price', oi.price, 'total_price', oi.total_price
+            )) AS items
+        FROM orders o
+        JOIN users u ON o.user_id = u.id
+        LEFT JOIN order_items oi ON oi.order = o.id
+        WHERE o.id = $1
+        GROUP BY o.id, u.id`,
+        [orderId]
+    );
+
+    if (!result.rows.length) throw new ApiError(404, "Order not found");
+
+    setCache(cacheKey, result.rows[0], 300);
+    return result.rows[0];
+};

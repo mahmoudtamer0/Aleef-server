@@ -2,363 +2,391 @@ import Appointment from "./appointments.schema"
 import MedicalRecord from "../Pet/medicalRecord.schema"
 import Vaccination from "../Pet/vaccination.schema"
 import ApiError from "../../utils/ApiError";
-import Doctor from "../Doctor/doctor.schema";
 import { sendEmail } from "../../utils/sendEmail";
 import User from "../User/user.schema";
-import Chat from "../Chat/chat.schema";
-import Message from "../Chat/message.shema";
-import UnreadMessage from "../Chat/unreadMessages";
 import { getIO } from "../../sockets/socket";
 import Notification from "../User/notification.schema";
+import pool from "../../db";
+import { clearCache, getCache, setCache } from "../../cache";
 
 
 
 
 export const bookAppointment = async (user: any, { pet, doctor, date, time, reason, notes }: any) => {
 
-    const userProfile = await User.findById(user.id).lean().select("email name")
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
 
-    if (!userProfile) {
-        throw new ApiError(404, "user not found");
-    }
-
-    const checkIfAnyAppointmentsForThisUser = await Appointment.findOne({ owner: user.id, status: { $in: ["pending", "accepted"] } }).lean().select("_id");
-
-    const doctorProfile = await Doctor.findById(doctor).lean().select("name city address appointmentFee status");
-
-    if (!doctorProfile || doctorProfile.status !== "active") {
-        throw new ApiError(400, "sorry this doctor is not available for appointments at the moment");
-    }
-
-    if (checkIfAnyAppointmentsForThisUser) {
-        throw new ApiError(400, "you have an active appointment, cancel your active appointment to be eligible to book another one");
-    }
-
-
-    const checkIfAnyAppointmentsForThisDoc = await Appointment.findOne({ doctor: doctor, time: time, date: date, status: "accepted" }).lean().select("_id")
-
-    if (checkIfAnyAppointmentsForThisDoc) {
-        throw new ApiError(400, "sorry this time is not available for this doctor, please select another time slot");
-    }
-
-
-    const appointment = await Appointment.create({
-        owner: user.id,
-        pet: pet,
-        doctor: doctor,
-        date, time, reason,
-    })
-
-    if (notes && notes.trim() !== "" && notes.length > 0 && notes !== null) {
-        appointment.notes = notes;
-        await appointment.save();
-    }
+        const [userResult, doctorResult] = await Promise.all([
+            client.query(
+                `SELECT u.id, u.email, u.name,
+                        COUNT(a.id) FILTER (WHERE a.status = ANY(ARRAY['pending', 'accepted'])) AS active_appointments
+                FROM users u
+                LEFT JOIN appointments a ON a.owner = u.id
+                WHERE u.id = $1
+                GROUP BY u.id`,
+                [user.id]
+            ),
+            client.query(
+                `SELECT id, name, city, address, "appointmentFee",
+                COUNT(a.id) FILTER (WHERE a.status = ANY(ARRAY['pending', 'accepted']) AND TIME = $2 AND DATE::date = $3::date) AS active_appointments,
+                status
+                FROM doctors
+                LEFT JOIN appointments a ON a.doctor = id
+                WHERE id = $1 AND status = 'active'
+                GROUP BY id`,
+                [doctor]
+            )
+        ]);
 
 
 
-    setImmediate(() => {
-        sendEmail({
-            email: userProfile.email,
-            subject: "Appointment Booked Successfully 🐾",
-            text: "",
-            message: `
-<div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
+        if (!userResult.rows.length) throw new ApiError(404, "user not found");
+        if (Number(userResult.rows[0].active_appointments) > 0) {
+            throw new ApiError(400, "you have an active appointment, cancel your active appointment to be eligible to book another one");
+        }
 
-    <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
 
-        <h1 style="color: #267D77; text-align: center;">Aleef</h1>
-        <h2 style="text-align: center; color: #333;">Appointment Request Received</h2>
+        if (!doctorResult.rows.length || doctorResult.rows[0].status !== "active") {
+            throw new ApiError(400, "sorry this doctor is not available for appointments at the moment");
+        }
 
-        <p style="color: #555; font-size: 16px;">
-            Hello ${userProfile.name}, your appointment request has been successfully submitted ✅
-        </p>
+        if (Number(doctorResult.rows[0].active_appointments) > 0) {
+            throw new ApiError(400, "sorry this time is not available for this doctor, please select another time slot");
+        }
 
-        <hr style="margin: 20px 0;" />
 
-        <h3 style="color: #267D77;">Doctor Details</h3>
-        <p><strong>Doctor:</strong> ${doctorProfile.name}</p>
-        <p><strong>City:</strong> ${doctorProfile.city}</p>
-        <p><strong>Address:</strong> ${doctorProfile.address}</p>
-        <p><strong>Fee:</strong> ${doctorProfile.appointmentFee} EGP</p>
+        const appointmentResult = await client.query(
+            `INSERT INTO appointments(owner, pet, doctor, date, time, reason, notes,"appoinmentFee")
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+             RETURNING * `,
+            [
+                user.id, pet, doctor, date, time, reason,
+                notes && notes.trim().length > 0 ? notes : null, doctorResult.rows[0].appointmentFee
+            ]
+        );
 
-        <hr style="margin: 20px 0;" />
+        await client.query("COMMIT");
 
-        <h3 style="color: #267D77;">Appointment Details</h3>
-        <p><strong>Date:</strong> ${date}</p>
-        <p><strong>Time:</strong> ${time}</p>
-        <p><strong>Reason:</strong> ${reason}</p>
+        clearCache(`activeAppointment:${user.id}`);
+        clearCache(`appointmentsRequests:${doctor}`);
 
-        <div style="background:#fff3cd; padding:15px; border-radius:8px; margin-top:20px;">
-            <p style="margin:0; color:#856404; font-size:14px;">
-                ⚠️ Your appointment is currently <strong>pending confirmation</strong> from the doctor.  
-                You will receive another email once it is accepted.
-            </p>
+        setImmediate(() => {
+            sendEmail({
+                email: userResult.rows[0].email,
+                subject: "Appointment Booked Successfully 🐾",
+                text: "",
+                message: `
+        <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
+
+            <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+
+                <h1 style="color: #267D77; text-align: center;">Aleef</h1>
+                <h2 style="text-align: center; color: #333;">Appointment Request Received</h2>
+
+                <p style="color: #555; font-size: 16px;">
+                    Hello ${userResult.rows[0].name}, your appointment request has been successfully submitted ✅
+                </p>
+
+                <hr style="margin: 20px 0;" />
+
+                <h3 style="color: #267D77;">Doctor Details</h3>
+                <p><strong>Doctor:</strong> ${doctorResult.rows[0].name}</p>
+                <p><strong>City:</strong> ${doctorResult.rows[0].city}</p>
+                <p><strong>Address:</strong> ${doctorResult.rows[0].address}</p>
+                <p><strong>Fee:</strong> ${doctorResult.rows[0].appointmentFee} EGP</p>
+
+                <hr style="margin: 20px 0;" />
+
+                <h3 style="color: #267D77;">Appointment Details</h3>
+                <p><strong>Date:</strong> ${date}</p>
+                <p><strong>Time:</strong> ${time}</p>
+                <p><strong>Reason:</strong> ${reason}</p>
+
+                <div style="background:#fff3cd; padding:15px; border-radius:8px; margin-top:20px;">
+                    <p style="margin:0; color:#856404; font-size:14px;">
+                        ⚠️ Your appointment is currently <strong>pending confirmation</strong> from the doctor.  
+                        You will receive another email once it is accepted.
+                    </p>
+                </div>
+
+                <div style="text-align: center; margin-top: 30px;">
+                    <p style="color: #777; font-size: 14px;">
+                        Please arrive on time once your appointment is accepted 🐶🐱
+                    </p>
+                </div>
+
+                <div style="margin-top: 30px; font-size: 12px; color: #999; text-align: center;">
+                    <p>If you did not request this appointment, please contact support.</p>
+
+                    <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
+                </div>
+
+            </div>
+
         </div>
-
-        <div style="text-align: center; margin-top: 30px;">
-            <p style="color: #777; font-size: 14px;">
-                Please arrive on time once your appointment is accepted 🐶🐱
-            </p>
-        </div>
-
-        <div style="margin-top: 30px; font-size: 12px; color: #999; text-align: center;">
-            <p>If you did not request this appointment, please contact support.</p>
-
-            <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
-        </div>
-
-    </div>
-
-</div>
-`
-        }).catch(err => {
-            console.error("Email failed:", err);
+        `
+            }).catch(err => {
+                console.error("Email failed:", err);
+            });
         });
-    });
 
-    return appointment;
+        return appointmentResult.rows[0];
+
+
+
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
+    }
 
 }
 
 export const getAllAppoinments = async (reqQuery: any) => {
-    const {
-        page = "1",
-        limit = "10",
-        search = "",
-        status
-    } = reqQuery;
+    const { page = "1", limit = "10", search = "", status } = reqQuery;
 
     const currentPage = Number(page);
     const perPage = Number(limit);
+    const offset = (currentPage - 1) * perPage;
 
-    const pipeline: any[] = [
-
-        // owner
-        {
-            $lookup: {
-                from: "users",
-                localField: "owner",
-                foreignField: "_id",
-                as: "owner"
-            }
-        },
-
-        // doctor
-        {
-            $lookup: {
-                from: "doctors",
-                localField: "doctor",
-                foreignField: "_id",
-                as: "doctor"
-            }
-        },
-
-        // pet
-        {
-            $lookup: {
-                from: "pets",
-                localField: "pet",
-                foreignField: "_id",
-                as: "pet"
-            }
-        },
-
-        {
-            $unwind: {
-                path: "$owner",
-                preserveNullAndEmptyArrays: true
-            }
-        },
-
-        {
-            $unwind: {
-                path: "$doctor",
-                preserveNullAndEmptyArrays: true
-            }
-        },
-
-        {
-            $unwind: {
-                path: "$pet",
-                preserveNullAndEmptyArrays: true
-            }
-        }
-    ];
-
-    if (search) {
-        pipeline.push({
-            $match: {
-                $or: [
-
-                    {
-                        reason: {
-                            $regex: search,
-                            $options: "i"
-                        }
-                    },
-
-                    {
-                        "owner.name": {
-                            $regex: search,
-                            $options: "i"
-                        }
-                    },
-
-                    // doctor name
-                    {
-                        "doctor.name": {
-                            $regex: search,
-                            $options: "i"
-                        }
-                    },
-
-                    // pet name
-                    {
-                        "pet.name": {
-                            $regex: search,
-                            $options: "i"
-                        }
-                    }
-                ]
-            }
-        });
+    const cacheKey = `appointments:${page}_${limit}_${status}_${search}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+        return cached;
     }
 
-    // STATUS FILTER
+    const filters: string[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (search && search !== "") {
+        filters.push(`(
+            a.reason ILIKE $${paramIndex} OR
+            u.name ILIKE $${paramIndex} OR
+            d.name ILIKE $${paramIndex} OR
+            p.name ILIKE $${paramIndex}
+        )`);
+        params.push(`%${search}%`);
+        paramIndex++;
+    }
+
     if (status) {
-        pipeline.push({
-            $match: {
-                status
-            }
-        });
+        filters.push(`a.status = $${paramIndex}`);
+        params.push(status);
+        paramIndex++;
     }
 
-    // SORT
-    pipeline.push({
-        $sort: {
-            updatedAt: -1
-        }
-    });
+    const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
 
-    pipeline.push({
-        $skip: (currentPage - 1) * perPage
-    });
+    const mainQuery = `
+    SELECT
+        a.id, a.date, a.time, a.reason, a.status, a.notes, a."rejectionReason",
+        a."createdAt", a."updatedAt",
+        jsonb_build_object('id', u.id, 'name', u.name, 'email', u.email, 'profilePic', u."profilePic") AS owner,
+        jsonb_build_object('id', d.id, 'name', d.name, 'email', d.email, 'profilePic', d."profilePic") AS doctor,
+        jsonb_build_object('id', p.id, 'name', p.name) AS pet,
+        COUNT(*) OVER() AS total_count
+    FROM appointments a
+    LEFT JOIN users u ON a.owner = u.id
+    LEFT JOIN doctors d ON a.doctor = d.id
+    LEFT JOIN pets p ON a.pet = p.id
+    ${whereClause}
+    ORDER BY a."updatedAt" DESC
+    LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+`;
 
-    pipeline.push({
-        $limit: perPage
-    });
+    params.push(perPage, offset);
 
-    const appointments = await Appointment.aggregate(pipeline);
+    const result = await pool.query(mainQuery, params);
 
-    const countPipeline = pipeline.filter(
-        (stage) =>
-            !("$skip" in stage) &&
-            !("$limit" in stage) &&
-            !("$sort" in stage)
-    );
+    const totalAppointments = Number(result.rows[0]?.total_count ?? 0);
 
-    countPipeline.push({
-        $count: "total"
-    });
-
-    const totalResult = await Appointment.aggregate(countPipeline);
-
-    const totalAppointments = totalResult[0]?.total || 0;
-
-
-    return {
+    const response = {
         totalAppointments,
-        results: appointments.length,
+        results: result.rowCount,
         page: currentPage,
         totalPages: Math.ceil(totalAppointments / perPage),
-        appointments,
+        appointments: result.rows,
         currentPage
-    }
+    };
+
+    setCache(cacheKey, response, 500);
+
+
+    return response;
 
 }
 
 export const getActiveAppointment = async (user: any) => {
 
-    const appointment = await Appointment.findOne({ owner: user.id, status: { $in: ["pending", "accepted"] } }).select("pet doctor date time status").populate({
-        path: "pet",
-        select: "name type gender"
-    }).populate({
-        path: "doctor",
-        select: "name profilePic specialization"
-    }).lean();
+    const cacheKey = `activeAppointment:${user.id}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+        return cached;
+    }
 
-    return appointment;
+    const appointment = await pool.query(
+        `SELECT a.id, a.date, a.time, a.reason, a.status, a.notes, a."appoinmentFee",
+        a."createdAt", a."updatedAt",
+        jsonb_build_object('id', d.id, 'name', d.name, 'email', d.email, 'profilePic', d."profilePic") AS doctor,
+        jsonb_build_object('id', p.id, 'name', p.name) AS pet
+        FROM appointments a
+        LEFT JOIN doctors d ON a.doctor = d.id
+        LEFT JOIN pets p ON a.pet = p.id
+        WHERE a.owner = $1
+        AND a.status IN ('pending', 'accepted')
+        ORDER BY a."updatedAt" DESC
+        LIMIT 1`,
+        [user.id]
+    );
+
+    const response = appointment.rowCount != 0 ? appointment.rows[0] : "empty";
+
+    setCache(cacheKey, response, 800);
+
+    return response;
 
 }
 
 export const getAppointmentsRequestsForDoctor = async (doctor: any, params: any) => {
 
-    const { page } = params;
+    const page = Number(params.page) || 1;
     const limit = 5;
+    const offset = (page - 1) * limit;
 
-    const skip = (page - 1) * limit;
+    const cacheKey = `appointmentsRequests:${doctor.id}_${page}_${limit}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+        return cached;
+    }
 
-    const appoinments = await Appointment.find({ doctor: doctor.id, status: "pending" })
-        .limit(limit)
-        .skip(skip)
-        .populate("pet", "name type gender profilePic").populate("owner", "name").lean()
-        .sort({ createdAt: -1 });
+    const result = await pool.query(
+        `SELECT 
+            a.id, a.date, a.time, a.reason, a.status, a.notes, a."createdAt",
+            jsonb_build_object('id', p.id, 'name', p.name, 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic") AS pet,
+            jsonb_build_object('id', u.id, 'name', u.name) AS owner,
+            COUNT(*) OVER() AS total_count
+        FROM appointments a
+        LEFT JOIN pets p ON a.pet = p.id
+        LEFT JOIN users u ON a.owner = u.id
+        WHERE a.doctor = $1 AND a.status = 'pending'
+        ORDER BY a."createdAt" DESC
+        LIMIT $2 OFFSET $3`,
+        [doctor.id, limit, offset]
+    );
 
-    return appoinments
+    const response = {
+        results: result.rowCount,
+        page,
+        totalPages: Math.ceil(Number(result.rows[0]?.total_count ?? 0) / limit),
+        appointments: result.rows,
+    };
+
+    setCache(cacheKey, response, 500);
+
+    return response;
+
+
 }
 
 
 export const getAppointmentDetailsForUser = async (appointmentId: any) => {
 
-    const appointment = await Appointment.findOne({ _id: appointmentId }).lean().populate({
-        path: "pet",
-        select: "name type gender profilePic"
-    }).populate({
-        path: "doctor",
-        select: "name profilePic specialization rating ratingsCount city address"
-    }).lean();
+    const cacheKey = `appointment_details_user:${appointmentId}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+        return cached;
+    }
 
-    if (!appointment) throw new ApiError(404, "appointment not found");
+    const appointment = await pool.query(
+        `SELECT a.id, a.date, a.time, a.reason, a.status, a.notes,
+        a."createdAt", a."updatedAt",a."appoinmentFee",
+        jsonb_build_object('id', d.id, 'name', d.name, 'email', d.email,'city', d.city, 'address', d.address, 'phone', d.phone, 'specialization', d.specialization, 'rating', d.rating, 'ratingsCount', d.ratingsCount, 'profilePic', d."profilePic") AS doctor,
+        jsonb_build_object('id', p.id, 'name', p.name , 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic") AS pet
+        FROM appointments a
+        JOIN doctors d ON d.id = a.doctor
+        JOIN pets p ON p.id = a.pet
+        WHERE a.id = $1`,
+        [appointmentId]
+    );
+
+    if (appointment.rows.length === 0) throw new ApiError(404, "appointment not found");
+
+
+
+    // const appointment = await Appointment.findOne({ _id: appointmentId }).lean().populate({
+    //     path: "pet",
+    //     select: "name type gender profilePic"
+    // }).populate({
+    //     path: "doctor",
+    //     select: "name profilePic specialization rating ratingsCount city address"
+    // }).lean();
+
 
     let chat = null;
 
-    if (appointment.status === "accepted") {
-        chat = await Chat.findOne({
-            "members.memberId": {
-                $all: [appointment.doctor._id, appointment.owner]
-            },
-            chatType: "personal"
-        }).lean().select("_id")
-    }
+    // if (appointment.status === "accepted") {
+    //     chat = await Chat.findOne({
+    //         "members.memberId": {
+    //             $all: [appointment.doctor._id, appointment.owner]
+    //         },
+    //         chatType: "personal"
+    //     }).lean().select("_id")
+    // }
+
+    const response = { appointment: appointment.rows[0], chat };
+
+    setCache(cacheKey, response, 500);
 
 
-    return { appointment, chat };
+    return response;
 
 }
 
 export const getAppointmentDetailsForDoctor = async (doctor: any, appointmentId: any) => {
 
-    const appointment = await Appointment.findOne({ _id: appointmentId, doctor: doctor.id })
-        .populate("pet", "name type profilePic birthdate gender weight")
-        .populate("owner", "name")
-        .select("-createdAt -updatedAt -rejectionReason -expiresAt")
-        .lean()
-
-    if (!appointment) throw new ApiError(404, "appointment not found");
-
-    let chat = null;
-
-    if (appointment.status === "accepted") {
-        chat = await Chat.findOne({
-            "members.memberId": {
-                $all: [appointment.doctor._id, appointment.owner]
-            },
-            chatType: "personal"
-        }).lean().select("_id")
+    const cacheKey = `appointment_details_doctor:${appointmentId}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+        return cached;
     }
 
 
-    return { appointment, chat };
+    const appointment = await pool.query(
+        `SELECT a.id, a.date, a.time, a.reason, a.status, a.notes,
+        a."createdAt", a."updatedAt",a."appoinmentFee",
+        jsonb_build_object('id', u.id, 'name', u.name, 'email', u.email, 'profilePic', u."profilePic") AS owner,
+        jsonb_build_object('id', p.id, 'name', p.name , 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic" , 'birthdate', p.birthdate, 'weight', p.weight) AS pet
+        FROM appointments a
+        JOIN users u ON u.id = a.owner
+        JOIN pets p ON p.id = a.pet
+        WHERE a.id = $1 AND a.doctor = $2`,
+        [appointmentId, doctor.id]
+    );
+
+
+    if (appointment.rows.length === 0) throw new ApiError(404, "appointment not found");
+
+    let chat = null;
+
+
+    // if (appointment.status === "accepted") {
+    //     chat = await Chat.findOne({
+    //         "members.memberId": {
+    //             $all: [appointment.doctor._id, appointment.owner]
+    //         },
+    //         chatType: "personal"
+    //     }).lean().select("_id")
+    // }
+
+    const response = { appointment: appointment.rows[0], chat };
+
+    setCache(cacheKey, response, 500);
+
+    return response;
 
 }
 
@@ -366,234 +394,411 @@ export const getAppointmentDetailsForDoctor = async (doctor: any, appointmentId:
 export const approveAppointment = async (doctor: any, appointmentId: any) => {
     const io = getIO();
 
-    const appointment = await Appointment.findOneAndUpdate(
-        {
-            _id: appointmentId,
-            doctor: doctor.id,
-            status: "pending"
-        },
-        {
-            status: "accepted"
-        },
-        {
-            new: true
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const appointment = await client.query(
+            `UPDATE appointments SET status = 'accepted' WHERE id = $1 AND doctor = $2 AND status = 'pending' RETURNING *`,
+            [appointmentId, doctor.id]
+        );
+
+        if (appointment.rowCount === 0) throw new Error("Appointment not found");
+
+        const findAnotherAppointmentForThisDoc = await client.query(`
+            SELECT id FROM appointments
+            WHERE doctor = $1 AND time = $2 AND date = $3 AND status = 'accepted' AND id != $4 LIMIT 1`,
+            [doctor.id, appointment.rows[0].time, appointment.rows[0].date, appointmentId]);
+
+        if (findAnotherAppointmentForThisDoc.rowCount! > 0) {
+            throw new ApiError(
+                400,
+                "sorry this time is not available for this doctor, please ask the patient to select another time slot"
+            );
         }
-    ).lean();
 
-    if (!appointment) {
-        throw new ApiError(404, "appointment not found");
-    }
+        let [userProfile, chat] = await Promise.all([
+            client.query(
+                `SELECT id, email, name FROM users WHERE id = $1`,
+                [appointment.rows[0].owner]
+            ),
+            client.query(
+                `SELECT c.id FROM chats c
+                 JOIN chat_members cm1 ON c.id = cm1."chatId" AND cm1.member_id = $1
+                 JOIN chat_members cm2 ON c.id = cm2."chatId" AND cm2.member_id = $2
+                 WHERE c.chat_type = 'personal'
+                 LIMIT 1`,
+                [appointment.rows[0].owner, doctor.id]
+            )
+        ]);
 
-    const findAnotherAppointmentForThisDoc = await Appointment.findOne({
-        doctor: doctor.id,
-        time: appointment.time,
-        date: appointment.date,
-        status: "accepted",
-        _id: { $ne: appointment._id }
-    })
-        .lean()
-        .select("_id");
+        if (!userProfile.rows.length) throw new ApiError(404, "user not found");
 
-    if (findAnotherAppointmentForThisDoc) {
+        if (chat.rowCount === 0) {
 
-        await Appointment.updateOne(
-            { _id: appointment._id },
-            { status: "pending" }
+            chat = await client.query(
+                `INSERT INTO chats (chat_type) VALUES ('personal') RETURNING id`
+            );
+            await client.query(
+                `INSERT INTO chat_members ("chatId", member_id, member_model) VALUES ($1, $2, 'User'), ($1, $3, 'Doctor')`,
+                [chat.rows[0].id, appointment.rows[0].owner, doctor.id]
+            );
+        } else {
+            await client.query(`UPDATE chats SET status = 'active' WHERE id = $1`, [chat.rows[0].id]);
+        }
+
+        const message = await client.query(
+            `INSERT INTO messages ("chatId", sender, sender_model, chat_type, text)
+            VALUES ($1, $2, $3, 'personal', $4)
+            RETURNING id,text`,
+            [chat.rows[0].id, doctor.id, "Doctor", "Hello " + userProfile.rows[0].name + ", I'm available for you now. if you have any questions, please send a message to me."]
         );
 
-        throw new ApiError(
-            400,
-            "sorry this time is not available for this doctor, please ask the patient to select another time slot"
+        await client.query(
+            `INSERT INTO unread_messages ("chatId", user_id, "lastMessage", "unreadCount")
+            VALUES ($1, $2, $3, 1)
+            ON CONFLICT ("chatId", user_id) DO UPDATE SET
+                "unreadCount" = unread_messages."unreadCount" + 1,
+                "lastMessage" = $3
+            RETURNING "unreadCount"`,
+            [chat.rows[0].id, appointment.rows[0].owner, message.rows[0].text]
         );
-    }
+
+        await client.query(`UPDATE chats SET "lastMessage" = $1 WHERE id = $2`, [message.rows[0].id, chat.rows[0].id]);
 
 
+        await client.query("COMMIT");
 
-    const [userProfile, chat] = await Promise.all([
-
-        User.findById(appointment.owner)
-            .lean()
-            .select("email name"),
-
-        Chat.findOneAndUpdate(
-            {
-                chatType: "personal",
-                $and: [
-                    {
-                        members: {
-                            $elemMatch: {
-                                memberId: doctor.id,
-                                memberModel: "Doctor"
-                            }
-                        }
-                    },
-                    {
-                        members: {
-                            $elemMatch: {
-                                memberId: appointment.owner,
-                                memberModel: "User"
-                            }
-                        }
-                    }
-                ]
-            },
-            {
-                $setOnInsert: {
-                    members: [
-                        {
-                            memberId: doctor.id,
-                            memberModel: "Doctor"
-                        },
-                        {
-                            memberId: appointment.owner,
-                            memberModel: "User"
-                        }
-                    ],
-                    chatType: "personal",
-                },
-
-                $set: {
-                    status: "active"
-                }
-            },
-            {
-                upsert: true,
-                new: true
-            }
-        )
-
-    ]);
-
-    const message = await Message.create({
-        chatId: chat._id,
-        sender: doctor.id,
-        senderModel: "Doctor",
-        text: `Your appointment on ${appointment.date} at ${appointment.time} has been accepted by the doctor.`
-    });
-
-    await Promise.all([
-
-        UnreadMessage.updateOne(
-            {
-                chatId: chat._id,
-                userId: appointment.owner,
-            },
-            {
-                $inc: {
-                    unreadCount: 1
-                },
-
-                $set: {
-                    lastMessage: message.text
-                }
-            },
-            {
-                upsert: true
-            }
-        ),
-
-        Chat.updateOne(
-            {
-                _id: chat._id
-            },
-            {
-                lastMessage: message._id
-            }
-        )
+        clearCache(`chats:${appointment.rows[0].owner}`);
+        clearCache(`chat_messages_${appointment.rows[0].owner}_${chat.rows[0].id}`);
+        clearCache(`all_chats:`);
+        clearCache(`chats:${doctor.id}`);
+        clearCache(`chat_messages_${doctor.id}_${chat.rows[0].id}`);
+        clearCache(`activeAppointment:${appointment.rows[0].owner}`);
+        clearCache(`appointmentsRequests:${doctor.id}`);
+        clearCache(`appointment_details_user:${appointment.rows[0].id}`);
+        clearCache(`appointment_details_doctor:${appointment.rows[0].id}`);
+        clearCache(`doctor_schedual:${doctor.id}`);
+        clearCache(`doctor_slots_${appointment.rows[0].date}:${doctor.id}`);
+        clearCache(`appointments:`);
 
 
-    ])
-
-
-    if (userProfile) {
         setImmediate(async () => {
 
             let isOnline = false;
 
             try {
-                const sockets = await io.in(`user:${userProfile._id.toString()}`).fetchSockets();
+                const sockets = await io.in(`user:${userProfile.rows[0].id.toString()} `).fetchSockets();
                 isOnline = sockets.length > 0;
             } catch (err) {
                 isOnline = false;
             }
 
             if (isOnline) {
-                io.to(`user:${userProfile._id.toString()}`).emit("notification", {
+                io.to(`user:${userProfile.rows[0].id.toString()} `).emit("notification", {
                     type: "APPOINTMENT_REJECTED",
                     title: "Appointment Rejected ❗",
                     body: `Doctor ${doctor.name} has accepted your appoinment`,
                     data: {
-                        appointmentId: appointment._id,
-                        date: appointment.date,
+                        appointmentId: appointment.rows[0].id,
+                        date: appointment.rows[0].date,
                     }
                 })
             }
 
-            await Notification.create({
-                userId: userProfile._id,
-                title: "Appointment accepted",
-                body: `Doctor ${doctor.name} has accepted your appoinment`,
-                type: "APPOINTMENT",
-                data: {
-                    appointmentId: appointment._id,
-                    date: appointment.date,
-                }
-            })
-
+            // await Notification.create({
+            //     userId: userProfile._id,
+            //     title: "Appointment accepted",
+            //     body: `Doctor ${doctor.name} has accepted your appoinment`,
+            //     type: "APPOINTMENT",
+            //     data: {
+            //         appointmentId: appointment._id,
+            //         date: appointment.date,
+            //     }
+            // })
 
             sendEmail({
-                email: userProfile.email,
+                email: userProfile.rows[0].email,
                 subject: "Appointment accepted ✅",
-                text: `Hello ${userProfile.name}, your appointment is accepted on ${appointment.date} at ${appointment.time}.`,
+                text: `Hello ${userProfile.rows[0].name}, your appointment is accepted on ${appointment.rows[0].date} at ${appointment.rows[0].time}.`,
                 message: `
-    <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
-        <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-
-            <h1 style="color: #267D77; text-align: center; margin-bottom: 10px;">Aleef</h1>
-
-            <h2 style="text-align: center; color: #333;">
-                Your Appointment is accepted! ✅
-            </h2>
-
-            <p style="color: #555; font-size: 16px;">
-                Hello <strong>${userProfile.name}</strong>, your appointment has been accepted by the doctor.
-            </p>
-
-            <hr style="margin: 20px 0;" />
-
-            <h3 style="color: #267D77;">Appointment Details</h3>
-
-            <p><strong>Date:</strong> ${appointment.date}</p>
-            <p><strong>Time:</strong> ${appointment.time}</p>
-            <p><strong>Reason:</strong> ${appointment.reason}</p>
-
-            <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #777; font-size: 14px;">
-                    Please arrive on time for your appointment 🐶🐱
+                    < div style = "font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;" >
+                        <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" >
+            
+                            <h1 style="color: #267D77; text-align: center; margin-bottom: 10px;" > Aleef </h1>
+            
+                                < h2 style = "text-align: center; color: #333;" >
+                                    Your Appointment is accepted! ✅
+                </h2>
+            
+                    < p style = "color: #555; font-size: 16px;" >
+                        Hello < strong > ${userProfile.rows[0].name} </strong>, your appointment has been accepted by the doctor.
+                            </p>
+            
+                            < hr style = "margin: 20px 0;" />
+            
+                                <h3 style="color: #267D77;" > Appointment Details </h3>
+            
+                                    < p > <strong>Date: </strong> ${appointment.rows[0].date}</p >
+                                        <p><strong>Time: </strong> ${appointment.rows[0].time}</p >
+                                            <p><strong>Reason: </strong> ${appointment.rows[0].reason}</p >
+            
+                                                <div style="text-align: center; margin-top: 30px;" >
+                                                    <p style="color: #777; font-size: 14px;" >
+                                                        Please arrive on time for your appointment 🐶🐱
                 </p>
-            </div>
-
-            <div style="margin-top: 30px; font-size: 12px; color: #999; text-align: center;">
-                <p>Your chat with the doctor is now open.</p>
-                <p>If you have any questions, please contact support.</p>
-                <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
-            </div>
-
-        </div>
-    </div>
-    `
+                    </div>
+            
+                    < div style = "margin-top: 30px; font-size: 12px; color: #999; text-align: center;" >
+                        <p>Your chat with the doctor is now open.</p>
+                            < p > If you have any questions, please contact support.</p>
+                                <p> & copy; ${new Date().getFullYear()} Aleef.All rights reserved.</p>
+                                    </div>
+            
+                                    </div>
+                                    </div>
+                                        `
             }).catch(err => {
                 console.error("Email failed:", err);
             });
-        });
+        })
 
 
-        return appointment;
-
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
     }
 
+    // const appointment = await Appointment.findOneAndUpdate(
+    //     {
+    //         _id: appointmentId,
+    //         doctor: doctor.id,
+    //         status: "pending"
+    //     },
+    //     {
+    //         status: "accepted"
+    //     },
+    //     {
+    //         new: true
+    //     }
+    // ).lean();
 
-    return appointment;
+    // if (!appointment) {
+    //     throw new ApiError(404, "appointment not found");
+    // }
+
+    // const findAnotherAppointmentForThisDoc = await Appointment.findOne({
+    //     doctor: doctor.id,
+    //     time: appointment.time,
+    //     date: appointment.date,
+    //     status: "accepted",
+    //     _id: { $ne: appointment._id }
+    // })
+    //     .lean()
+    //     .select("_id");
+
+    // if (findAnotherAppointmentForThisDoc) {
+
+    //     await Appointment.updateOne(
+    //         { _id: appointment._id },
+    //         { status: "pending" }
+    //     );
+
+    //     throw new ApiError(
+    //         400,
+    //         "sorry this time is not available for this doctor, please ask the patient to select another time slot"
+    //     );
+    // }
+
+
+
+    // const [userProfile, chat] = await Promise.all([
+
+    //     User.findById(appointment.owner)
+    //         .lean()
+    //         .select("email name"),
+
+    //     Chat.findOneAndUpdate(
+    //         {
+    //             chatType: "personal",
+    //             $and: [
+    //                 {
+    //                     members: {
+    //                         $elemMatch: {
+    //                             memberId: doctor.id,
+    //                             memberModel: "Doctor"
+    //                         }
+    //                     }
+    //                 },
+    //                 {
+    //                     members: {
+    //                         $elemMatch: {
+    //                             memberId: appointment.owner,
+    //                             memberModel: "User"
+    //                         }
+    //                     }
+    //                 }
+    //             ]
+    //         },
+    //         {
+    //             $setOnInsert: {
+    //                 members: [
+    //                     {
+    //                         memberId: doctor.id,
+    //                         memberModel: "Doctor"
+    //                     },
+    //                     {
+    //                         memberId: appointment.owner,
+    //                         memberModel: "User"
+    //                     }
+    //                 ],
+    //                 chatType: "personal",
+    //             },
+
+    //             $set: {
+    //                 status: "active"
+    //             }
+    //         },
+    //         {
+    //             upsert: true,
+    //             new: true
+    //         }
+    //     )
+
+    // ]);
+
+    // const message = await Message.create({
+    //     chatId: chat._id,
+    //     sender: doctor.id,
+    //     senderModel: "Doctor",
+    //     text: `Your appointment on ${appointment.date} at ${appointment.time} has been accepted by the doctor.`
+    // });
+
+    // await Promise.all([
+
+    //     UnreadMessage.updateOne(
+    //         {
+    //             chatId: chat._id,
+    //             userId: appointment.owner,
+    //         },
+    //         {
+    //             $inc: {
+    //                 unreadCount: 1
+    //             },
+
+    //             $set: {
+    //                 lastMessage: message.text
+    //             }
+    //         },
+    //         {
+    //             upsert: true
+    //         }
+    //     ),
+
+    //     Chat.updateOne(
+    //         {
+    //             _id: chat._id
+    //         },
+    //         {
+    //             lastMessage: message._id
+    //         }
+    //     )
+
+
+    // ])
+
+
+    // if (userProfile) {
+    //     setImmediate(async () => {
+
+    //         let isOnline = false;
+
+    //         try {
+    //             const sockets = await io.in(`user:${userProfile._id.toString()} `).fetchSockets();
+    //             isOnline = sockets.length > 0;
+    //         } catch (err) {
+    //             isOnline = false;
+    //         }
+
+    //         if (isOnline) {
+    //             io.to(`user:${userProfile._id.toString()} `).emit("notification", {
+    //                 type: "APPOINTMENT_REJECTED",
+    //                 title: "Appointment Rejected ❗",
+    //                 body: `Doctor ${doctor.name} has accepted your appoinment`,
+    //                 data: {
+    //                     appointmentId: appointment._id,
+    //                     date: appointment.date,
+    //                 }
+    //             })
+    //         }
+
+    //         await Notification.create({
+    //             userId: userProfile._id,
+    //             title: "Appointment accepted",
+    //             body: `Doctor ${doctor.name} has accepted your appoinment`,
+    //             type: "APPOINTMENT",
+    //             data: {
+    //                 appointmentId: appointment._id,
+    //                 date: appointment.date,
+    //             }
+    //         })
+
+
+    //         sendEmail({
+    //             email: userProfile.email,
+    //             subject: "Appointment accepted ✅",
+    //             text: `Hello ${userProfile.name}, your appointment is accepted on ${appointment.date} at ${appointment.time}.`,
+    //             message: `
+    //     < div style = "font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;" >
+    //         <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" >
+
+    //             <h1 style="color: #267D77; text-align: center; margin-bottom: 10px;" > Aleef </h1>
+
+    //                 < h2 style = "text-align: center; color: #333;" >
+    //                     Your Appointment is accepted! ✅
+    // </h2>
+
+    //     < p style = "color: #555; font-size: 16px;" >
+    //         Hello < strong > ${userProfile.name} </strong>, your appointment has been accepted by the doctor.
+    //             </p>
+
+    //             < hr style = "margin: 20px 0;" />
+
+    //                 <h3 style="color: #267D77;" > Appointment Details </h3>
+
+    //                     < p > <strong>Date: </strong> ${appointment.date}</p >
+    //                         <p><strong>Time: </strong> ${appointment.time}</p >
+    //                             <p><strong>Reason: </strong> ${appointment.reason}</p >
+
+    //                                 <div style="text-align: center; margin-top: 30px;" >
+    //                                     <p style="color: #777; font-size: 14px;" >
+    //                                         Please arrive on time for your appointment 🐶🐱
+    // </p>
+    //     </div>
+
+    //     < div style = "margin-top: 30px; font-size: 12px; color: #999; text-align: center;" >
+    //         <p>Your chat with the doctor is now open.</p>
+    //             < p > If you have any questions, please contact support.</p>
+    //                 <p> & copy; ${new Date().getFullYear()} Aleef.All rights reserved.</p>
+    //                     </div>
+
+    //                     </div>
+    //                     </div>
+    //                         `
+    //         }).catch(err => {
+    //             console.error("Email failed:", err);
+    //         });
+    //     });
+
+
+    //     return appointment;
+
+    // }
+
+
+    // return appointment;
 }
 
 export const rejectAppointment = async (doctor: any, appointmentId: any, rejectionReason: string) => {
@@ -616,14 +821,14 @@ export const rejectAppointment = async (doctor: any, appointmentId: any, rejecti
             let isOnline = false;
 
             try {
-                const sockets = await io.in(`user:${userProfile._id.toString()}`).fetchSockets();
+                const sockets = await io.in(`user:${userProfile._id.toString()} `).fetchSockets();
                 isOnline = sockets.length > 0;
             } catch (err) {
                 isOnline = false;
             }
 
             if (isOnline) {
-                io.to(`user:${userProfile._id.toString()}`).emit("notification", {
+                io.to(`user:${userProfile._id.toString()} `).emit("notification", {
                     type: "APPOINTMENT_REJECTED",
                     title: "Appointment Rejected ❗",
                     body: rejectionReason,
@@ -648,34 +853,34 @@ export const rejectAppointment = async (doctor: any, appointmentId: any, rejecti
             sendEmail({
                 email: userProfile.email,
                 subject: "Appointment Update ❗",
-                text: `Hello ${userProfile.name}, your appointment request on ${appointment.date} at ${appointment.time} could not be accepted. Reason: ${appointment.rejectionReason || "Doctor is not available at this time"}.`,
+                text: `Hello ${userProfile.name}, your appointment request on ${appointment.date} at ${appointment.time} could not be accepted.Reason: ${appointment.rejectionReason || "Doctor is not available at this time"}.`,
                 message: `
-        <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
-            <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-    
-                <h1 style="color: #267D77; text-align: center; margin-bottom: 10px;">Aleef</h1>
-    
-                <h2 style="text-align: center; color: #333;">
-                    Appointment Not accepted ❗
-                </h2>
-    
-                <p style="color: #555; font-size: 16px;">
-                    Hello <strong>${userProfile.name}</strong>,
+        < div style = "font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;" >
+            <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" >
+
+                <h1 style="color: #267D77; text-align: center; margin-bottom: 10px;" > Aleef </h1>
+
+                    < h2 style = "text-align: center; color: #333;" >
+                        Appointment Not accepted ❗
+    </h2>
+
+        < p style = "color: #555; font-size: 16px;" >
+            Hello < strong > ${userProfile.name} </strong>,
                 </p>
-    
-                <p style="color: #555; font-size: 16px;">
+
+                < p style = "color: #555; font-size: 16px;" >
                     We’re sorry, but your appointment request could not be accepted by the doctor.
                 </p>
-    
-                <hr style="margin: 20px 0;" />
-    
-                <h3 style="color: #267D77;">Request Details</h3>
-    
-                <p><strong>Date:</strong> ${appointment.date}</p>
-                <p><strong>Time:</strong> ${appointment.time}</p>
-                <p><strong>Reason:</strong> ${appointment.reason}</p>
-    
-                ${appointment.rejectionReason
+
+                        < hr style = "margin: 20px 0;" />
+
+                            <h3 style="color: #267D77;" > Request Details </h3>
+
+                                < p > <strong>Date: </strong> ${appointment.date}</p >
+                                    <p><strong>Time: </strong> ${appointment.time}</p >
+                                        <p><strong>Reason: </strong> ${appointment.reason}</p >
+
+                                            ${appointment.rejectionReason
                         ? `
                         <div style="margin-top:15px; padding:12px; background:#fff4f4; border-left:4px solid #ff4d4f; border-radius:6px;">
                             <p style="margin:0; color:#a8071a; font-size:14px;">
@@ -685,34 +890,34 @@ export const rejectAppointment = async (doctor: any, appointmentId: any, rejecti
                         `
                         : ""
                     }
-    
-                <div style="text-align: center; margin-top: 30px;">
-                    <p style="color: #777; font-size: 14px;">
-                        Please try selecting another available time slot 🗓️
-                    </p>
-                </div>
-    
-                <div style="text-align: center; margin-top: 20px;">
-                    <a href="YOUR_BOOKING_PAGE_LINK" style="
-                        display:inline-block;
-                        padding:10px 20px;
-                        background:#267D77;
-                        color:#fff;
-                        text-decoration:none;
-                        border-radius:6px;
-                    ">
-                        Book Another Appointment
-                    </a>
-                </div>
-    
-                <div style="margin-top: 30px; font-size: 12px; color: #999; text-align: center;">
-                    <p>If you have any questions, feel free to contact support.</p>
-                    <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
-                </div>
-    
-            </div>
+
+    <div style="text-align: center; margin-top: 30px;" >
+        <p style="color: #777; font-size: 14px;" >
+            Please try selecting another available time slot 🗓️
+    </p>
         </div>
-        `
+
+        < div style = "text-align: center; margin-top: 20px;" >
+            <a href="YOUR_BOOKING_PAGE_LINK" style = "
+    display: inline - block;
+    padding: 10px 20px;
+    background:#267D77;
+    color: #fff;
+    text - decoration: none;
+    border - radius: 6px;
+    ">
+                        Book Another Appointment
+        </a>
+        </div>
+
+        < div style = "margin-top: 30px; font-size: 12px; color: #999; text-align: center;" >
+            <p>If you have any questions, feel free to contact support.</p>
+                <p> & copy; ${new Date().getFullYear()} Aleef.All rights reserved.</p>
+                    </div>
+
+                    </div>
+                    </div>
+                        `
             }).catch(err => {
                 console.error("Email failed:", err);
             });
@@ -722,18 +927,26 @@ export const rejectAppointment = async (doctor: any, appointmentId: any, rejecti
 }
 
 
-export const getPrevAppoinments = async (user: any) => {
+export const getPrevAppointments = async (user: any) => {
+    const cacheKey = `prevAppointments:${user.id}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
 
-    const appointments = await Appointment.find({ owner: user.id, status: { $in: ["cancelled", "completed"] } }).select("pet doctor reason date time status").populate({
-        path: "doctor",
-        select: "name profilePic specialization"
-    }).populate({
-        path: "pet",
-        select: "name"
-    }).lean();
+    const result = await pool.query(
+        `SELECT a.id, a.date, a.time, a.reason, a.status,
+            jsonb_build_object('id', d.id, 'name', d.name, 'profilePic', d."profilePic", 'specialization', d.specialization) AS doctor,
+            jsonb_build_object('id', p.id, 'name', p.name) AS pet
+        FROM appointments a
+        LEFT JOIN doctors d ON a.doctor = d.id
+        LEFT JOIN pets p ON a.pet = p.id
+        WHERE a.owner = $1 AND a.status IN ('cancelled', 'completed')
+        ORDER BY a."updatedAt" DESC`,
+        [user.id]
+    );
 
-    return appointments;
-}
+    setCache(cacheKey, result.rows, 300);
+    return result.rows;
+};
 
 
 export const endAppointment = async (
@@ -837,7 +1050,7 @@ export const endAppointment = async (
 
             subject: "Appointment Completed Successfully 🐾",
 
-            text: `Hello ${(appointment.owner as any).name}, your appointment for ${(appointment.pet as any).name} has been completed successfully. We'd love to hear your feedback and rating about your experience with the doctor.`,
+            text: `Hello ${(appointment.owner as any).name}, your appointment for ${(appointment.pet as any).name} has been completed successfully.We'd love to hear your feedback and rating about your experience with the doctor.`,
 
             message: `
             <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
@@ -956,121 +1169,117 @@ export const endAppointment = async (
 }
 
 
-export const changeAppoinmentStatus = async (appointmentId: any, status: any) => {
+export const changeAppointmentStatus = async (appointmentId: any, status: any) => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
 
-    const appointment = await Appointment.findByIdAndUpdate(appointmentId, { status }, { new: true });
+        const appointment = await client.query(
+            `UPDATE appointments SET status = $1, "updatedAt" = NOW() 
+             WHERE id = $2 RETURNING *`,
+            [status, appointmentId]
+        );
 
-    if (!appointment) {
-        throw new ApiError(404, "Appointment not found");
+        if (appointment.rowCount === 0) throw new ApiError(404, "Appointment not found");
+
+        if (status === "accepted") {
+            let chatResult = await client.query(
+                `SELECT c.id FROM chats c
+                 JOIN chat_members cm1 ON c.id = cm1."chatId" AND cm1.member_id = $1
+                 JOIN chat_members cm2 ON c.id = cm2."chatId" AND cm2.member_id = $2
+                 WHERE c.chat_type = 'personal' LIMIT 1`,
+                [appointment.rows[0].owner, appointment.rows[0].doctor]
+            );
+
+            let chatId: string;
+
+            if (!chatResult.rows.length) {
+                const newChat = await client.query(
+                    `INSERT INTO chats (chat_type) VALUES ('personal') RETURNING id`
+                );
+                chatId = newChat.rows[0].id;
+                await client.query(
+                    `INSERT INTO chat_members ("chatId", member_id, member_model) 
+                     VALUES ($1, $2, 'User'), ($1, $3, 'Doctor')`,
+                    [chatId, appointment.rows[0].owner, appointment.rows[0].doctor]
+                );
+            } else {
+                chatId = chatResult.rows[0].id;
+                await client.query(
+                    `UPDATE chats SET status = 'active' WHERE id = $1`,
+                    [chatId]
+                );
+            }
+
+            const message = await client.query(
+                `INSERT INTO messages ("chatId", sender, sender_model, chat_type, text)
+                 VALUES ($1, $2, 'Doctor', 'personal', $3)
+                 RETURNING id, text`,
+                [chatId, appointment.rows[0].doctor,
+                    `Your appointment on ${appointment.rows[0].date} at ${appointment.rows[0].time} has been accepted by the doctor.`]
+            );
+
+            await client.query(
+                `INSERT INTO unread_messages ("chatId", user_id, "lastMessage", "unreadCount")
+                 VALUES ($1, $2, $3, 1)
+                 ON CONFLICT ("chatId", user_id) DO UPDATE SET
+                    "unreadCount" = unread_messages."unreadCount" + 1,
+                    "lastMessage" = $3`,
+                [chatId, appointment.rows[0].owner, message.rows[0].text]
+            );
+
+            await client.query(
+                `UPDATE chats SET "lastMessage" = $1, "updatedAt" = NOW() WHERE id = $2`,
+                [message.rows[0].id, chatId]
+            );
+
+            clearCache(`chats:${appointment.rows[0].owner}`);
+            clearCache(`chats:${appointment.rows[0].doctor}`);
+            clearCache(`chat_messages_${appointment.rows[0].owner}_${chatId}`);
+            clearCache(`all_chats:`);
+        }
+
+        await client.query("COMMIT");
+
+        clearCache(`activeAppointment:${appointment.rows[0].owner}`);
+        clearCache(`appointmentsRequests:${appointment.rows[0].doctor}`);
+        clearCache(`appointment_details_user:${appointmentId}`);
+        clearCache(`appointment_details_doctor:${appointmentId}`);
+        clearCache(`appointments:`);
+        clearCache(`prevAppointments:${appointment.rows[0].owner}`);
+
+        return;
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
     }
-
-    if (status === "accepted") {
-        const [chat] = await Promise.all([
-
-            Chat.findOneAndUpdate(
-                {
-                    chatType: "personal",
-                    $and: [
-                        {
-                            members: {
-                                $elemMatch: {
-                                    memberId: appointment.doctor,
-                                    memberModel: "Doctor"
-                                }
-                            }
-                        },
-                        {
-                            members: {
-                                $elemMatch: {
-                                    memberId: appointment.owner,
-                                    memberModel: "User"
-                                }
-                            }
-                        }
-                    ]
-                },
-                {
-                    $setOnInsert: {
-                        members: [
-                            {
-                                memberId: appointment.doctor,
-                                memberModel: "Doctor"
-                            },
-                            {
-                                memberId: appointment.owner,
-                                memberModel: "User"
-                            }
-                        ],
-                        chatType: "personal",
-                    },
-
-                    $set: {
-                        status: "active"
-                    }
-                },
-                {
-                    upsert: true,
-                    new: true
-                }
-            )
-
-        ]);
-
-        const message = await Message.create({
-            chatId: chat._id,
-            sender: appointment.doctor,
-            senderModel: "Doctor",
-            text: `Your appointment on ${appointment.date} at ${appointment.time} has been accepted by the doctor.`
-        });
-
-        await Promise.all([
-
-            UnreadMessage.updateOne(
-                {
-                    chatId: chat._id,
-                    userId: appointment.owner,
-                },
-                {
-                    $inc: {
-                        unreadCount: 1
-                    },
-
-                    $set: {
-                        lastMessage: message.text
-                    }
-                },
-                {
-                    upsert: true
-                }
-            ),
-
-            Chat.updateOne(
-                {
-                    _id: chat._id
-                },
-                {
-                    lastMessage: message._id
-                }
-            )
+};
 
 
-        ])
-    }
 
-    return;
-}
+export const getAppointmentDetailsForAdmin = async (appointmentId: any) => {
+    const cacheKey = `appointment_details_admin:${appointmentId}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
 
-export const getAppoinmentDetailsForAdmin = async (appointmentId: any) => {
+    const result = await pool.query(
+        `SELECT a.id, a.date, a.time, a.reason, a.status, a.notes, a."rejectionReason",
+            a."createdAt", a."updatedAt", a."appoinmentFee",
+            jsonb_build_object('id', u.id, 'name', u.name, 'email', u.email, 'profilePic', u."profilePic") AS owner,
+            jsonb_build_object('id', d.id, 'name', d.name, 'specialization', d.specialization, 'profilePic', d."profilePic") AS doctor,
+            jsonb_build_object('id', p.id, 'name', p.name, 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic") AS pet
+        FROM appointments a
+        JOIN users u ON u.id = a.owner
+        JOIN doctors d ON d.id = a.doctor
+        JOIN pets p ON p.id = a.pet
+        WHERE a.id = $1`,
+        [appointmentId]
+    );
 
-    const appointment = await Appointment.findById(appointmentId)
-        .populate("owner", "name email profilePic")
-        .populate("doctor", "name specialization profilePic")
-        .populate("pet", "name type gender profilePic")
-        .lean();
+    if (!result.rows.length) throw new ApiError(404, "Appointment not found");
 
-    if (!appointment) {
-        throw new ApiError(404, "Appointment not found");
-    }
-
-    return appointment;
-}
+    setCache(cacheKey, result.rows[0], 300);
+    return result.rows[0];
+};

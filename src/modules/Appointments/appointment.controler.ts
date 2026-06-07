@@ -40,8 +40,8 @@ export const getActiveAppointment = catchAsync(async (req, res, next) => {
 
     return res.status(200).json({
         status: "success",
-        appointment,
-    })
+        appointment: appointment === "empty" ? null : appointment
+    });
 
 })
 
@@ -116,7 +116,7 @@ export const getPrevAppoinments = catchAsync(async (req, res, next) => {
 
     const user = req.user;
 
-    const appointments = await appointmentServices.getPrevAppoinments(user);
+    const appointments = await appointmentServices.getPrevAppointments(user);
 
     return res.status(200).json({
         status: "success",
@@ -145,7 +145,7 @@ export const changeAppoinmentStatus = catchAsync(async (req, res, next) => {
 
     const { appointmentId } = req.params;
     const { status } = req.body;
-    await appointmentServices.changeAppoinmentStatus(appointmentId, status);
+    await appointmentServices.changeAppointmentStatus(appointmentId, status);
 
     return res.status(200).json({
         status: "success",
@@ -155,7 +155,7 @@ export const changeAppoinmentStatus = catchAsync(async (req, res, next) => {
 export const getAppoinmentDetailsForAdmin = catchAsync(async (req, res, next) => {
     const { appointmentId } = req.params;
 
-    const appointment = await appointmentServices.getAppoinmentDetailsForAdmin(appointmentId);
+    const appointment = await appointmentServices.getAppointmentDetailsForAdmin(appointmentId);
     return res.status(200).json({
         status: "success",
         appointment,

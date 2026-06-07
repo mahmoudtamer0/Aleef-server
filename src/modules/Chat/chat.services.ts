@@ -1,324 +1,272 @@
-import Chat from "./chat.schema";
-import Message from "./message.shema";
-import UnreadMessage from "./unreadMessages";
 import { BOT_ID } from "../../constants/bot";
-import mongoose from "mongoose";
+import pool from "../../db";
+import { getCache, setCache } from "../../cache";
+import ApiError from "../../utils/ApiError";
 
 export const getChats = async (user: any) => {
 
-    const chats = await Chat.find({
-        "members.memberId": user.id,
-        chatType: { $ne: "chatbot" }
-    })
-        .populate({
-            path: "lastMessage"
-        })
-        .populate({
-            path: "members.memberId",
-            select: "name profilePic"
-        })
-        .sort({ updatedAt: -1 })
-        .lean();
+    const cacheKey = `chats:${user.id}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+        return cached;
+    }
 
-    const unread = await UnreadMessage.find({
-        userId: user.id
-    }).lean();
-
-
-    const unreadMap = new Map(
-        unread.map(u => [u?.chatId?.toString(), u])
+    const result = await pool.query(
+        `SELECT
+            c.id,
+            c."updatedAt",
+            jsonb_build_object(
+                'id', msg.id,
+                'chatId', msg."chatId",
+                'sender', msg.sender,
+                'senderModel', msg.sender_model,
+                'chatType', msg.chat_type,
+                'isDeleted', msg."isDeleted",
+                'text', msg.text,
+                'createdAt', msg."createdAt"
+            ) AS "lastMessage",
+            CASE
+                WHEN cm.member_model = 'User' THEN
+                    jsonb_build_object('_id', u.id, 'name', u.name, 'profilePic', u."profilePic")
+                WHEN cm.member_model = 'Doctor' THEN
+                    jsonb_build_object('_id', d.id, 'name', d.name, 'profilePic', d."profilePic")
+            END AS person,
+            COALESCE(um."unreadCount", 0) AS "unreadCount"
+        FROM chats c
+        JOIN chat_members my_cm ON c.id = my_cm."chatId" AND my_cm.member_id = $1
+        JOIN chat_members cm ON c.id = cm."chatId" AND cm.member_id != $1
+        LEFT JOIN users u ON cm.member_model = 'User' AND cm.member_id = u.id
+        LEFT JOIN doctors d ON cm.member_model = 'Doctor' AND cm.member_id = d.id
+        LEFT JOIN messages msg ON c."lastMessage" = msg.id
+        LEFT JOIN unread_messages um ON um."chatId" = c.id AND um.user_id = $1
+        WHERE c.chat_type = 'personal'
+        ORDER BY c."updatedAt" DESC`,
+        [user.id]
     );
 
-    const formattedChats = chats.map(chat => {
+    const response = result.rows
 
-        const otherMember = chat.members.find(
-            (m: any) => m.memberId._id.toString() !== user.id
-        );
+    setCache(`chats:${user.id}`, response, 300);
 
-        const member = otherMember?.memberId as any;
-
-        const unreadData = unreadMap.get(chat._id.toString());
-
-        return {
-            id: chat._id,
-
-            person: member
-                ? {
-                    _id: member._id,
-                    name: member.name,
-                    profilePic: member.profilePic
-                }
-                : null,
-
-            lastMessage: chat.lastMessage,
-
-            unreadCount: unreadData?.unreadCount || 0
-        };
-    });
-
-    return formattedChats;
+    return response;
 };
 
 
 export const getChatMessages = async (chatId: any, user: any) => {
 
-    const chat = await Chat.findById(chatId)
-        .populate({
-            path: "members.memberId",
-            select: "name profilePic"
-        })
-        .lean();
+    const cacheKey = `chat_messages_${user.id}_${chatId}`;
+    const cached = getCache(cacheKey);
 
-    if (!chat) throw new Error("Chat not found");
+    if (cached) {
+        return cached;
+    }
 
-    const messages = await Message.find(
-        { chatId },
-        { __v: false }
-    )
-        .populate({
-            path: "sender",
-            select: "name profilePic"
-        })
-        .sort({ createdAt: 1 })
-        .lean();
-
-    const otherMember = chat.members.find(
-        (m: any) => m.memberId._id.toString() !== user.id
+    const chatResult = await pool.query(
+        `SELECT cm.member_id, cm.member_model,
+            CASE
+                WHEN cm.member_model = 'User' THEN
+                    jsonb_build_object('_id', u.id, 'name', u.name, 'profilePic', u."profilePic", 'role', cm.member_model)
+                WHEN cm.member_model = 'Doctor' THEN
+                    jsonb_build_object('_id', d.id, 'name', d.name, 'profilePic', d."profilePic", 'role', cm.member_model)
+            END AS member
+        FROM chat_members cm
+        LEFT JOIN users u ON cm.member_model = 'User' AND cm.member_id = u.id
+        LEFT JOIN doctors d ON cm.member_model = 'Doctor' AND cm.member_id = d.id
+        WHERE cm."chatId" = $1 AND cm.member_id != $2`,
+        [chatId, user.id]
     );
 
+    if (!chatResult.rows.length) throw new ApiError(404, "Chat not found");
 
-    const member = otherMember?.memberId as any;
+    const otherUser = chatResult.rows[0].member;
 
-    const otherUser = otherMember
-        ? {
-            _id: member._id,
-            name: member.name,
-            profilePic: member.profilePic,
-            role: otherMember.memberModel
-        }
-        : null;
+    const messagesResult = await pool.query(
+        `SELECT
+            m.id AS "_id",
+            m."chatId" AS "chatId",
+            m."isDeleted" AS "isDeleted",
+            m.text,
+            m."createdAt",
+            CASE
+                WHEN m.sender_model = 'User' THEN
+                    jsonb_build_object('_id', u.id, 'name', u.name, 'profilePic', u."profilePic")
+                WHEN m.sender_model = 'Doctor' THEN
+                    jsonb_build_object('_id', d.id, 'name', d.name, 'profilePic', d."profilePic")
+            END AS sender
+        FROM messages m
+        LEFT JOIN users u ON m.sender_model = 'User' AND m.sender = u.id
+        LEFT JOIN doctors d ON m.sender_model = 'Doctor' AND m.sender = d.id
+        WHERE m."chatId" = $1
+        ORDER BY m."createdAt" ASC`,
+        [chatId]
+    );
 
-    const messagesToSend = messages.map(message => {
-
-        const sender = message.sender as any;
-
-        return {
-            isDeleted: message.isDeleted,
-            _id: message._id,
-            chatId: message.chatId,
-            sender: sender
-                ? {
-                    _id: sender._id,
-                    name: sender.name,
-                    profilePic: sender.profilePic
-                }
-                : null,
-            text: message.text,
-            createdAt: message.createdAt
-        };
-    });
-
-    return {
+    const response = {
         chatId,
         user: otherUser,
-        messages: messagesToSend
+        messages: messagesResult.rows
     };
+
+    setCache(cacheKey, response, 300);
+
+    return response;
 };
 
 
 export const getChatbotMessages = async (user: any) => {
+    let chatResult = await pool.query(
+        `SELECT c.id FROM chats c
+         JOIN chat_members cm ON c.id = cm."chatId"
+         WHERE c.chat_type = 'chatbot' AND cm.member_id = $1`,
+        [user.id]
+    );
 
-    let chat = await Chat.findOne({
-        chatType: "chatbot",
-        "members.memberId": user.id
-    })
+    let chatId: string;
 
-    if (!chat) {
-
-
-        chat = await Chat.create({
-            members: [
-                { memberId: user.id, memberModel: "User" },
-                { memberId: BOT_ID, memberModel: "Bot" }
-            ],
-            chatType: "chatbot"
-        })
+    if (!chatResult.rows.length) {
+        const client = await pool.connect();
+        try {
+            await client.query("BEGIN");
+            const newChat = await client.query(
+                `INSERT INTO chats (chat_type) VALUES ('chatbot') RETURNING id`
+            );
+            chatId = newChat.rows[0].id;
+            await client.query(
+                `INSERT INTO chat_members ("chatId", member_id, member_model) VALUES ($1, $2, 'User'), ($1, $3, 'Bot')`,
+                [chatId, user.id, BOT_ID]
+            );
+            await client.query("COMMIT");
+        } catch (err) {
+            await client.query("ROLLBACK");
+            throw err;
+        } finally {
+            client.release();
+        }
+    } else {
+        chatId = chatResult.rows[0].id;
     }
 
+    const cacheKey = `chatBotMessages_${user.id}_${chatId}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+        return cached;
+    }
 
-    const messages = await Message.find(
-        { chatId: chat._id },
-        { __v: false }
-    )
-        .sort({ createdAt: 1 })
-        .lean();
+    const messagesResult = await pool.query(
+        `SELECT
+            id AS "_id",
+            "chatId" AS chatId,
+            "isDeleted" AS "isDeleted",
+            text,
+            "createdAt",
+            jsonb_build_object('id', sender) AS sender
+        FROM messages
+        WHERE "chatId" = $1
+        ORDER BY "createdAt" ASC`,
+        [chatId]
+    );
 
-
-    const messagesToSend = messages.map(message => {
-
-        const sender = message.sender as any;
-
-        return {
-            isDeleted: message.isDeleted,
-            _id: message._id,
-            chatId: message.chatId,
-            sender: sender
-                ? {
-                    _id: sender._id,
-                }
-                : null,
-            text: message.text,
-            createdAt: message.createdAt
-        };
-    });
-
-    return {
-        chatId: chat._id,
-        messages: messagesToSend
+    const response = {
+        chatId,
+        messages: messagesResult.rows
     };
+
+    setCache(cacheKey, response, 300);
+
+    return response;
 };
 
+
 export const getAllChats = async (reqQuery: any) => {
-
     const { search } = reqQuery;
-    const filter: any = {};
-
     const page = Number(reqQuery.page) || 1;
     const limit = Number(reqQuery.limit) || 10;
-    const skip = (page - 1) * limit;
+    const offset = (page - 1) * limit;
 
-    if (search) {
-        filter.$or = [
-            { "memberDetails.name": { $regex: search, $options: "i" } }
-        ];
 
-        if (mongoose.Types.ObjectId.isValid(search)) {
-            filter.$or.push({ "memberDetails._id": new mongoose.Types.ObjectId(search) });
-        }
+    const cacheKey = `all_chats:${page}_${limit}_${search}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+        return cached;
     }
 
-    const chats = await Chat.aggregate([
-        {
-            $lookup: {
-                from: "users",
-                localField: "members.memberId",
-                foreignField: "_id",
-                as: "users"
-            }
-        },
-        {
-            $lookup: {
-                from: "doctors",
-                localField: "members.memberId",
-                foreignField: "_id",
-                as: "doctors"
-            }
-        },
-        {
-            $addFields: {
-                memberDetails: {
-                    $concatArrays: ["$users", "$doctors"]
-                }
-            }
-        },
-        {
-            $match: { ...filter, chatType: { $ne: "chatbot" } }
-        },
-        {
-            $sort: { updatedAt: -1 }
-        },
-        {
-            $skip: skip
-        },
-        {
-            $limit: limit
-        },
-        {
-            $project:
-            {
-                "memberDetails.name": 1,
-                "memberDetails.profilePic": 1,
-                "memberDetails._id": 1,
-                chatType: 1,
-            }
-        }
-    ])
+    const params: any[] = [];
+    let paramIndex = 1;
+    let searchClause = "";
 
-    const totalResult = await Chat.aggregate([
-        {
-            $lookup: {
-                from: "users",
-                localField: "members.memberId",
-                foreignField: "_id",
-                as: "users"
-            }
-        },
-        {
-            $lookup: {
-                from: "doctors",
-                localField: "members.memberId",
-                foreignField: "_id",
-                as: "doctors"
-            }
-        },
-        {
-            $addFields: {
-                memberDetails: {
-                    $concatArrays: ["$users", "$doctors"]
-                }
-            }
-        },
-        {
-            $match: {
-                ...filter,
-                chatType: { $ne: "chatbot" }
-            }
-        },
-        {
-            $count: "total"
-        }
-    ]);
+    if (search && search !== "") {
+        searchClause = `AND (u.name ILIKE $${paramIndex} OR d.name ILIKE $${paramIndex})`;
+        params.push(`%${search}%`);
+        paramIndex++;
+    }
 
-    const total = totalResult[0]?.total || 0;
+    const mainQuery = `
+        SELECT
+            c.id, c.chat_type AS "chatType",
+            json_agg(DISTINCT jsonb_build_object(
+                '_id', COALESCE(u.id, d.id),
+                'name', COALESCE(u.name, d.name),
+                'profilePic', COALESCE(u."profilePic", d."profilePic")
+            )) AS "memberDetails",
+            COUNT(*) OVER() AS total_count
+        FROM chats c
+        JOIN chat_members cm ON c.id = cm."chatId"
+        LEFT JOIN users u ON cm.member_model = 'User' AND cm.member_id = u.id
+        LEFT JOIN doctors d ON cm.member_model = 'Doctor' AND cm.member_id = d.id
+        WHERE c.chat_type = 'personal'
+        ${searchClause}
+        GROUP BY c.id
+        ORDER BY c."updatedAt" DESC
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
 
-    return {
-        chats,
+    params.push(limit, offset);
+    const result = await pool.query(mainQuery, params);
+
+    const total = Number(result.rows[0]?.total_count ?? 0);
+
+    const response = {
+        chats: result.rows,
         totalChats: total,
-        results: chats.length,
+        results: result.rowCount,
         totalPages: Math.ceil(total / limit),
         page
     };
 
+    setCache(cacheKey, response, 300);
 
+    return response;
 };
 
 
 
 export const getChatMessagesForAdmin = async (chatId: any) => {
 
-    const chat = await Chat.findById(chatId)
-        .populate({
-            path: "members.memberId",
-            select: "name profilePic"
-        })
-        .lean();
+    const messagesResult = await pool.query(
+        `SELECT
+            m.id AS "_id",
+            m."chatId" AS "chatId",
+            m."isDeleted" AS "isDeleted",
+            m.text,
+            m."createdAt",
+            CASE
+                WHEN m.sender_model = 'User' THEN
+                    jsonb_build_object('_id', u.id, 'name', u.name, 'profilePic', u."profilePic")
+                WHEN m.sender_model = 'Doctor' THEN
+                    jsonb_build_object('_id', d.id, 'name', d.name, 'profilePic', d."profilePic")
+            END AS sender
+        FROM messages m
+        LEFT JOIN users u ON m.sender_model = 'User' AND m.sender = u.id
+        LEFT JOIN doctors d ON m.sender_model = 'Doctor' AND m.sender = d.id
+        WHERE m."chatId" = $1
+        ORDER BY m."createdAt" ASC`,
+        [chatId]
+    );
 
-    if (!chat) throw new Error("Chat not found");
-
-    const messages = await Message.find(
-        { chatId },
-        { __v: false }
-    )
-        .populate({
-            path: "sender",
-            select: "name profilePic"
-        })
-        .sort({ createdAt: 1 })
-        .lean();
-
-
-    return {
+    const response = {
         chatId,
-        messages
+        messages: messagesResult.rows
     };
+
+    return response;
 };

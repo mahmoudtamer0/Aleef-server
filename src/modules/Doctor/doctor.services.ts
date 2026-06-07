@@ -570,7 +570,6 @@ export const getDoctorForAdmin = async (doctorId: any) => {
 }
 
 
-
 export const getAvailableDoctors = async () => {
 
     const docotrs = await Doctor.find({ isEmailVerified: true, status: { $ne: "pending" } }).lean().select("name email phone city specialization status profilePic rating ratingQuantity appointmentFee").sort({ createdAt: -1 })

@@ -10,7 +10,7 @@ export const getCache = (key: string) => {
     return entry.data;
 };
 
-export const setCache = (key: string, data: any, ttlSeconds = 60) => {
+export const setCache = (key: string, data: any, ttlSeconds: number) => {
     cache.set(key, {
         data,
         expiresAt: Date.now() + ttlSeconds * 1000
@@ -22,3 +22,13 @@ export const clearCache = (key: string) => {
         if (k.startsWith(key)) cache.delete(k);
     }
 };
+
+setInterval(() => {
+    const now = Date.now();
+
+    for (const [key, value] of cache.entries()) {
+        if (now > value.expiresAt) {
+            cache.delete(key);
+        }
+    }
+}, 60 * 1000);
