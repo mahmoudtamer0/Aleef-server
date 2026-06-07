@@ -343,7 +343,7 @@ export const getAppointmentDetailsForDoctor = async (doctor: any, appointmentId:
         `SELECT a.id, a.date, a.time, a.reason, a.status, a.notes,
         a."createdAt", a."updatedAt",a."appoinmentFee",
         jsonb_build_object('id', u.id, 'name', u.name, 'email', u.email, 'profilePic', u."profilePic") AS owner,
-        jsonb_build_object('id', p.id, 'name', p.name , 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic" , 'birthdate', p.birthdate, 'weight', p.weight) AS pet
+        jsonb_build_object('id', p.id, 'name', p.name , 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic" , 'birthDate', p."birthDate", 'weight', p.weight) AS pet
         FROM appointments a
         JOIN users u ON u.id = a.owner
         JOIN pets p ON p.id = a.pet
