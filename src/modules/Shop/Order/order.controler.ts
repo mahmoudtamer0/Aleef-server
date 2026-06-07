@@ -28,7 +28,7 @@ export const createOrderSql = catchAsync(async (req, res, next) => {
 
 export const getMyUpComingOrders = catchAsync(async (req, res, next) => {
     const user = req.user
-    const orders = await orderService.getMyUpComingOrders(user)
+    const orders = await orderService.getMyUpcomingOrders(user)
 
     return res.status(200).json({
         status: "success",
