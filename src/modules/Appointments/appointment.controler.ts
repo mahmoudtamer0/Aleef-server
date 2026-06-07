@@ -58,7 +58,8 @@ export const getAppointmentsRequestsForDoctor = catchAsync(async (req, res, next
         results: appointments.results,
         page: appointments.page,
         totalPages: appointments.totalPages,
-        totalAppointments: appointments.totalAppointments
+        totalRequests: appointments.totalRequests,
+
     })
 
 })

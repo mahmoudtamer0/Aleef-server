@@ -276,6 +276,7 @@ export const getAppointmentsRequestsForDoctor = async (doctor: any, params: any)
     const response = {
         results: result.rowCount,
         page,
+        totalRequests: Number(result.rows[0]?.total_count ?? 0),
         totalPages: Math.ceil(Number(result.rows[0]?.total_count ?? 0) / limit),
         appointments: result.rows,
     };
