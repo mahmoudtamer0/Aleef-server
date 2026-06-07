@@ -54,7 +54,11 @@ export const getAppointmentsRequestsForDoctor = catchAsync(async (req, res, next
 
     return res.status(200).json({
         status: "success",
-        appointments,
+        appointments: appointments.appointments,
+        results: appointments.results,
+        page: appointments.page,
+        totalPages: appointments.totalPages,
+        totalAppointments: appointments.totalAppointments
     })
 
 })

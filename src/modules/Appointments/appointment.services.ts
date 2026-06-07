@@ -24,14 +24,14 @@ export const bookAppointment = async (user: any, { pet, doctor, date, time, reas
                 [user.id]
             ),
             client.query(
-                `SELECT id, name, city, address, "appointmentFee",
+                `SELECT d.id, d.name, d.city, d.address, "appointmentFee",
                 COUNT(a.id) FILTER (WHERE a.status = ANY(ARRAY['pending', 'accepted']) AND TIME = $2 AND DATE::date = $3::date) AS active_appointments,
-                status
-                FROM doctors
-                LEFT JOIN appointments a ON a.doctor = id
-                WHERE id = $1 AND status = 'active'
-                GROUP BY id`,
-                [doctor]
+                d.status
+                FROM doctors d
+                LEFT JOIN appointments a ON a.doctor = d.id
+                WHERE d.id = $1 AND d.status = 'active'
+                GROUP BY d.id`,
+                [doctor, time, date]
             )
         ]);
 

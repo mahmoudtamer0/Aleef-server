@@ -1,14 +1,13 @@
 import Joi from "joi";
 
 // reusable ObjectId
-const objectId = Joi.string().hex().length(24);
 
 export const addAppointmentSchema = Joi.object({
-    pet: objectId.required().messages({
+    pet: Joi.string().required().messages({
         "any.required": "Pet is required",
     }),
 
-    doctor: objectId.required().messages({
+    doctor: Joi.string().required().messages({
         "any.required": "Doctor is required",
     }),
 
