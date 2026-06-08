@@ -298,10 +298,11 @@ export const getAppointmentDetailsForUser = async (appointmentId: any) => {
         return cached;
     }
 
+
     const appointment = await pool.query(
         `SELECT a.id, a.date, a.time, a.reason, a.status, a.notes,
         a."createdAt", a."updatedAt",a."appoinmentFee",
-        jsonb_build_object('id', d.id, 'name', d.name, 'email', d.email,'city', d.city, 'address', d.address, 'phone', d.phone, 'specialization', d.specialization, 'rating', d.rating, 'ratingsCount', d.ratingsCount, 'profilePic', d."profilePic") AS doctor,
+        jsonb_build_object('id', d.id, 'name', d.name, 'email', d.email,'city', d.city, 'address', d.address, 'phone', d.phone, 'specialization', d.specialization, 'rating', d.rating, 'ratingsCount', d."ratingsCount", 'profilePic', d."profilePic") AS doctor,
         jsonb_build_object('id', p.id, 'name', p.name , 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic") AS pet
         FROM appointments a
         JOIN doctors d ON d.id = a.doctor
@@ -318,11 +319,12 @@ export const getAppointmentDetailsForUser = async (appointmentId: any) => {
             `SELECT c.id FROM chats c
              JOIN chat_members cm1 ON c.id = cm1."chatId" AND cm1.member_id = $1
              JOIN chat_members cm2 ON c.id = cm2."chatId" AND cm2.member_id = $2
-             WHERE c.chat_type = 'personal' LIMIT 1`,
-            [appointment.rows[0].owner, appointment.rows[0].doctor]
+            WHERE c.chat_type = 'personal' LIMIT 1`,
+            [appointment.rows[0].owner, appointment.rows[0].doctor.id]
         );
         chat = chatResult.rows[0] || null;
     }
+    console.log("chat", chat)
     const response = { appointment: appointment.rows[0], chat };
 
     setCache(cacheKey, response, 500);
