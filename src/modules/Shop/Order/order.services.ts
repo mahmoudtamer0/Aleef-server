@@ -189,8 +189,8 @@ export const getMyPreviousOrders = async (user: any) => {
     const result = await pool.query(
         `SELECT 
             o.id, o.status, o."paymentMethod", o."totalOrder",
-            o.shipping_address, o.shipping_city, o.shipping_phone,
             o."createdAt", o."updatedAt",
+            jsonb_build_object('address',o.shipping_address, 'city', o.shipping_city, 'phone', o.shipping_phone) AS "shippingAddress",
             json_agg(jsonb_build_object(
                 'id', oi.id, 'title', oi.title, 'image', oi.image,
                 'quantity', oi.quantity, 'price', oi.price, 'total_price', oi.total_price
