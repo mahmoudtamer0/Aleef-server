@@ -505,45 +505,50 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
 
             sendEmail({
                 email: userProfile.rows[0].email,
-                subject: "Appointment accepted ✅",
-                text: `Hello ${userProfile.rows[0].name}, your appointment is accepted on ${appointment.rows[0].date} at ${appointment.rows[0].time}.`,
+                subject: "Appointment Accepted ✅",
+                text: `Hello ${userProfile.rows[0].name}, your appointment has been accepted on ${appointment.rows[0].date} at ${appointment.rows[0].time}.`,
                 message: `
-                    < div style = "font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;" >
-                        <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" >
+                <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
+                    <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
             
-                            <h1 style="color: #267D77; text-align: center; margin-bottom: 10px;" > Aleef </h1>
+                        <h1 style="color: #267D77; text-align: center; margin-bottom: 10px;">
+                            Aleef
+                        </h1>
             
-                                < h2 style = "text-align: center; color: #333;" >
-                                    Your Appointment is accepted! ✅
-                </h2>
+                        <h2 style="text-align: center; color: #333;">
+                            Your Appointment Has Been Accepted! ✅
+                        </h2>
             
-                    < p style = "color: #555; font-size: 16px;" >
-                        Hello < strong > ${userProfile.rows[0].name} </strong>, your appointment has been accepted by the doctor.
+                        <p style="color: #555; font-size: 16px;">
+                            Hello <strong>${userProfile.rows[0].name}</strong>,
+                            your appointment has been accepted by the doctor.
+                        </p>
+            
+                        <hr style="margin: 20px 0;" />
+            
+                        <h3 style="color: #267D77;">
+                            Appointment Details
+                        </h3>
+            
+                        <p><strong>Date:</strong> ${appointment.rows[0].date}</p>
+                        <p><strong>Time:</strong> ${appointment.rows[0].time}</p>
+                        <p><strong>Reason:</strong> ${appointment.rows[0].reason}</p>
+            
+                        <div style="text-align: center; margin-top: 30px;">
+                            <p style="color: #777; font-size: 14px;">
+                                Please arrive on time for your appointment 🐶🐱
                             </p>
+                        </div>
             
-                            < hr style = "margin: 20px 0;" />
+                        <div style="margin-top: 30px; font-size: 12px; color: #999; text-align: center;">
+                            <p>Your chat with the doctor is now open.</p>
+                            <p>If you have any questions, please contact support.</p>
+                            <p>&copy; ${new Date().getFullYear()} Aleef. All rights reserved.</p>
+                        </div>
             
-                                <h3 style="color: #267D77;" > Appointment Details </h3>
-            
-                                    < p > <strong>Date: </strong> ${appointment.rows[0].date}</p >
-                                        <p><strong>Time: </strong> ${appointment.rows[0].time}</p >
-                                            <p><strong>Reason: </strong> ${appointment.rows[0].reason}</p >
-            
-                                                <div style="text-align: center; margin-top: 30px;" >
-                                                    <p style="color: #777; font-size: 14px;" >
-                                                        Please arrive on time for your appointment 🐶🐱
-                </p>
                     </div>
-            
-                    < div style = "margin-top: 30px; font-size: 12px; color: #999; text-align: center;" >
-                        <p>Your chat with the doctor is now open.</p>
-                            < p > If you have any questions, please contact support.</p>
-                                <p> & copy; ${new Date().getFullYear()} Aleef.All rights reserved.</p>
-                                    </div>
-            
-                                    </div>
-                                    </div>
-                                        `
+                </div>
+                `
             }).catch(err => {
                 console.error("Email failed:", err);
             });

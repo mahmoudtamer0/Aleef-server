@@ -251,7 +251,7 @@ export const getAllOrders = async (reqQuery: any) => {
     const result = await pool.query(
         `SELECT
             o.id, o.status, o."paymentMethod", o."totalOrder",
-            o.shipping_address, o.shipping_city, o.shipping_phone,
+            jsonb_build_object('address',o.shipping_address, 'city', o.shipping_city, 'phone', o.shipping_phone) AS "shippingAddress",
             o."createdAt", o."updatedAt",
             jsonb_build_object(
                 'id', u.id, 'name', u.name, 'email', u.email,
@@ -290,7 +290,7 @@ export const getAllOrderDetailsForAdmin = async (orderId: any) => {
         `SELECT
             o.id, o.status, o."paymentMethod", o."totalOrder",
             o."subTotal", o.delivery, o."taxPayed",
-            o.shipping_address, o.shipping_city, o.shipping_phone,
+            jsonb_build_object('address',o.shipping_address, 'city', o.shipping_city, 'phone', o.shipping_phone) AS "shippingAddress",
             o."createdAt", o."updatedAt",
             jsonb_build_object(
                 'id', u.id, 'name', u.name, 'email', u.email,
