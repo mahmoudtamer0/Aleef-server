@@ -117,7 +117,7 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
 
         <h3 style="color: #267D77;">Shipping Address</h3>
         <p style="color: #555;">
-            ${shippingAddress.street || ""} <br/>
+            ${shippingAddress.address || ""} <br/>
             ${shippingAddress.city || ""} <br/>
             ${shippingAddress.phone || ""}
         </p>
