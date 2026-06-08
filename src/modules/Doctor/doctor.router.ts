@@ -1,8 +1,8 @@
 import express from "express";
-import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors, approveDoctorRequest, getDoctor, getDoctorSchedual, getDoctorSlots, login, getAvailableDoctors } from "./doctor.controler";
+import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors, approveDoctorRequest, getDoctor, getDoctorSchedual, getDoctorSlots, login, getAvailableDoctors, getDoctorToAdmin, getMeDoctor, editDoctor, getDoctorScheduleForDoctor } from "./doctor.controler";
 import { upload } from "../../middlewares/doctorProfilepic"
 import validate from "../../middlewares/userValidate";
-import { registerSchema, verifyOtpSchema, resendOtpSchema } from "./doctor.validation";
+import { registerSchema, verifyOtpSchema, resendOtpSchema, editDoctorProfileSchema } from "./doctor.validation";
 import { verifyToken } from "../../middlewares/verifyToken";
 import { allowTo } from "../../middlewares/allowTo";
 import { loginSchema } from "../User/users.validation";
@@ -36,6 +36,14 @@ router.route("/get-all-doctors")
 router.route("/get-available-doctors")
     .get(getAvailableDoctors)
 
+router.route("/me/schedule")
+    .get(verifyToken, getDoctorScheduleForDoctor)
+
+router.route("/me")
+    .get(verifyToken, getMeDoctor)
+    .patch(verifyToken, upload.single("profilePic"), validate(editDoctorProfileSchema), editDoctor)
+
+
 
 router.route("/approve-request/:doctorId")
     .post(verifyToken, allowTo("ADMIN"), approveDoctorRequest)
@@ -48,6 +56,10 @@ router.route("/:doctorId/slots")
 
 // router.route("/:doctorId/add-review")
 //     .post(verifyToken, validate(addReviewSchema), addReviewToDoctor)
+
+
+router.route("/details-for-admin/:doctorId")
+    .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getDoctorToAdmin)
 
 router.route("/:doctorId")
     .get(verifyToken, getDoctor)

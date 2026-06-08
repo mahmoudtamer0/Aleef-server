@@ -34,11 +34,20 @@ export const resendOtpSchema = Joi.object({
 });
 
 
-
-
-
 export const addReviewSchema = Joi.object({
     comment: Joi.string().min(2).max(200).required(),
     rate: Joi.number().max(5).min(1).required(),
 
+});
+
+
+export const editDoctorProfileSchema = Joi.object({
+    name: Joi.string().min(5),
+    phone: Joi.string(),
+    city: Joi.string(),
+    address: Joi.string(),
+    specialization: Joi.string(),
+    appointmentFee: Joi.number().min(200),
+    about: Joi.string().max(500),
+    slotduration: Joi.number().valid(15, 30, 45, 60),
 });

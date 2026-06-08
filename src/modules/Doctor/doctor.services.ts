@@ -8,7 +8,8 @@ import { getAvailableSlots } from "../../utils/getDoctorAvailableSlots";
 import { checkPassword } from "../../utils/checkPassword";
 import pool from "../../db";
 import { hashPassword } from "../../utils/hashPassword";
-import { getCache, setCache } from "../../cache";
+import { clearCache, getCache, setCache } from "../../cache";
+import cloudinary from "../../utils/cloudinary";
 
 
 
@@ -95,7 +96,6 @@ export const doctorRegister = async ({ email, name, password, phone, specializat
 
     } catch (err) {
         await client.query("ROLLBACK");
-        console.error(err);
         throw err;
     } finally {
         client.release();
@@ -172,28 +172,42 @@ export const verifyEmail = async ({ email, otp }: any): Promise<any> => {
         .update(String(otp))
         .digest("hex");
 
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
 
-    const doctor = await pool.query(`
+        const doctor = await client.query(`
             UPDATE doctors 
             SET "isEmailVerified" = $1, 
                 "emailVerificationCode" = $2,
-                "emailVerificationExpires" = $3 
+                "emailVerificationExpires" = $3 ,
+                status = 'pending'
             WHERE email = $4 
                 AND "isEmailVerified" = $5 
                 AND "emailVerificationExpires" >= NOW()
                 AND "emailVerificationCode" = $6 
             RETURNING id`,
-        [true, null, null, email, false, hashedOtp]
-    )
+            [true, null, null, email, false, hashedOtp]
+        )
 
-    if (doctor.rowCount == 0) throw new ApiError(400, "Invalid or expired verification code");
+        if (doctor.rowCount == 0) throw new ApiError(400, "Invalid or expired verification code");
 
-    setImmediate(() => {
-        sendEmail({
-            email: email,
-            subject: "Your Account is Under Review - Aleef",
-            text: "",
-            message: `
+        const defaultDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+        await client.query(
+            `INSERT INTO doctor_schedules (doctor_id, day_of_week, start_time, end_time, is_available)
+     VALUES ${defaultDays.map((_, i) => `($1, $${i + 2}, '09:00', '17:00', true)`).join(", ")}
+     ON CONFLICT (doctor_id, day_of_week) DO NOTHING`,
+            [doctor.rows[0].id, ...defaultDays]);
+
+        await client.query("COMMIT")
+
+        setImmediate(() => {
+            sendEmail({
+                email: email,
+                subject: "Your Account is Under Review - Aleef",
+                text: "",
+                message: `
             <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
                 <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 30px;">
                     
@@ -243,12 +257,22 @@ export const verifyEmail = async ({ email, otp }: any): Promise<any> => {
                 </div>
             </div>
         `
-        }).catch(err => {
-            console.error("Email failed:", err);
+            }).catch(err => {
+                console.error("Email failed:", err);
+            });
         });
-    });
 
-    return;
+        return;
+
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
+    }
+
+
+
 }
 
 
@@ -339,11 +363,13 @@ export const login = async ({ email, password }: any, device: string) => {
 
 export const approveDoctorRequest = async (doctorId: any) => {
 
-    const doctor = await pool.query(`UPDATE doctors SET status = "active" WHERE id = $1 AND status = "pending" RETURNING email`, [doctorId])
+    const doctor = await pool.query(`UPDATE doctors SET status = 'active' WHERE id = $1 AND status = 'pending' RETURNING email`, [doctorId])
 
     if (doctor.rows.length == 0) {
         throw new ApiError(404, "Doctor not found");
     }
+
+
 
     setImmediate(() => {
         sendEmail({
@@ -382,68 +408,6 @@ export const approveDoctorRequest = async (doctorId: any) => {
 
 
     return "request approved"
-
-}
-
-export const getAllDoctorsRequests = async (reqQuery: any) => {
-    const { search } = reqQuery;
-
-    const page = Number(reqQuery.page) || 1;
-    const limit = Number(reqQuery.limit) || 10;
-    const offset = (page - 1) * limit;
-
-    const status = "pending";
-
-    const cacheKey = `doctors:${page}_${limit}_${status}_${search}`;
-    const cached = getCache(cacheKey);
-    if (cached) return cached;
-
-    const filters: string[] = [];
-    const params: any[] = [];
-    let paramIndex = 1;
-
-    if (search && search !== "") {
-        filters.push(`(
-            d.name ILIKE $${paramIndex} OR 
-            d.email ILIKE $${paramIndex} OR 
-            d.phone ILIKE $${paramIndex} OR 
-            d.city ILIKE $${paramIndex} OR 
-            d.specialization ILIKE $${paramIndex}
-        )`);
-        params.push(`%${search}%`);
-        paramIndex++;
-    }
-
-    const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
-
-    const mainQuery = `
-        SELECT
-            d.id, d.name, d.email, d.phone, d.city, d.specialization,
-            d.status, d."profilePic", d.address, d.rating, d."ratingsCount",
-            d."appointmentFee", d."createdAt",
-            COUNT(*) OVER() AS total_count
-        FROM doctors d
-        ${whereClause}
-        GROUP BY d.id
-        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-    `;
-
-    params.push(limit, offset);
-
-    const result = await pool.query(mainQuery, params);
-
-    const totalDoctors = result.rows[0]?.total_count ?? 0;
-
-    const response = {
-        doctors: result.rows,
-        results: result.rowCount,
-        totalDoctors: Number(totalDoctors),
-        totalPages: Math.ceil(Number(totalDoctors) / limit),
-        page
-    };
-
-    setCache(cacheKey, response, 300);
-    return response;
 
 }
 
@@ -526,7 +490,6 @@ export const getAllDoctors = async (reqQuery: any) => {
 };
 
 export const getAvailableDoctors = async (reqQuery: any) => {
-    console.log("getAvailableDoctors")
 
     const { search, status, sort } = reqQuery;
 
@@ -595,7 +558,7 @@ export const getDoctor = async (doctorId: any) => {
 
     const [doctorResult, reviewsResult] = await Promise.all([
         pool.query(`
-            SELECT id, name, email, phone, city, specialization, status, 
+            SELECT id, name, email,about, phone, city, specialization, status, 
                 "profilePic", address, rating, "ratingsCount", 
                 "appointmentFee", "createdAt"
             FROM doctors 
@@ -622,17 +585,55 @@ export const getDoctor = async (doctorId: any) => {
     }
 }
 
-// export const getDoctorForAdmin = async (doctorId: any) => {
+export const getMeDoctor = async (doctor: any) => {
 
-//     const doctor = await Doctor.findById(doctorId).lean().select("-password -createdAt -updatedAt -role -slotDuration -emailVerificationCode -emailVerificationExpires -cloudinary_id -__v");
+    const cacheKey = `me_doctor:${doctor.id}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
 
-//     const reviews = await DoctorReview.find({ doctor: doctorId })
-//         .populate({
-//             path: "user",
-//             select: "name profilePic"
-//         });
-//     return { doctor, reviews }
-// }
+    const doctorProfile = await pool.query(`
+        SELECT id, name, email,about, phone, city, specialization, status, 
+            "profilePic", address, 
+            "appointmentFee", "createdAt"
+        FROM doctors 
+        WHERE id = $1
+    `, [doctor.id]);
+
+
+    if (!doctorProfile.rows.length) throw new ApiError(404, "Doctor not found");
+
+    setCache(cacheKey, doctorProfile.rows[0], 500);
+
+
+    return doctorProfile.rows[0];
+}
+
+export const getDoctorToAdmin = async (doctorId: any) => {
+    console.log("getDoctorToAdmin")
+
+    const doctorResult = await pool.query(`
+        SELECT d.id, d.name, d.email, d.phone, d.city, d.specialization, d.status,
+            d."profilePic", d.address, d.rating, d."ratingsCount",
+            d."appointmentFee", d."createdAt",
+            jsonb_build_object(
+                'id', doc.id,
+                'identity_verification', doc.identity_verification,
+                'national_id_front', doc.national_id_front,
+                'national_id_back', doc.national_id_back
+            ) AS documents
+        FROM doctors d
+        LEFT JOIN doctor_documents doc ON d.id = doc.doctor_id
+        WHERE d.id = $1
+    `, [doctorId]);
+
+
+    if (!doctorResult.rows.length) throw new ApiError(404, "Doctor not found");
+
+    clearCache("doctorsAvailable:")
+    clearCache("doctors:")
+
+    return doctorResult.rows[0]
+}
 
 
 export const getDoctorSchedual = async (doctorId: any): Promise<any> => {
@@ -717,6 +718,88 @@ export const getDoctorSlots = async (doctorId: any, date: any): Promise<any> => 
 
     return response;
 };
+
+export const editDoctor = async (doctor: any, body: any, reqFile: any) => {
+
+    const { name, phone, specialization, city, address, about, appointmentFee, slotduration } = body;
+
+    const fields: any[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (name) { fields.push(`name = $${paramIndex}`); params.push(name); paramIndex++; }
+    if (phone) { fields.push(`phone = $${paramIndex}`); params.push(phone); paramIndex++; }
+    if (city) { fields.push(`city = $${paramIndex}`); params.push(city); paramIndex++; }
+    if (address) { fields.push(`address = $${paramIndex}`); params.push(address); paramIndex++; }
+    if (specialization) { fields.push(`specialization = $${paramIndex}`); params.push(specialization); paramIndex++; }
+    if (appointmentFee) { fields.push(`"appointmentFee" = $${paramIndex}`); params.push(appointmentFee); paramIndex++; }
+    if (about) { fields.push(`about = $${paramIndex}`); params.push(about); paramIndex++; }
+    if (slotduration) { fields.push(`slotduration = $${paramIndex}`); params.push(slotduration); paramIndex++; }
+
+    if (reqFile) {
+        fields.push(`"profilePic" = $${paramIndex}`); params.push(reqFile.path); paramIndex++;
+        fields.push(`cloudinary_id = $${paramIndex}`); params.push(reqFile.filename); paramIndex++;
+    }
+
+    if (fields.length === 0) throw new ApiError(400, "No fields to update");
+
+    fields.push(`"updatedAt" = NOW()`);
+    params.push(doctor.id);
+
+    const oldProfileResult = await pool.query(
+        `SELECT cloudinary_id FROM doctors WHERE id = $1`,
+        [doctor.id]
+    );
+
+    const result = await pool.query(`
+        UPDATE doctors 
+        SET ${fields.join(", ")} 
+        WHERE id = $${paramIndex}
+        RETURNING id,name,email,phone,"profilePic"
+    `, params);
+
+    if (result.rowCount === 0) throw new ApiError(404, "Doctor not found");
+
+    clearCache("me_doctor:")
+
+
+
+    if (reqFile && oldProfileResult.rows[0]?.cloudinary_id && oldProfileResult.rows[0].cloudinary_id !== "default") {
+        setImmediate(async () => {
+            await cloudinary.uploader.destroy(oldProfileResult.rows[0].cloudinary_id);
+        });
+    }
+
+    return result.rows[0];
+
+}
+
+export const getDoctorScheduleForDoctor = async (doctor: any) => {
+    const cacheKey = `doctor_schedule:${doctor.id}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
+
+    const result = await pool.query(
+        `SELECT id, day_of_week, start_time, end_time, is_available
+         FROM doctor_schedules
+         WHERE doctor_id = $1
+         ORDER BY CASE day_of_week
+             WHEN 'sunday' THEN 1
+             WHEN 'monday' THEN 2
+             WHEN 'tuesday' THEN 3
+             WHEN 'wednesday' THEN 4
+             WHEN 'thursday' THEN 5
+             WHEN 'friday' THEN 6
+             WHEN 'saturday' THEN 7
+         END`,
+        [doctor.id]
+    );
+
+    setCache(cacheKey, result.rows, 300);
+    return result.rows;
+};
+
+
 
 // export const addReviewToDoctor = async (user: any, doctorId: any, { comment, rate }: any) => {
 
