@@ -1,7 +1,7 @@
 import express from "express"
 import { verifyToken } from "../../../middlewares/verifyToken"
 import validate from "../../../middlewares/userValidate"
-import { createOrderSql, getAllOrderDetailsForAdmin, getAllOrders, getMyPreviousOrders, getMyUpComingOrders } from "./order.controler"
+import { createOrder, getAllOrderDetailsForAdmin, getAllOrders, getMyPreviousOrders, getMyUpComingOrders } from "./order.controler"
 import { orderValidationSchema } from "./order.validation"
 import { allowTo } from "../../../middlewares/allowTo"
 
@@ -9,12 +9,8 @@ import { allowTo } from "../../../middlewares/allowTo"
 const router = express.Router()
 
 router.route("/")
-    // .post(verifyToken, validate(orderValidationSchema), createOrder)
+    .post(verifyToken, validate(orderValidationSchema), createOrder)
     .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllOrders)
-
-
-router.route("/sql")
-    .post(verifyToken, validate(orderValidationSchema), createOrderSql)
 
 router.route("/my-upcoming-orders")
     .get(verifyToken, getMyUpComingOrders)

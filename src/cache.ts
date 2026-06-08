@@ -18,14 +18,20 @@ export const setCache = (key: string, data: any, ttlSeconds: number) => {
 };
 
 export const clearCache = (key: string) => {
-    console.log("CLEARING", key);
-
     for (const k of cache.keys()) {
-        console.log("CHECK", k);
 
         if (k.startsWith(key)) {
-            console.log("DELETE", k);
             cache.delete(k);
         }
     }
 };
+
+setInterval(() => {
+    const now = Date.now();
+
+    for (const [key, value] of cache.entries()) {
+        if (now > value.expiresAt) {
+            cache.delete(key);
+        }
+    }
+}, 60 * 1000);

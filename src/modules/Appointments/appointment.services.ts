@@ -255,7 +255,6 @@ export const getAppointmentsRequestsForDoctor = async (doctor: any, params: any)
     const cacheKey = `appointmentsRequests:${doctor.id}_${page}_${limit}`;
     const cached = getCache(cacheKey);
     if (cached) {
-        console.log("requests cached")
         return cached;
     }
 
@@ -300,7 +299,7 @@ export const getAppointmentDetailsForUser = async (appointmentId: any) => {
 
 
     const appointment = await pool.query(
-        `SELECT a.id, a.date, a.time, a.reason, a.status, a.notes,
+        `SELECT a.id,a.owner, a.date, a.time, a.reason, a.status, a.notes,
         a."createdAt", a."updatedAt",a."appoinmentFee",
         jsonb_build_object('id', d.id, 'name', d.name, 'email', d.email,'city', d.city, 'address', d.address, 'phone', d.phone, 'specialization', d.specialization, 'rating', d.rating, 'ratingsCount', d."ratingsCount", 'profilePic', d."profilePic") AS doctor,
         jsonb_build_object('id', p.id, 'name', p.name , 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic") AS pet
@@ -324,7 +323,6 @@ export const getAppointmentDetailsForUser = async (appointmentId: any) => {
         );
         chat = chatResult.rows[0] || null;
     }
-    console.log("chat", chat)
     const response = { appointment: appointment.rows[0], chat };
 
     setCache(cacheKey, response, 500);

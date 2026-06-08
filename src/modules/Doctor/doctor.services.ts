@@ -592,7 +592,6 @@ export const getAvailableDoctors = async (reqQuery: any) => {
 
 
 export const getDoctor = async (doctorId: any) => {
-    console.time("getDoctor");
 
     const [doctorResult, reviewsResult] = await Promise.all([
         pool.query(`
@@ -612,8 +611,6 @@ export const getDoctor = async (doctorId: any) => {
             LIMIT 3
         `, [doctorId])
     ]);
-    console.timeEnd("getDoctor");
-
 
 
     if (!doctorResult.rows.length) throw new ApiError(404, "Doctor not found");

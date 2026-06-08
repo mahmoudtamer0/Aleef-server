@@ -59,7 +59,7 @@ app.use('/api/v1/pets', petsRouter)
 app.use('/api/v1/appointments', appointmentsRouter)
 app.use('/api/v1/chats', chatRouter)
 app.use('/api/v1', (req, res, next) => {
-    res.status(200).json({
+    res.status(404).json({
         status: "success",
         message: "Welcome to Aleef API"
     })

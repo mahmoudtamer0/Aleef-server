@@ -3,7 +3,7 @@ import { sendEmail } from "../../../utils/sendEmail";
 import pool from "../../../db";
 import { clearCache, getCache, setCache } from "../../../cache";
 
-export const createOrderSql = async (cart: any, shippingAddress: any, paymentMethod: string, user: any) => {
+export const createOrder = async (cart: any, shippingAddress: any, paymentMethod: string, user: any) => {
 
     const client = await pool.connect();
     try {
@@ -55,7 +55,7 @@ export const createOrderSql = async (cart: any, shippingAddress: any, paymentMet
             `INSERT INTO orders (user_id, shipping_address, shipping_city, shipping_phone, "paymentMethod", "subTotal", delivery, "taxPayed", "totalOrder")
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING id`,
-            [user.id, shippingAddress.street, shippingAddress.city, shippingAddress.phone, paymentMethod, subTotal, delivery, Math.floor(subTotal * tax), subTotal + delivery + Math.floor(subTotal * tax)]
+            [user.id, shippingAddress.address, shippingAddress.city, shippingAddress.phone, paymentMethod, subTotal, delivery, Math.floor(subTotal * tax), subTotal + delivery + Math.floor(subTotal * tax)]
         );
 
         const orderId = order.rows[0].id;
@@ -163,8 +163,8 @@ export const getMyUpcomingOrders = async (user: any) => {
     const result = await pool.query(
         `SELECT 
             o.id, o.status, o."paymentMethod", o."totalOrder",
-            o.shipping_address, o.shipping_city, o.shipping_phone,
             o."createdAt", o."updatedAt",
+            jsonb_build_object('address',o.shipping_address, 'city', o.shipping_city, 'phone', o.shipping_phone) AS "shippingAddress",
             json_agg(jsonb_build_object(
                 'id', oi.id, 'title', oi.title, 'image', oi.image,
                 'quantity', oi.quantity, 'price', oi.price, 'total_price', oi.total_price

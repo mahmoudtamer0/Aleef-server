@@ -83,7 +83,7 @@ export const getAppointmentDetails = catchAsync(async (req, res, next) => {
         status: "success",
         appointment: {
             ...appointment.appointment,
-            chatId: appointment.chat?._id
+            chatId: appointment.chat?.id
         }
     })
 
