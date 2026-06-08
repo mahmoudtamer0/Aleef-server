@@ -162,7 +162,7 @@ export const getMyUpcomingOrders = async (user: any) => {
 
     const result = await pool.query(
         `SELECT 
-            o.id, o.status, o."paymentMethod", o."totalOrder",
+            o.id, o.status, o."paymentMethod", o."totalOrder"::float8,
             o."createdAt", o."updatedAt",
             jsonb_build_object('address',o.shipping_address, 'city', o.shipping_city, 'phone', o.shipping_phone) AS "shippingAddress",
             json_agg(jsonb_build_object(
@@ -188,12 +188,12 @@ export const getMyPreviousOrders = async (user: any) => {
 
     const result = await pool.query(
         `SELECT 
-            o.id, o.status, o."paymentMethod", o."totalOrder",
+            o.id, o.status, o."paymentMethod", o."totalOrder":float8,
             o."createdAt", o."updatedAt",
             jsonb_build_object('address',o.shipping_address, 'city', o.shipping_city, 'phone', o.shipping_phone) AS "shippingAddress",
             json_agg(jsonb_build_object(
                 'id', oi.id, 'title', oi.title, 'image', oi.image,
-                'quantity', oi.quantity, 'price', oi.price, 'total_price', oi.total_price
+                'quantity', oi.quantity, 'price', oi.price::float8, 'total_price', oi.total_price::float8
             )) AS items
         FROM orders o
         LEFT JOIN order_items oi ON oi.order = o.id
@@ -250,7 +250,7 @@ export const getAllOrders = async (reqQuery: any) => {
 
     const result = await pool.query(
         `SELECT
-            o.id, o.status, o."paymentMethod", o."totalOrder",
+            o.id, o.status, o."paymentMethod", o."totalOrder"::float8,
             jsonb_build_object('address',o.shipping_address, 'city', o.shipping_city, 'phone', o.shipping_phone) AS "shippingAddress",
             o."createdAt", o."updatedAt",
             jsonb_build_object(
@@ -288,8 +288,8 @@ export const getAllOrderDetailsForAdmin = async (orderId: any) => {
 
     const result = await pool.query(
         `SELECT
-            o.id, o.status, o."paymentMethod", o."totalOrder",
-            o."subTotal", o.delivery, o."taxPayed",
+            o.id, o.status, o."paymentMethod", o."totalOrder"::float8,
+            o."subTotal"::float8, o.delivery::float8, o."taxPayed"::float8,
             jsonb_build_object('address',o.shipping_address, 'city', o.shipping_city, 'phone', o.shipping_phone) AS "shippingAddress",
             o."createdAt", o."updatedAt",
             jsonb_build_object(
@@ -298,7 +298,7 @@ export const getAllOrderDetailsForAdmin = async (orderId: any) => {
             ) AS user,
             json_agg(jsonb_build_object(
                 'id', oi.id, 'title', oi.title, 'image', oi.image,
-                'quantity', oi.quantity, 'price', oi.price, 'total_price', oi.total_price
+                'quantity', oi.quantity, 'price', oi.price::float8, 'total_price', oi.total_price::float8
             )) AS items
         FROM orders o
         JOIN users u ON o.user_id = u.id
