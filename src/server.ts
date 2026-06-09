@@ -34,4 +34,4 @@ setInterval(async () => {
     pool.query("SELECT 1").then(() => {
         console.log("✅ PostgreSQL warmed up");
     });
-}, 4 * 60 * 1000);
+}, 5 * 60 * 1000);
