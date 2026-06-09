@@ -1,3 +1,4 @@
+import { getCache, setCache } from "../../../cache";
 import pool from "../../../db";
 import { banUserTemplate, unBanUserTemplate } from "../../../emails/user.emails";
 import ApiError from "../../../utils/ApiError";
@@ -15,6 +16,11 @@ export const getAllUsers = async (reqQuery: any) => {
     const page = reqQuery.page * 1 || 1;
     const limit = reqQuery.limit < 8 ? reqQuery.limit * 1 || 8 : 8;
     const offset = (page - 1) * limit
+
+    const cacheKey = `users_all_users_${search}_${status}_${page}_${limit}`
+
+    const cashed = await getCache(cacheKey);
+    if (cashed) return cashed;
 
 
     if (search) {
@@ -58,14 +64,16 @@ export const getAllUsers = async (reqQuery: any) => {
         pool.query(countQuery, filterValues)
     ])
 
-
-    return {
+    const response = {
         users: users.rows,
         results: users.rowCount,
         totalUsers: totalCount.rows[0].total,
         totalPages: Math.ceil(totalCount.rows[0].total / limit),
         page
     };
+
+    await setCache(cacheKey, response, 200);
+    return response;
 }
 
 export const banUser = async (req: any) => {
