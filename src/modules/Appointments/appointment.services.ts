@@ -3,6 +3,7 @@ import { sendEmail } from "../../utils/sendEmail";
 import { getIO } from "../../sockets/socket";
 import pool from "../../db";
 import { clearCache, getCache, setCache } from "../../cache";
+import { getAge } from "../../utils/getPetAge";
 
 
 
@@ -334,6 +335,8 @@ export const getAppointmentDetailsForUser = async (appointmentId: any) => {
 
 export const getAppointmentDetailsForDoctor = async (doctor: any, appointmentId: any) => {
 
+    console.log("getAppointmentDetailsForDoctor")
+
     const cacheKey = `appointment_details_doctor:${appointmentId}`;
     const cached = getCache(cacheKey);
     if (cached) {
@@ -344,7 +347,7 @@ export const getAppointmentDetailsForDoctor = async (doctor: any, appointmentId:
     const appointment = await pool.query(
         `SELECT a.id, a.date, a.time, a.reason, a.status, a.notes,
         a."createdAt", a."updatedAt",a."appoinmentFee",
-        jsonb_build_object('id', u.id, 'name', u.name, 'email', u.email, 'profilePic', u."profilePic") AS owner,
+        jsonb_build_object('id', u.id, 'name', u.name, 'email', u.email,'phone', u.phone, 'profilePic', u."profilePic") AS owner,
         jsonb_build_object('id', p.id, 'name', p.name , 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic" , 'birthDate', p."birthDate", 'weight', p.weight) AS pet
         FROM appointments a
         JOIN users u ON u.id = a.owner
@@ -367,6 +370,10 @@ export const getAppointmentDetailsForDoctor = async (doctor: any, appointmentId:
     //         chatType: "personal"
     //     }).lean().select("_id")
     // }
+
+
+    const pet = appointment.rows[0].pet;
+    pet.age = getAge(pet.birthDate);
 
     const response = { appointment: appointment.rows[0], chat };
 
