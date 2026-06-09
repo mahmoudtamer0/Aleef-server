@@ -20,6 +20,8 @@ router.route("/resend-otp")
 router.route("/login")
     .post(validate(loginSchema), login)
 
+router.route("/google")
+    .post(login)
 
 // router.route("/add-fcmToken")
 //     .post(verifyToken, addFcmToken)
