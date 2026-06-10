@@ -1,3 +1,4 @@
+import { clearCache } from "../cache";
 import { BOT_ID } from "../constants/bot";
 import pool from "../db";
 
@@ -177,6 +178,8 @@ export = (io: any, socket: any) => {
                 [chat.rows[0].id, socket.user.id, "User", data.message]
             );
 
+            clearCache(`chatBotMessages_${socket.user.id}_${chat.rows[0].id}`);
+
             socket.emit("chat_response", {
                 _id: message.rows[0].id,
                 text: message.rows[0].text,
@@ -195,6 +198,8 @@ export = (io: any, socket: any) => {
                 socket.emit("error_message", { errMessage: "Chatbot didn't respond" });
                 return;
             }
+
+            clearCache(`chatBotMessages_${socket.user.id}_${chat.rows[0].id}`);
 
             socket.emit("chat_response", {
                 message: botText,
