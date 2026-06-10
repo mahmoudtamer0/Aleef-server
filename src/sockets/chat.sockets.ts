@@ -26,6 +26,7 @@ export = (io: any, socket: any) => {
 
     socket.on("send_message", async (data: { chatId: string; message: string }) => {
         try {
+            console.log("send_message")
             const model: "Doctor" | "User" =
                 socket.user.role === "DOCTOR" ? "Doctor" : "User";
 
