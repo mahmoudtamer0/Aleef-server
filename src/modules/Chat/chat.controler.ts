@@ -24,7 +24,7 @@ export const getChatMessages = catchAsync(async (req, res, next) => {
         status: "success",
         messages: messages.messages,
         chatId: messages.chatId,
-        user: messages.user,
+        person: messages.person,
     })
 });
 

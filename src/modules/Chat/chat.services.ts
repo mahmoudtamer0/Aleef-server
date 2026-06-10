@@ -27,9 +27,9 @@ export const getChats = async (user: any) => {
             ) AS "lastMessage",
             CASE
                 WHEN cm.member_model = 'User' THEN
-                    jsonb_build_object('_id', u.id, 'name', u.name, 'profilePic', u."profilePic")
+                    jsonb_build_object('id', u.id, 'name', u.name, 'profilePic', u."profilePic")
                 WHEN cm.member_model = 'Doctor' THEN
-                    jsonb_build_object('_id', d.id, 'name', d.name, 'profilePic', d."profilePic")
+                    jsonb_build_object('id', d.id, 'name', d.name, 'profilePic', d."profilePic")
             END AS person,
             COALESCE(um."unreadCount", 0) AS "unreadCount"
         FROM chats c
@@ -65,9 +65,9 @@ export const getChatMessages = async (chatId: any, user: any) => {
         `SELECT cm.member_id, cm.member_model,
             CASE
                 WHEN cm.member_model = 'User' THEN
-                    jsonb_build_object('_id', u.id, 'name', u.name, 'profilePic', u."profilePic", 'role', cm.member_model)
+                    jsonb_build_object('id', u.id, 'name', u.name, 'profilePic', u."profilePic", 'role', cm.member_model)
                 WHEN cm.member_model = 'Doctor' THEN
-                    jsonb_build_object('_id', d.id, 'name', d.name, 'profilePic', d."profilePic", 'role', cm.member_model)
+                    jsonb_build_object('id', d.id, 'name', d.name, 'profilePic', d."profilePic", 'role', cm.member_model)
             END AS member
         FROM chat_members cm
         LEFT JOIN users u ON cm.member_model = 'User' AND cm.member_id = u.id
@@ -82,16 +82,16 @@ export const getChatMessages = async (chatId: any, user: any) => {
 
     const messagesResult = await pool.query(
         `SELECT
-            m.id AS "_id",
+            m.id,
             m."chatId" AS "chatId",
             m."isDeleted" AS "isDeleted",
             m.text,
             m."createdAt",
             CASE
                 WHEN m.sender_model = 'User' THEN
-                    jsonb_build_object('_id', u.id, 'name', u.name, 'profilePic', u."profilePic")
+                    jsonb_build_object('id', u.id, 'name', u.name, 'profilePic', u."profilePic")
                 WHEN m.sender_model = 'Doctor' THEN
-                    jsonb_build_object('_id', d.id, 'name', d.name, 'profilePic', d."profilePic")
+                    jsonb_build_object('id', d.id, 'name', d.name, 'profilePic', d."profilePic")
             END AS sender
         FROM messages m
         LEFT JOIN users u ON m.sender_model = 'User' AND m.sender = u.id
@@ -103,7 +103,7 @@ export const getChatMessages = async (chatId: any, user: any) => {
 
     const response = {
         chatId,
-        user: otherUser,
+        person: otherUser,
         messages: messagesResult.rows
     };
 
@@ -154,7 +154,7 @@ export const getChatbotMessages = async (user: any) => {
 
     const messagesResult = await pool.query(
         `SELECT
-            id AS "_id",
+            id,
             "chatId" AS chatId,
             "isDeleted" AS "isDeleted",
             text,
@@ -204,7 +204,7 @@ export const getAllChats = async (reqQuery: any) => {
         SELECT
             c.id, c.chat_type AS "chatType",
             json_agg(DISTINCT jsonb_build_object(
-                '_id', COALESCE(u.id, d.id),
+                'id', COALESCE(u.id, d.id),
                 'name', COALESCE(u.name, d.name),
                 'profilePic', COALESCE(u."profilePic", d."profilePic")
             )) AS "memberDetails",
