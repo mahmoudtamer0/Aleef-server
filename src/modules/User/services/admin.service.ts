@@ -1,4 +1,4 @@
-import { getCache, setCache } from "../../../cache";
+import { clearCache, getCache, setCache } from "../../../cache";
 import pool from "../../../db";
 import { banUserTemplate, unBanUserTemplate } from "../../../emails/user.emails";
 import ApiError from "../../../utils/ApiError";
@@ -95,7 +95,16 @@ export const banUser = async (req: any) => {
 
             if (user.rows.length == 0) throw new ApiError(404, "user not fount");
 
+            const userSessions = await client.query(
+                `SELECT id FROM sessions WHERE user_id = $1`,
+                [userId]
+            );
+
             await client.query("DELETE FROM sessions WHERE user_id = $1", [userId]);
+
+            userSessions.rows.forEach(session => {
+                clearCache(`session:${session.id}`);
+            });
 
             setImmediate(async () => {
                 await sendEmail({
@@ -147,6 +156,7 @@ export const banUser = async (req: any) => {
             return { status: "success", message: "ban removed successfuly" }
         }
 
+        clearCache(`session:${userId}`);
         await client.query("COMMIT");
         throw new ApiError(400, "unexpected ban action");
     } catch (err) {
