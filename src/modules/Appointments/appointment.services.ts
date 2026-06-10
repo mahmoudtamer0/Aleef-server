@@ -1252,6 +1252,7 @@ export const prevAppointmentsForDoctor = async (doctor: any) => {
         jsonb_build_object('id', u.id, 'rate',d.rating,'ratingsCount',d."ratingsCount") AS doctor,
         jsonb_build_object('id', p.id, 'name', p.name, 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic") AS pet,
         COUNT(*) FILTER (WHERE a.status = 'completed') OVER() AS "completedCount",
+        COUNT(*) FILTER (WHERE a.status = 'cancelled') OVER() AS "completedCount",
         COUNT(*) OVER() AS "totalCount"
         FROM appointments a
         JOIN users u ON u.id = a.owner
