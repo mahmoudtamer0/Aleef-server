@@ -1062,6 +1062,7 @@ export const endAppointment = async (
         clearCache(`prevAppointments:${appointment.owner.id}`);
         clearCache(`pet_profile:${appointment.pet.id}`);
         clearCache(`appointments:`);
+        clearCache(`prevAppointmentsDoctor:${doctor.id}`);
 
         setImmediate(() => {
             sendEmail({
@@ -1213,8 +1214,6 @@ export const changeAppointmentStatus = async (appointmentId: any, status: any) =
         client.release();
     }
 };
-
-
 
 export const getAppointmentDetailsForAdmin = async (appointmentId: any) => {
     const cacheKey = `appointment_details_admin:${appointmentId}`;
