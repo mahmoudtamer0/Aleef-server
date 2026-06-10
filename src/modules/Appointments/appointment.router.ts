@@ -1,5 +1,5 @@
 import express from "express";
-import { approveAppointment, bookAppointment, changeAppoinmentStatus, endAppoinment, getActiveAppointment, getAllAppoinments, getAppoinmentDetailsForAdmin, getAppointmentDetails, getAppointmentsRequestsForDoctor, getPrevAppoinments, rejectAppointment } from "./appointment.controler";
+import { approveAppointment, bookAppointment, changeAppoinmentStatus, endAppoinment, getActiveAppointment, getAllAppoinments, getAppoinmentDetailsForAdmin, getAppointmentDetails, getAppointmentsRequestsForDoctor, getPrevAppoinments, prevAppointmentsForDoctor, rejectAppointment } from "./appointment.controler";
 import { upload } from "../../middlewares/appoinmentUploads"
 import validate from "../../middlewares/userValidate";
 import { addAppointmentSchema, rejectAppoinmentSchema } from "./appointment.validation";
@@ -20,6 +20,9 @@ router.route("/requests")
 
 router.route("/get-my-previous-appointments")
     .get(verifyToken, getPrevAppoinments)
+
+router.route("/doctor-performance")
+    .get(verifyToken, allowTo("DOCTOR"), prevAppointmentsForDoctor)
 
 router.route("/approve-appointment/:appointmentId")
     .post(verifyToken, allowTo("DOCTOR"), approveAppointment);

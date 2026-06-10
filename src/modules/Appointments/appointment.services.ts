@@ -1240,3 +1240,48 @@ export const getAppointmentDetailsForAdmin = async (appointmentId: any) => {
     setCache(cacheKey, result.rows[0], 300);
     return result.rows[0];
 };
+
+export const prevAppointmentsForDoctor = async (doctor: any) => {
+
+    const cacheKey = `prevAppointmentsDoctor:${doctor.id}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
+
+    const result = await pool.query(
+        `SELECT a.id, a.date, a.time, a.reason, a.status,
+        jsonb_build_object('id', u.id, 'name', u.name, 'email', u.email,'phone', u.phone, 'profilePic', u."profilePic") AS owner,
+        jsonb_build_object('id', u.id, 'rate',d.rating,'ratingsCount',d."ratingsCount") AS doctor,
+        jsonb_build_object('id', p.id, 'name', p.name) AS pet,
+        COUNT(*) FILTER (WHERE a.status = 'completed') OVER() AS "completedCount",
+        COUNT(*) OVER() AS "totalCount"
+        FROM appointments a
+        JOIN users u ON u.id = a.owner
+        JOIN doctors d ON d.id = a.doctor
+        JOIN pets p ON p.id = a.pet
+        WHERE a.doctor = $1 AND a.status IN ('cancelled', 'completed')
+        ORDER BY a."updatedAt" DESC LIMIT 8`,
+        [doctor.id]
+    );
+
+    console.log("prevAppointmentsForDoctor", result.rows)
+    console.log("doctor", doctor.id)
+
+    const appoinmentsCounts = { totalAppoinments: Number(result.rows[0]?.totalCount ?? 0), completedAppoinments: Number(result.rows[0]?.completedCount ?? 0) };
+
+    const appoinments = result.rows.map(({ completedCount, totalCount, doctor, ...rest }) => rest);
+
+    const doctorRating = {
+        rating: result.rows[0].doctor.rate,
+        ratingCount: result.rows[0].doctor.ratingsCount
+    }
+
+    const response = {
+        appointments: appoinments,
+        appoinmentsCounts,
+        doctorRating
+    };
+
+    setCache(cacheKey, response, 500);
+
+    return response;
+}

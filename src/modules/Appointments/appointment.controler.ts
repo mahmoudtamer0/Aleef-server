@@ -166,3 +166,17 @@ export const getAppoinmentDetailsForAdmin = catchAsync(async (req, res, next) =>
         appointment,
     })
 })
+
+
+export const prevAppointmentsForDoctor = catchAsync(async (req, res, next) => {
+    const doctor = req.user;
+    console.log("doctor", doctor)
+    const appointments = await appointmentServices.prevAppointmentsForDoctor(doctor);
+
+    return res.status(200).json({
+        status: "success",
+        appointments: appointments.appointments,
+        appoinmentsCounts: appointments.appoinmentsCounts,
+        doctorRating: appointments.doctorRating
+    })
+})
