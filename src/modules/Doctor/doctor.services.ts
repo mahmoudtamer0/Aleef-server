@@ -652,6 +652,52 @@ export const getDoctorScheduleForDoctor = async (doctor: any) => {
 };
 
 
+export const editDoctorSchedule = async (doctor: any, schedule: { day_of_week: string, start_time: string, end_time: string, is_available: boolean }[]) => {
+
+    const validDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+    console.log("schedule", schedule)
+
+    for (const day of schedule) {
+        if (!validDays.includes(day.day_of_week.toLowerCase())) {
+            throw new ApiError(400, `Invalid day: ${day.day_of_week}`);
+        }
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        for (const day of schedule) {
+            await client.query(
+                `INSERT INTO doctor_schedules (doctor_id, day_of_week, start_time, end_time, is_available)
+                 VALUES ($1, $2, $3, $4, $5)
+                 ON CONFLICT (doctor_id, day_of_week) DO UPDATE SET
+                    start_time = $3,
+                    end_time = $4,
+                    is_available = $5`,
+                [doctor.id, day.day_of_week.toLowerCase(), day.start_time, day.end_time, day.is_available]
+            );
+        }
+
+        await client.query("COMMIT");
+
+        clearCache(`doctor_schedule:${doctor.id}`);
+
+        return await getDoctorScheduleForDoctor(doctor);
+
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
+    }
+
+
+};
+
+
+
 
 // export const addReviewToDoctor = async (user: any, doctorId: any, { comment, rate }: any) => {
 

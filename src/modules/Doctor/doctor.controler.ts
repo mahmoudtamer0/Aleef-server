@@ -197,6 +197,16 @@ export const getDoctorScheduleForDoctor = catchAsync(async (req, res, next) => {
     })
 })
 
+export const editDoctorSchedule = catchAsync(async (req, res, next) => {
+    const doctor = req.user
+    const { schedule } = req.body
+    const updatedSchedule = await doctorService.editDoctorSchedule(doctor, schedule)
+    return res.status(200).json({
+        status: "success",
+        schedule: updatedSchedule,
+    })
+})
+
 
 
 

@@ -51,3 +51,20 @@ export const editDoctorProfileSchema = Joi.object({
     about: Joi.string().max(500),
     slotduration: Joi.number().valid(15, 30, 45, 60),
 });
+
+export const editScheduleSchema = Joi.object({
+    schedule: Joi.array().items(
+        Joi.object({
+            day_of_week: Joi.string()
+                .valid('sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday')
+                .required(),
+            start_time: Joi.string()
+                .pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+                .when('is_available', { is: true, then: Joi.required() }),
+            end_time: Joi.string()
+                .pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+                .when('is_available', { is: true, then: Joi.required() }),
+            is_available: Joi.boolean().required(),
+        })
+    ).min(1).required()
+});

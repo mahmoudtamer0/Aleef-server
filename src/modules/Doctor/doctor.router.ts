@@ -1,8 +1,8 @@
 import express from "express";
-import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors, approveDoctorRequest, getDoctor, getDoctorSchedual, getDoctorSlots, login, getAvailableDoctors, getDoctorToAdmin, getMeDoctor, editDoctor, getDoctorScheduleForDoctor } from "./doctor.controler";
+import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors, approveDoctorRequest, getDoctor, getDoctorSchedual, getDoctorSlots, login, getAvailableDoctors, getDoctorToAdmin, getMeDoctor, editDoctor, getDoctorScheduleForDoctor, editDoctorSchedule } from "./doctor.controler";
 import { upload } from "../../middlewares/doctorProfilepic"
 import validate from "../../middlewares/userValidate";
-import { registerSchema, verifyOtpSchema, resendOtpSchema, editDoctorProfileSchema } from "./doctor.validation";
+import { registerSchema, verifyOtpSchema, resendOtpSchema, editDoctorProfileSchema, editScheduleSchema } from "./doctor.validation";
 import { verifyToken } from "../../middlewares/verifyToken";
 import { allowTo } from "../../middlewares/allowTo";
 import { loginSchema } from "../User/users.validation";
@@ -38,6 +38,7 @@ router.route("/get-available-doctors")
 
 router.route("/me/schedule")
     .get(verifyToken, getDoctorScheduleForDoctor)
+    .patch(verifyToken, validate(editScheduleSchema), editDoctorSchedule)
 
 router.route("/me")
     .get(verifyToken, getMeDoctor)
