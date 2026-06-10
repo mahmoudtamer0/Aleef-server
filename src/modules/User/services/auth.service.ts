@@ -124,11 +124,20 @@ export const login = async ({ email, password }: any, device: string) => {
         throw new ApiError(401, "email not veryfied");
     }
 
-    if (findUser.rows[0].status == "banned" && findUser.rows[0].banExpiresAt) {
-        if (findUser.rows[0].banExpiresAt > new Date()) {
-            throw new ApiError(403, "your account is banned");
+    if (findUser.rows[0].status === "banned") {
+        const banExpiry = findUser.rows[0].banExpiresAt;
+
+        if (banExpiry === null || new Date(banExpiry) > new Date()) {
+            if (findUser.rows[0].banExpiresAt === null) {
+                throw new ApiError(403, "your account is banned permanently, please contact support");
+            }
+            throw new ApiError(403, "your account is banned until " + new Date(banExpiry).toLocaleString());
         }
-        await pool.query("UPDATE users SET status = $1, \"banExpiresAt\" = $2 WHERE email = $3", ["active", null, email])
+
+        await pool.query(
+            `UPDATE users SET status = $1, "banExpiresAt" = $2 WHERE email = $3`,
+            ["active", null, email]
+        );
     }
 
     const session = await pool.query(

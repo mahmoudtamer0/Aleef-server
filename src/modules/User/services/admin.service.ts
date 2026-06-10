@@ -82,18 +82,18 @@ export const banUser = async (req: any) => {
 
     const client = await pool.connect();
     try {
-
         await client.query("BEGIN");
 
-        if (banAction == "ban") {
-
+        if (banAction === "ban") {
             const days = banDays ? Number(banDays) : 5;
-
             const banDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
-            const user = await client.query("UPDATE users SET status = $1, \"banExpiresAt\" = $2 WHERE id = $3", ["banned", banDate, userId])
+            const user = await client.query(
+                `UPDATE users SET status = $1, "banExpiresAt" = $2 WHERE id = $3 RETURNING id, name, email`,
+                ["banned", banDate, userId]
+            );
 
-            if (user.rows.length == 0) throw new ApiError(404, "user not fount");
+            if (user.rowCount === 0) throw new ApiError(404, "user not found");
 
             const userSessions = await client.query(
                 `SELECT id FROM sessions WHERE user_id = $1`,
@@ -102,68 +102,58 @@ export const banUser = async (req: any) => {
 
             await client.query("DELETE FROM sessions WHERE user_id = $1", [userId]);
 
-            userSessions.rows.forEach(session => {
-                clearCache(`session:${session.id}`);
-            });
+            userSessions.rows.forEach(session => clearCache(`session:${session.id}`));
+            clearCache(`users_all_users_`);
+
+            await client.query("COMMIT");
 
             setImmediate(async () => {
                 await sendEmail({
                     email: user.rows[0].email,
                     subject: "Important update about your Aleef account",
-
-                    text: `
-                Hello ${user.rows[0].name},
-    
-                We want to inform you that your account access has been temporarily restricted.
-    
-                Ban start: ${new Date().toLocaleString()}
-                Ban ends: ${banDate.toLocaleString()}
-    
-                If you believe this was a mistake, please contact our support team.
-    
-                - Aleef Team
-                `,
-
+                    text: `...`,
                     message: banUserTemplate(user.rows[0].name, banDate.toLocaleString())
                 }).catch(err => console.log("email error:", err));
+            });
 
-            })
+            return { status: "success", message: "User banned successfully" };
 
-            return { status: "success", message: "User banned successfully" }
-        } else if (banAction == "remove") {
-            const user = await client.query("UPDATE users SET status = $1, \"banExpiresAt\" = $2 WHERE id = $3 RETURNING id,name,email", ["active", null, userId])
-            if (user.rowCount == 0) throw new ApiError(404, "user not fount");
+        } else if (banAction === "remove") {
+            const user = await client.query(
+                `UPDATE users SET status = $1, "banExpiresAt" = $2 WHERE id = $3 RETURNING id, name, email`,
+                ["active", null, userId]
+            );
+
+            if (user.rowCount === 0) throw new ApiError(404, "user not found");
+
+            const userSessions = await client.query(
+                `SELECT id FROM sessions WHERE user_id = $1`,
+                [userId]
+            );
+
+            userSessions.rows.forEach(session => clearCache(`session:${session.id}`));
+            clearCache(`users_all_users_`);
+
+            await client.query("COMMIT");
 
             setImmediate(() => {
                 sendEmail({
                     email: user.rows[0].email,
                     subject: "Your Aleef account is now accessible",
-
-                    text: `
-        Hello ${user.rows[0].name},
-        
-        Good news! Your account access has been restored and you can now use Aleef normally.
-        
-        If you experience any issues, feel free to contact our support team.
-        
-        - Aleef Team
-        `,
-
+                    text: `...`,
                     message: unBanUserTemplate(user.rows[0].name)
                 }).catch(err => console.log("email error:", err));
-            })
+            });
 
-            return { status: "success", message: "ban removed successfuly" }
+            return { status: "success", message: "ban removed successfully" };
         }
 
-        clearCache(`session:${userId}`);
-        await client.query("COMMIT");
         throw new ApiError(400, "unexpected ban action");
+
     } catch (err) {
         await client.query("ROLLBACK");
-        return new ApiError(500, "error")
+        throw err;
     } finally {
         client.release();
     }
-
-}
+};
