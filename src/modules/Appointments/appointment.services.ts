@@ -1263,9 +1263,6 @@ export const prevAppointmentsForDoctor = async (doctor: any) => {
         [doctor.id]
     );
 
-    console.log("prevAppointmentsForDoctor", result.rows)
-    console.log("doctor", doctor.id)
-
     const appoinmentsCounts = { totalAppoinments: Number(result.rows[0]?.totalCount ?? 0), completedAppoinments: Number(result.rows[0]?.completedCount ?? 0) };
 
     const appoinments = result.rows.map(({ completedCount, totalCount, doctor, ...rest }) => rest);
