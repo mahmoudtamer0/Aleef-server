@@ -1249,9 +1249,9 @@ export const prevAppointmentsForDoctor = async (doctor: any) => {
 
     const result = await pool.query(
         `SELECT a.id, a.date, a.time, a.reason, a.status,
-        jsonb_build_object('id', u.id, 'name', u.name, 'email', u.email,'phone', u.phone, 'profilePic', u."profilePic") AS owner,
+        jsonb_build_object('id', u.id, 'name', u.name) AS owner,
         jsonb_build_object('id', u.id, 'rate',d.rating,'ratingsCount',d."ratingsCount") AS doctor,
-        jsonb_build_object('id', p.id, 'name', p.name) AS pet,
+        jsonb_build_object('id', p.id, 'name', p.name, 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic") AS pet,
         COUNT(*) FILTER (WHERE a.status = 'completed') OVER() AS "completedCount",
         COUNT(*) OVER() AS "totalCount"
         FROM appointments a
