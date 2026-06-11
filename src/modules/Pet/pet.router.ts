@@ -18,7 +18,7 @@ router.route("/get-user-pets/:userId")
 
 
 router.route("/:petId")
-    .get(verifyToken, getPetProfile)
+    .get(getPetProfile)
     .patch(
         verifyToken,
         upload.single("profilePic"),

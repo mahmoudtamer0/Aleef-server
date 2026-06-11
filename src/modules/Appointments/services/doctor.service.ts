@@ -452,7 +452,7 @@ export const endAppointment = async (
                 `INSERT INTO vaccinations (pet, doctor, type, "vaccineName", "nextDueDate")
                  VALUES ($1, $2, 'upcomming', $3, $4)
                  RETURNING *`,
-                [appointment.pet.id, doctor.id, upCommingVaccination.vaccineName, upCommingVaccination?.nextDueDate || null]
+                [appointment.pet.id, doctor.id, upCommingVaccination.vaccineName, upCommingVaccination?.nextDueDate.split('-').reverse().join('-') || null]
             );
             createdUpCommingVaccination = created.rows[0];
         }
@@ -471,6 +471,7 @@ export const endAppointment = async (
         clearCache(`pet_profile:${appointment.pet.id}`);
         clearCache(`appointments:`);
         clearCache(`prevAppointmentsDoctor:${doctor.id}`);
+        clearCache(`active_appointments_doctor:${doctor.id}`);
 
         setImmediate(() => {
             sendEmail({
