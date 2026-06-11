@@ -181,3 +181,15 @@ export const prevAppointmentsForDoctor = catchAsync(async (req, res, next) => {
         doctorRating: appointments.doctorRating
     })
 })
+
+export const activeAppoinmentsForDoctor = catchAsync(async (req, res, next) => {
+    const doctor = req.user;
+    const { date } = req.query;
+    const appointments = await doctorServices.getActiveAppoinmentsForDoctor(doctor, date);
+
+    return res.status(200).json({
+        status: "success",
+        appointments: appointments
+    })
+
+})

@@ -48,6 +48,37 @@ export const getAppointmentsRequestsForDoctor = async (doctor: any, params: any)
 
 }
 
+export const getActiveAppoinmentsForDoctor = async (doctor: any, date: any) => {
+    if (!date) date = new Date().toISOString().split('T')[0];
+
+    const formattedDate = date.split('-').reverse().join('-');
+
+    const cacheKey = `active_appointments_doctor:${doctor.id}_${date}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
+
+    const result = await pool.query(
+        `SELECT a.id,TO_CHAR(a.date, 'YYYY-MM-DD') AS date, a.time, a.reason, a.status, a."createdAt",
+        jsonb_build_object('id', p.id, 'name', p.name, 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic") AS pet,
+        jsonb_build_object('id', u.id, 'name', u.name) AS owner,
+        COUNT(*) OVER() AS total_count
+        FROM appointments a
+         JOIN pets p ON a.pet = p.id
+         JOIN users u ON a.owner = u.id
+        WHERE a.doctor = $1 AND a.status = 'accepted' AND a.date = $2::date
+        ORDER BY a.time ASC
+        `,
+        [doctor.id, formattedDate]
+    );
+
+    const appointments = result.rows.map(row => ({ ...row, date: row.date.split('-').reverse().join('-') })
+    );
+
+    setCache(cacheKey, appointments, 300);
+
+    return appointments;
+}
+
 export const getAppointmentDetailsForDoctor = async (doctor: any, appointmentId: any) => {
 
     console.log("getAppointmentDetailsForDoctor")
