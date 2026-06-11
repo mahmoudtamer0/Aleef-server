@@ -65,7 +65,8 @@ export const login = catchAsync(async (req, res, next) => {
 
 export const google = catchAsync(async (req, res, next) => {
     const device = req.headers["user-agent"] || ""
-    const user = await authService.google(req.body, device)
+    const user = await authService.google(req.body.idToken, device)
+
 
     return res.status(200).json({
         status: "success",
