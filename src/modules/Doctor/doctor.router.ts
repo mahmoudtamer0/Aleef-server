@@ -1,5 +1,5 @@
 import express from "express";
-import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors, approveDoctorRequest, getDoctor, getDoctorSchedual, getDoctorSlots, login, getAvailableDoctors, getDoctorToAdmin, getMeDoctor, editDoctor, getDoctorScheduleForDoctor, editDoctorSchedule } from "./doctor.controler";
+import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors, approveDoctorRequest, getDoctor, getDoctorSchedual, getDoctorSlots, login, getAvailableDoctors, getDoctorToAdmin, getMeDoctor, editDoctor, getDoctorScheduleForDoctor, editDoctorSchedule, logOut } from "./doctor.controler";
 import { upload } from "../../middlewares/doctorProfilepic"
 import validate from "../../middlewares/userValidate";
 import { registerSchema, verifyOtpSchema, resendOtpSchema, editDoctorProfileSchema, editScheduleSchema } from "./doctor.validation";
@@ -27,6 +27,9 @@ router.route("/login")
 router.route("/resend-otp")
     .post(validate(resendOtpSchema), resendOtp)
 
+router.route("/logout")
+    .post(verifyToken, logOut)
+
 router.route("/get-doctors-requests")
     .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllDoctorsRequests)
 
@@ -43,7 +46,6 @@ router.route("/me/schedule")
 router.route("/me")
     .get(verifyToken, getMeDoctor)
     .patch(verifyToken, upload.single("profilePic"), validate(editDoctorProfileSchema), editDoctor)
-
 
 
 router.route("/approve-request/:doctorId")

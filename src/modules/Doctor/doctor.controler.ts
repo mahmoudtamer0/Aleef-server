@@ -1,11 +1,13 @@
 import catchAsync from "../../utils/catchAsync";
-import * as doctorService from "./doctor.services"
+import * as authService from "./services/auth.service"
+import * as adminService from "./services/admin.service"
+import * as profileService from "./services/profile.service"
 
 
 
 export const doctorRegister = catchAsync(async (req, res, next) => {
 
-    await doctorService.doctorRegister(req.body, req.files);
+    await authService.doctorRegister(req.body, req.files);
 
     return res.status(201).json({
         status: "success",
@@ -16,7 +18,7 @@ export const doctorRegister = catchAsync(async (req, res, next) => {
 
 export const verifyEmail = catchAsync(async (req, res, next) => {
 
-    await doctorService.verifyEmail(req.body)
+    await authService.verifyEmail(req.body)
 
     return res.status(200).json({
         status: "success",
@@ -26,7 +28,7 @@ export const verifyEmail = catchAsync(async (req, res, next) => {
 
 export const resendOtp = catchAsync(async (req, res, next) => {
 
-    await doctorService.resendOtp(req.body)
+    await authService.resendOtp(req.body)
 
     return res.status(200).json({
         status: "success",
@@ -38,7 +40,7 @@ export const resendOtp = catchAsync(async (req, res, next) => {
 export const login = catchAsync(async (req, res, next) => {
     const device = req.headers["user-agent"] || ""
 
-    const doctor = await doctorService.login(req.body, device);
+    const doctor = await authService.login(req.body, device);
 
     return res.status(200).json({
         status: "success",
@@ -55,13 +57,23 @@ export const login = catchAsync(async (req, res, next) => {
 
 })
 
+export const logOut = catchAsync(async (req, res, next) => {
+    const user = req.user
+    const status = await authService.logOut(user)
+
+    return res.status(200).json({
+        status: "success",
+        message: status,
+    })
+})
+
 export const getAllDoctorsRequests = catchAsync(async (req, res, next) => {
 
     const { search, page, limit } = req.query;
 
     const status = "pending";
 
-    const doctors = await doctorService.getAllDoctors({ search, page, limit, status })
+    const doctors = await adminService.getAllDoctors({ search, page, limit, status })
 
     return res.status(200).json({
         status: "success",
@@ -77,9 +89,9 @@ export const getDoctor = catchAsync(async (req, res, next) => {
     let doctor;
 
     if (user?.role == "ADMIN") {
-        doctor = await doctorService.getDoctor(doctorId)
+        doctor = await profileService.getDoctor(doctorId)
     } else {
-        doctor = await doctorService.getDoctor(doctorId)
+        doctor = await profileService.getDoctor(doctorId)
     }
 
     return res.status(200).json({
@@ -91,7 +103,7 @@ export const getDoctor = catchAsync(async (req, res, next) => {
 
 export const getMeDoctor = catchAsync(async (req, res, next) => {
     const doctorId = req.user
-    const doctor = await doctorService.getMeDoctor(doctorId)
+    const doctor = await profileService.getMeDoctor(doctorId)
 
     return res.status(200).json({
         status: "success",
@@ -101,7 +113,7 @@ export const getMeDoctor = catchAsync(async (req, res, next) => {
 
 export const editDoctor = catchAsync(async (req, res, next) => {
     const doctor = req.user
-    const updatedDoctor = await doctorService.editDoctor(doctor, req.body, req.files)
+    const updatedDoctor = await profileService.editDoctor(doctor, req.body, req.files)
 
     return res.status(200).json({
         status: "success",
@@ -111,7 +123,7 @@ export const editDoctor = catchAsync(async (req, res, next) => {
 
 export const getDoctorToAdmin = catchAsync(async (req, res, next) => {
     const { doctorId } = req.params
-    const doctor = await doctorService.getDoctorToAdmin(doctorId)
+    const doctor = await adminService.getDoctorToAdmin(doctorId)
 
     return res.status(200).json({
         status: "success",
@@ -122,7 +134,7 @@ export const getDoctorToAdmin = catchAsync(async (req, res, next) => {
 export const approveDoctorRequest = catchAsync(async (req, res, next) => {
     const { doctorId } = req.params
 
-    const doctorApprove = await doctorService.approveDoctorRequest(doctorId)
+    const doctorApprove = await adminService.approveDoctorRequest(doctorId)
 
     return res.status(200).json({
         status: "success",
@@ -133,7 +145,7 @@ export const approveDoctorRequest = catchAsync(async (req, res, next) => {
 
 export const getAllDoctors = catchAsync(async (req, res, next) => {
 
-    const doctors = await doctorService.getAllDoctors(req.query)
+    const doctors = await adminService.getAllDoctors(req.query)
 
     return res.status(200).json({
         status: "success",
@@ -148,7 +160,7 @@ export const getAllDoctors = catchAsync(async (req, res, next) => {
 
 export const getAvailableDoctors = catchAsync(async (req, res, next) => {
 
-    const doctors = await doctorService.getAvailableDoctors(req.query)
+    const doctors = await profileService.getAvailableDoctors(req.query)
 
     return res.status(200).json({
         status: "success",
@@ -162,7 +174,7 @@ export const getAvailableDoctors = catchAsync(async (req, res, next) => {
 
 export const getDoctorSchedual = catchAsync(async (req, res, next) => {
     const { doctorId } = req.params
-    const doctors = await doctorService.getDoctorSchedual(doctorId)
+    const doctors = await profileService.getDoctorSchedual(doctorId)
 
     return res.status(200).json({
         status: "success",
@@ -178,7 +190,7 @@ export const getDoctorSchedual = catchAsync(async (req, res, next) => {
 export const getDoctorSlots = catchAsync(async (req, res, next) => {
     const { doctorId } = req.params
     const { date } = req.query
-    const doctors = await doctorService.getDoctorSlots(doctorId, date)
+    const doctors = await profileService.getDoctorSlots(doctorId, date)
 
     return res.status(200).json({
         status: "success",
@@ -190,7 +202,7 @@ export const getDoctorSlots = catchAsync(async (req, res, next) => {
 export const getDoctorScheduleForDoctor = catchAsync(async (req, res, next) => {
     const doctor = req.user
 
-    const schedule = await doctorService.getDoctorScheduleForDoctor(doctor)
+    const schedule = await profileService.getDoctorScheduleForDoctor(doctor)
     return res.status(200).json({
         status: "success",
         schedule: schedule,
@@ -200,7 +212,7 @@ export const getDoctorScheduleForDoctor = catchAsync(async (req, res, next) => {
 export const editDoctorSchedule = catchAsync(async (req, res, next) => {
     const doctor = req.user
     const { schedule } = req.body
-    const updatedSchedule = await doctorService.editDoctorSchedule(doctor, schedule)
+    const updatedSchedule = await profileService.editDoctorSchedule(doctor, schedule)
     return res.status(200).json({
         status: "success",
         schedule: updatedSchedule,
