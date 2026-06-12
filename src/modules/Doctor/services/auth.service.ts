@@ -1,6 +1,7 @@
 import { clearCache } from "../../../cache";
 import pool from "../../../db";
 import { verifyEmailTemplate, resendOtpTemplate, verifyOtpTemplate, loginTemplate } from "../../../emails/doctor.emails";
+import { User } from "../../../types/user";
 import ApiError from "../../../utils/ApiError";
 import { checkPassword } from "../../../utils/checkPassword";
 import { generateToken } from "../../../utils/generateToken";
@@ -30,15 +31,15 @@ export const doctorRegister = async ({ email, name, password, phone, specializat
         }
         let doctor;
         if (findDoctor.rows.length > 0 && findDoctor.rows[0].isEmailVerified == false) {
-            doctor = await client.query("UPDATE doctors SET name = $1, phone = $2, password = $3, \"license_number\" = $4, \"city\" = $5, \"address\" = $6, \"specialization\" = $7, \"profilePic\" = $8, \"cloudinary_id\" = $9,  \"emailVerificationCode\" = $10, \"emailVerificationExpires\" = $11 WHERE email = $12 RETURNING id",
+            doctor = await client.query("UPDATE doctors SET name = $1, phone = $2, password = $3, \"license_number\" = $4, \"city\" = $5, \"address\" = $6, \"specialization\" = $7, \"profilePic\" = $8, \"cloudinary_id\" = $9,  \"emailVerificationCode\" = $10, \"emailVerificationExpires\" = $11,appointmentFee = $12 WHERE email = $13 RETURNING id",
                 [name, phone, hashedPassword, license_number, city, address, specialization,
                     reqFiles.profilePic[0].path, reqFiles.profilePic[0].filename,
-                    hashedOtp, expires, email])
+                    hashedOtp, expires, appointmentFee, email])
         } else {
-            doctor = await client.query("INSERT INTO doctors (email, name, phone, password, \"license_number\", \"city\", \"address\", \"specialization\", \"profilePic\", \"cloudinary_id\", \"emailVerificationCode\", \"emailVerificationExpires\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id",
+            doctor = await client.query("INSERT INTO doctors (email, name, phone, password, \"license_number\", \"city\", \"address\", \"specialization\", \"profilePic\", \"cloudinary_id\", \"emailVerificationCode\", \"emailVerificationExpires\",appointmentFee) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,$13) RETURNING id",
                 [email, name, phone, hashedPassword, license_number, city, address, specialization,
                     reqFiles.profilePic[0].path, reqFiles.profilePic[0].filename,
-                    hashedOtp, expires])
+                    hashedOtp, expires, appointmentFee])
         }
 
         await client.query(`
@@ -73,7 +74,7 @@ export const doctorRegister = async ({ email, name, password, phone, specializat
 
 }
 
-export const resendOtp = async ({ email }: any) => {
+export const resendOtp = async ({ email }: { email: string }) => {
     const { otp, hashedOtp, expires } = generateOTP()
 
     const findDoctor = await pool.query("SELECT email,\"isEmailVerified\" FROM doctors WHERE email = $1", [email])
@@ -100,7 +101,7 @@ export const resendOtp = async ({ email }: any) => {
 }
 
 
-export const verifyEmail = async ({ email, otp }: any): Promise<any> => {
+export const verifyEmail = async ({ email, otp }: { email: string, otp: string }): Promise<any> => {
     const hashedOtp = crypto
         .createHash("sha256")
         .update(String(otp))
@@ -161,7 +162,7 @@ export const verifyEmail = async ({ email, otp }: any): Promise<any> => {
 }
 
 
-export const login = async ({ email, password }: any, device: string) => {
+export const login = async ({ email, password }: { email: string, password: string }, device: string) => {
 
     const findDoctor = await pool.query(`SELECT email, id, name, role, password, "profilePic", "isEmailVerified", status, "banExpiresAt" FROM doctors WHERE email = $1`, [email])
 
@@ -210,7 +211,7 @@ export const login = async ({ email, password }: any, device: string) => {
     return { doctor, token };
 }
 
-export const logOut = async (user: any) => {
+export const logOut = async (user: User) => {
     try {
         await pool.query("DELETE FROM sessions WHERE id = $1", [user.sessionId]);
         clearCache(`session:${user.sessionId}`);

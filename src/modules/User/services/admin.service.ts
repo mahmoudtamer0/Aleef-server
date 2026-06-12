@@ -4,7 +4,7 @@ import { banUserTemplate, unBanUserTemplate } from "../../../emails/user.emails"
 import ApiError from "../../../utils/ApiError";
 import { sendEmail } from "../../../utils/sendEmail";
 
-export const getAllUsers = async (reqQuery: any) => {
+export const getAllUsers = async (reqQuery: { search?: string, status?: string, page?: string, limit?: string }) => {
     const { search, status } = reqQuery;
 
 
@@ -13,8 +13,8 @@ export const getAllUsers = async (reqQuery: any) => {
     let index = 1
 
 
-    const page = reqQuery.page * 1 || 1;
-    const limit = reqQuery.limit < 8 ? reqQuery.limit * 1 || 8 : 8;
+    const page = Number(reqQuery.page) * 1 || 1;
+    const limit = Number(reqQuery.limit) < 8 ? Number(reqQuery.limit) * 1 || 8 : 8;
     const offset = (page - 1) * limit
 
     const cacheKey = `users_all_users_${search}_${status}_${page}_${limit}`

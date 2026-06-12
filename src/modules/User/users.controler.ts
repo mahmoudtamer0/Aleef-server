@@ -2,6 +2,7 @@ import catchAsync from "../../utils/catchAsync";
 import * as authService from "./services/auth.service"
 import * as adminService from "./services/admin.service"
 import * as profileService from "./services/profile.service"
+import { User } from "../../types/user";
 
 
 
@@ -83,7 +84,7 @@ export const google = catchAsync(async (req, res, next) => {
 });
 
 export const getME = catchAsync(async (req, res, next) => {
-    const user = (req as any).user
+    const user = req.user as User
     const userProfile = await profileService.getMe(user.id)
 
     return res.status(200).json({
@@ -93,7 +94,7 @@ export const getME = catchAsync(async (req, res, next) => {
 })
 
 export const getUserToAdmin = catchAsync(async (req, res, next) => {
-    const { userId } = (req as any).params
+    const { userId } = req.params as { userId: string };
     const userProfile = await profileService.getMe(userId)
 
     return res.status(200).json({
@@ -103,9 +104,9 @@ export const getUserToAdmin = catchAsync(async (req, res, next) => {
 })
 
 export const editUserProfile = catchAsync(async (req, res, next) => {
-    const user = (req as any).user
-    const body = (req as any).body
-    const file = (req as any).file
+    const user = req.user as User
+    const body = req.body as { name: string, phone: string, changeProfilePic: any, deleteProfilePic: any }
+    const file = req.file as any
     const userProfile = await profileService.editUserProfile(user, body, file)
 
     return res.status(200).json({
@@ -121,7 +122,7 @@ export const editUserProfile = catchAsync(async (req, res, next) => {
 
 export const getAllUsers = catchAsync(async (req, res, next) => {
 
-    const users = await adminService.getAllUsers(req.query)
+    const users = await adminService.getAllUsers(req.query as { search?: string, status?: string, page?: string, limit?: string })
 
     return res.status(200).json({
         status: "success",
@@ -172,7 +173,7 @@ export const banUser = catchAsync(async (req, res, next) => {
 
 export const logOut = catchAsync(async (req, res, next) => {
 
-    const user = (req as any).user
+    const user = req.user as User
 
     const logout = await authService.logOut(user)
 

@@ -1,8 +1,9 @@
 import pool from "../../../db";
+import { User } from "../../../types/user";
 import ApiError from "../../../utils/ApiError";
 import deleteProfilPic from "../../../utils/deleteProfile";
 
-export const getMe = async (userId: any): Promise<any> => {
+export const getMe = async (userId: string) => {
 
     const userProfile = await pool.query("SELECT name, email, phone, \"profilePic\" FROM users WHERE id = $1", [userId])
 
@@ -11,7 +12,7 @@ export const getMe = async (userId: any): Promise<any> => {
     return userProfile.rows[0];
 }
 
-export const editUserProfile = async (user: any, reqBody: any, reqFile: any): Promise<any> => {
+export const editUserProfile = async (user: User, reqBody: { name?: string, phone?: string, changeProfilePic?: boolean | string, deleteProfilePic?: boolean | string }, reqFile: any) => {
     const { name, phone, changeProfilePic, deleteProfilePic } = reqBody;
 
     const fields = [];

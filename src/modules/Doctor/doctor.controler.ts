@@ -2,6 +2,7 @@ import catchAsync from "../../utils/catchAsync";
 import * as authService from "./services/auth.service"
 import * as adminService from "./services/admin.service"
 import * as profileService from "./services/profile.service"
+import { User } from "../../types/user";
 
 
 
@@ -58,7 +59,9 @@ export const login = catchAsync(async (req, res, next) => {
 })
 
 export const logOut = catchAsync(async (req, res, next) => {
-    const user = req.user
+
+    if (!req.user) return res.status(401).json({ status: "error", message: "Unauthorized" })
+    const user = req.user as User
     const status = await authService.logOut(user)
 
     return res.status(200).json({
@@ -69,7 +72,7 @@ export const logOut = catchAsync(async (req, res, next) => {
 
 export const getAllDoctorsRequests = catchAsync(async (req, res, next) => {
 
-    const { search, page, limit } = req.query;
+    const { search, page, limit } = req.query as { search: string; page: string; limit: string };
 
     const status = "pending";
 
@@ -83,7 +86,7 @@ export const getAllDoctorsRequests = catchAsync(async (req, res, next) => {
 })
 
 export const getDoctor = catchAsync(async (req, res, next) => {
-    const { doctorId } = req.params
+    const { doctorId } = req.params as { doctorId: string };
     const user = req.user;
 
     let doctor;
@@ -102,17 +105,17 @@ export const getDoctor = catchAsync(async (req, res, next) => {
 })
 
 export const getMeDoctor = catchAsync(async (req, res, next) => {
-    const doctorId = req.user
-    const doctor = await profileService.getMeDoctor(doctorId)
+    const doctor = req.user as User
+    const getMeDoctor = await profileService.getMeDoctor(doctor)
 
     return res.status(200).json({
         status: "success",
-        doctor: doctor,
+        doctor: getMeDoctor,
     })
 })
 
 export const editDoctor = catchAsync(async (req, res, next) => {
-    const doctor = req.user
+    const doctor = req.user as User
     const updatedDoctor = await profileService.editDoctor(doctor, req.body, req.files)
 
     return res.status(200).json({
@@ -122,7 +125,7 @@ export const editDoctor = catchAsync(async (req, res, next) => {
 })
 
 export const getDoctorToAdmin = catchAsync(async (req, res, next) => {
-    const { doctorId } = req.params
+    const { doctorId } = req.params as { doctorId: string };
     const doctor = await adminService.getDoctorToAdmin(doctorId)
 
     return res.status(200).json({
@@ -132,7 +135,7 @@ export const getDoctorToAdmin = catchAsync(async (req, res, next) => {
 })
 
 export const approveDoctorRequest = catchAsync(async (req, res, next) => {
-    const { doctorId } = req.params
+    const { doctorId } = req.params as { doctorId: string };
 
     const doctorApprove = await adminService.approveDoctorRequest(doctorId)
 
@@ -145,7 +148,7 @@ export const approveDoctorRequest = catchAsync(async (req, res, next) => {
 
 export const getAllDoctors = catchAsync(async (req, res, next) => {
 
-    const doctors = await adminService.getAllDoctors(req.query)
+    const doctors = await adminService.getAllDoctors(req.query as { search: string, status: string, sort?: string, page: string, limit: string })
 
     return res.status(200).json({
         status: "success",
@@ -160,7 +163,7 @@ export const getAllDoctors = catchAsync(async (req, res, next) => {
 
 export const getAvailableDoctors = catchAsync(async (req, res, next) => {
 
-    const doctors = await profileService.getAvailableDoctors(req.query)
+    const doctors = await profileService.getAvailableDoctors(req.query as { search: string, status: string, sort: string, page: string, limit: string })
 
     return res.status(200).json({
         status: "success",
@@ -173,7 +176,7 @@ export const getAvailableDoctors = catchAsync(async (req, res, next) => {
 })
 
 export const getDoctorSchedual = catchAsync(async (req, res, next) => {
-    const { doctorId } = req.params
+    const { doctorId } = req.params as { doctorId: string };
     const doctors = await profileService.getDoctorSchedual(doctorId)
 
     return res.status(200).json({
@@ -188,8 +191,8 @@ export const getDoctorSchedual = catchAsync(async (req, res, next) => {
 
 
 export const getDoctorSlots = catchAsync(async (req, res, next) => {
-    const { doctorId } = req.params
-    const { date } = req.query
+    const { doctorId } = req.params as { doctorId: string };
+    const { date } = req.query as { date: string };
     const doctors = await profileService.getDoctorSlots(doctorId, date)
 
     return res.status(200).json({
@@ -200,7 +203,7 @@ export const getDoctorSlots = catchAsync(async (req, res, next) => {
 })
 
 export const getDoctorScheduleForDoctor = catchAsync(async (req, res, next) => {
-    const doctor = req.user
+    const doctor = req.user as User
 
     const schedule = await profileService.getDoctorScheduleForDoctor(doctor)
     return res.status(200).json({
@@ -210,7 +213,7 @@ export const getDoctorScheduleForDoctor = catchAsync(async (req, res, next) => {
 })
 
 export const editDoctorSchedule = catchAsync(async (req, res, next) => {
-    const doctor = req.user
+    const doctor = req.user as User
     const { schedule } = req.body
     const updatedSchedule = await profileService.editDoctorSchedule(doctor, schedule)
     return res.status(200).json({

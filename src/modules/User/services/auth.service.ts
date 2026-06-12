@@ -9,8 +9,9 @@ import { sendEmail } from "../../../utils/sendEmail";
 import crypto from "crypto";
 import { clearCache } from "../../../cache";
 import { loginTemplate, resendOtpTemplate, verifyEmailTemplate, verifyOtpTemplate } from "../../../emails/user.emails";
+import { User } from "../../../types/user";
 
-export const register = async ({ email, name, password, phone }: any) => {
+export const register = async ({ email, name, password, phone }: { email: string, name: string, password: string, phone: string }) => {
 
     const { otp, hashedOtp, expires } = generateOTP()
 
@@ -44,7 +45,7 @@ export const register = async ({ email, name, password, phone }: any) => {
     return;
 }
 
-export const resendOtp = async ({ email }: any) => {
+export const resendOtp = async ({ email }: { email: string }) => {
     const { otp, hashedOtp, expires } = generateOTP()
 
     const findUser = await pool.query("SELECT * FROM users WHERE email = $1", [email])
@@ -70,7 +71,7 @@ export const resendOtp = async ({ email }: any) => {
     return;
 }
 
-export const verifyEmail = async ({ email, otp }: any, device: string) => {
+export const verifyEmail = async ({ email, otp }: { email: string, otp: string }, device: string) => {
 
 
     const hashedOtp = crypto
@@ -106,7 +107,7 @@ export const verifyEmail = async ({ email, otp }: any, device: string) => {
 
 }
 
-export const login = async ({ email, password }: any, device: string) => {
+export const login = async ({ email, password }: { email: string, password: string }, device: string) => {
 
     const findUser = await pool.query(`SELECT email, id, name, role, password, "profilePic", "isEmailVerified", status, "banExpiresAt" FROM users WHERE email = $1`, [email])
 
@@ -240,7 +241,7 @@ export const google = async (idToken: string, device: string) => {
 //     return session;
 // }
 
-export const logOut = async (user: any) => {
+export const logOut = async (user: User) => {
     try {
         await pool.query("DELETE FROM sessions WHERE id = $1", [user.sessionId]);
         clearCache(`session:${user.sessionId}`);

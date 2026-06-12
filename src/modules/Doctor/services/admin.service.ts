@@ -3,7 +3,7 @@ import pool from "../../../db";
 import ApiError from "../../../utils/ApiError";
 import { sendEmail } from "../../../utils/sendEmail";
 
-export const approveDoctorRequest = async (doctorId: any) => {
+export const approveDoctorRequest = async (doctorId: string) => {
 
     const doctor = await pool.query(`UPDATE doctors SET status = 'active' WHERE id = $1 AND status = 'pending' RETURNING email`, [doctorId])
 
@@ -53,7 +53,7 @@ export const approveDoctorRequest = async (doctorId: any) => {
 
 }
 
-export const getAllDoctors = async (reqQuery: any) => {
+export const getAllDoctors = async (reqQuery: { search?: string, status?: string, sort?: string, page?: string, limit?: string }) => {
     const { search, status, sort } = reqQuery;
 
     const page = Number(reqQuery.page) || 1;
@@ -133,7 +133,7 @@ export const getAllDoctors = async (reqQuery: any) => {
 
 
 
-export const getDoctorToAdmin = async (doctorId: any) => {
+export const getDoctorToAdmin = async (doctorId: string) => {
     console.log("getDoctorToAdmin")
 
     const doctorResult = await pool.query(`

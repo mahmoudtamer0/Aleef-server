@@ -1,11 +1,12 @@
 import { getCache, setCache, clearCache } from "../../../cache";
 import pool from "../../../db";
+import { User } from "../../../types/user";
 import ApiError from "../../../utils/ApiError";
 import cloudinary from "../../../utils/cloudinary";
 import { getNextDays } from "../../../utils/getDoctorAvailableDays";
 import { getAvailableSlots } from "../../../utils/getDoctorAvailableSlots";
 
-export const getDoctorSchedual = async (doctorId: any): Promise<any> => {
+export const getDoctorSchedual = async (doctorId: string): Promise<any> => {
 
     const cacheKey = `doctor_schedual:${doctorId}`;
     const cached = getCache(cacheKey);
@@ -49,7 +50,7 @@ export const getDoctorSchedual = async (doctorId: any): Promise<any> => {
 };
 
 
-export const getDoctorSlots = async (doctorId: any, date: any): Promise<any> => {
+export const getDoctorSlots = async (doctorId: string, date: string): Promise<any> => {
 
     const cacheKey = `doctor_slots_${date}:${doctorId}`;
     const cached = getCache(cacheKey);
@@ -88,7 +89,7 @@ export const getDoctorSlots = async (doctorId: any, date: any): Promise<any> => 
     return response;
 };
 
-export const editDoctor = async (doctor: any, body: any, reqFile: any) => {
+export const editDoctor = async (doctor: User, body: { name: string, phone: string, specialization: string, city: string, address: string, about: string, appointmentFee: string, slotduration: string }, reqFile: any) => {
 
     const { name, phone, specialization, city, address, about, appointmentFee, slotduration } = body;
 
@@ -101,7 +102,7 @@ export const editDoctor = async (doctor: any, body: any, reqFile: any) => {
     if (city) { fields.push(`city = $${paramIndex}`); params.push(city); paramIndex++; }
     if (address) { fields.push(`address = $${paramIndex}`); params.push(address); paramIndex++; }
     if (specialization) { fields.push(`specialization = $${paramIndex}`); params.push(specialization); paramIndex++; }
-    if (appointmentFee) { fields.push(`"appointmentFee" = $${paramIndex}`); params.push(appointmentFee); paramIndex++; }
+    if (appointmentFee) { fields.push(`"appointmentFee" = $${paramIndex}`); params.push(Number(appointmentFee)); paramIndex++; }
     if (about) { fields.push(`about = $${paramIndex}`); params.push(about); paramIndex++; }
     if (slotduration) { fields.push(`slotduration = $${paramIndex}`); params.push(slotduration); paramIndex++; }
 
@@ -143,7 +144,7 @@ export const editDoctor = async (doctor: any, body: any, reqFile: any) => {
 
 }
 
-export const getDoctorScheduleForDoctor = async (doctor: any) => {
+export const getDoctorScheduleForDoctor = async (doctor: User) => {
     const cacheKey = `doctor_schedule:${doctor.id}`;
     const cached = getCache(cacheKey);
     if (cached) return cached;
@@ -169,7 +170,7 @@ export const getDoctorScheduleForDoctor = async (doctor: any) => {
 };
 
 
-export const editDoctorSchedule = async (doctor: any, schedule: { day_of_week: string, start_time: string, end_time: string, is_available: boolean }[]) => {
+export const editDoctorSchedule = async (doctor: User, schedule: { day_of_week: string, start_time: string, end_time: string, is_available: boolean }[]) => {
 
     const client = await pool.connect();
     try {
@@ -208,7 +209,7 @@ export const editDoctorSchedule = async (doctor: any, schedule: { day_of_week: s
 
 };
 
-export const getAvailableDoctors = async (reqQuery: any) => {
+export const getAvailableDoctors = async (reqQuery: { search: string, status: string, sort: string, page: string, limit: string }) => {
 
     const { search, status, sort } = reqQuery;
 
@@ -273,7 +274,7 @@ export const getAvailableDoctors = async (reqQuery: any) => {
 }
 
 
-export const getDoctor = async (doctorId: any) => {
+export const getDoctor = async (doctorId: string) => {
 
     const [doctorResult, reviewsResult] = await Promise.all([
         pool.query(`
@@ -304,7 +305,7 @@ export const getDoctor = async (doctorId: any) => {
     }
 }
 
-export const getMeDoctor = async (doctor: any) => {
+export const getMeDoctor = async (doctor: User) => {
 
     const cacheKey = `me_doctor:${doctor.id}`;
     const cached = getCache(cacheKey);
