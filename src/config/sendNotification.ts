@@ -1,26 +1,27 @@
-// import admin from "./firebase";
-// import Session from "../modules/User/session.schema";
+// src/utils/sendNotification.ts
+import admin from "../config/firebase";
 
-// export const sendNotification = async (userId: string, title: string, body: string) => {
-
-//     const sessions = await Session.find({
-//         userId,
-//         fcmToken: { $ne: null }
-//     }).select("fcmToken");
-
-//     const tokens = sessions
-//         .map(s => s.fcmToken)
-//         .filter((token): token is string => !!token);
-
-//     if (!tokens.length) return;
-
-//     const message = {
-//         notification: {
-//             title,
-//             body
-//         },
-//         tokens
-//     };
-
-//     await admin.messaging().sendEachForMulticast(message);
-// };
+export const sendNotification = async (
+    fcmToken: string,
+    title: string,
+    body: string,
+    data?: Record<string, string>
+) => {
+    try {
+        await admin.messaging().send({
+            token: fcmToken,
+            notification: { title, body },
+            data: data || {},
+            android: {
+                priority: "high",
+            },
+            apns: {
+                payload: {
+                    aps: { sound: "default" },
+                },
+            },
+        });
+    } catch (error) {
+        console.error("FCM Error:", error);
+    }
+};

@@ -234,12 +234,15 @@ export const google = async (idToken: string, device: string) => {
     return { user, token };
 }
 
-// export const addFcmToken = async (user: any, fcmToken: any) => {
+export const addFcmToken = async (user: any, fcmToken: any) => {
 
-//     const session = await Session.findByIdAndUpdate(user.sessionId, { fcmToken: fcmToken });
+    await pool.query(
+        `UPDATE sessions SET "fcmToken" = $1 WHERE id = $2`,
+        [fcmToken, user.sessionId]
+    );
 
-//     return session;
-// }
+    return;
+}
 
 export const logOut = async (user: User) => {
     try {

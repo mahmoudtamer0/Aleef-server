@@ -1,8 +1,13 @@
 import admin from "firebase-admin";
-// import serviceAccount from "./aleef-4de73-firebase-adminsdk-fbsvc-9aa06e957e.json";
 
-// admin.initializeApp({
-//     credential: admin.credential.cert(serviceAccount as any),
-// });
+if (!admin.apps.length) {
+    admin.initializeApp({
+        credential: admin.credential.cert({
+            projectId: process.env["FIREBASE_PROJECT_ID"]!,
+            privateKey: process.env["FIREBASE_PRIVATE_KEY"]!.replace(/\\n/g, '\n'),
+            clientEmail: process.env["FIREBASE_CLIENT_EMAIL"]!,
+        }),
+    });
+}
 
 export default admin;
