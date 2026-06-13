@@ -3,6 +3,7 @@ import pool from "../../../db";
 import { bookedAppointmentTemplate } from "../../../emails/appoinment.emails";
 import ApiError from "../../../utils/ApiError";
 import { sendEmail } from "../../../utils/sendEmail";
+import { sendNotificationService } from "../../../utils/sendNotificationService";
 
 
 export const bookAppointment = async (user: any, { pet, doctor, date, time, reason, notes }: any) => {
@@ -11,7 +12,7 @@ export const bookAppointment = async (user: any, { pet, doctor, date, time, reas
     try {
         await client.query("BEGIN");
 
-        const [userResult, doctorResult] = await Promise.all([
+        const [userResult, doctorResult, petResult] = await Promise.all([
             client.query(
                 `SELECT u.id, u.email, u.name,
                         COUNT(a.id) FILTER (WHERE a.status = ANY(ARRAY['pending', 'accepted'])) AS active_appointments
@@ -30,7 +31,10 @@ export const bookAppointment = async (user: any, { pet, doctor, date, time, reas
                 WHERE d.id = $1 AND d.status = 'active'
                 GROUP BY d.id`,
                 [doctor, time, date]
-            )
+            ),
+            client.query(`
+                SELECT name FROM pets WHERE id = $1
+                `, [pet])
         ]);
 
 
@@ -66,6 +70,13 @@ export const bookAppointment = async (user: any, { pet, doctor, date, time, reas
         clearCache(`appointmentsRequests:${doctor}`);
 
         setImmediate(() => {
+            sendNotificationService(
+                doctor,
+                "DOCTOR",
+                "New Appointment Request 🐾",
+                `${user.name} has requested an appointment for ${petResult.rows[0].name}, Please review the request.`
+            );
+
             sendEmail({
                 email: userResult.rows[0].email,
                 subject: "Appointment Booked Successfully 🐾",

@@ -33,7 +33,6 @@ export const getAllAppoinments = catchAsync(async (req, res, next) => {
 })
 
 
-
 export const getActiveAppointment = catchAsync(async (req, res, next) => {
 
     const user = req.user;

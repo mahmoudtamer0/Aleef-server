@@ -31,6 +31,7 @@ export const initSocket = (server: any) => {
 
         socket.on("disconnect", () => {
             (socket as any).currentChat = null;
+            socket.leave(`user:${(socket as any).user.id}`);
         });
     });
 };

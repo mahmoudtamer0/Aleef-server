@@ -1,5 +1,6 @@
 import { clearCache } from "../cache";
 import pool from "../db";
+import { sendNotificationService } from "../utils/sendNotificationService";
 
 
 export = (io: any, socket: any) => {
@@ -29,6 +30,8 @@ export = (io: any, socket: any) => {
             console.log("send_message")
             const model: "Doctor" | "User" =
                 socket.user.role === "DOCTOR" ? "Doctor" : "User";
+
+
 
             if (data.message.trim().length < 1) {
                 io.to(socket.user.id).emit("error_message", {
@@ -141,6 +144,15 @@ export = (io: any, socket: any) => {
                         "unreadCount" = unread_messages."unreadCount" + 1,
                         "lastMessage" = $3`,
                     [data.chatId, other_member_id, message.text]
+                );
+
+                const otherModel = model === "Doctor" ? "USER" : "DOCTOR";
+
+                sendNotificationService(
+                    other_member_id,
+                    otherModel,
+                    sender.name,
+                    formattedMessage.text
                 );
             }
 

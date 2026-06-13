@@ -26,6 +26,9 @@ router.route("/google")
 router.route("/add-fcmToken")
     .post(verifyToken, addFcmToken)
 
+// router.route("/send-notification")
+//     .post(sendNotification)
+
 
 
 router.route("/me")

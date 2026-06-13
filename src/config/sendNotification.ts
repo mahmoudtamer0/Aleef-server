@@ -1,14 +1,15 @@
 // src/utils/sendNotification.ts
 import admin from "../config/firebase";
 
-export const sendNotification = async (
+export const sendPushNotification = async (
     fcmToken: string,
     title: string,
     body: string,
     data?: Record<string, string>
 ) => {
     try {
-        await admin.messaging().send({
+        console.log("fcmToken", fcmToken);
+        const result = await admin.messaging().send({
             token: fcmToken,
             notification: { title, body },
             data: data || {},
@@ -21,6 +22,8 @@ export const sendNotification = async (
                 },
             },
         });
+
+        console.log("result", result);
     } catch (error) {
         console.error("FCM Error:", error);
     }

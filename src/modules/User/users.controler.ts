@@ -183,4 +183,3 @@ export const logOut = catchAsync(async (req, res, next) => {
     })
 
 })
-

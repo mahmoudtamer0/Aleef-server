@@ -1,6 +1,7 @@
 import { getCache, setCache, clearCache } from "../../../cache";
 import pool from "../../../db";
 import ApiError from "../../../utils/ApiError";
+import { approveAppointment, endAppointment } from "./doctor.service";
 
 export const getAllAppoinments = async (reqQuery: any) => {
     const { page = "1", limit = "10", search = "", status } = reqQuery;
@@ -85,68 +86,23 @@ export const changeAppointmentStatus = async (appointmentId: any, status: any) =
         await client.query("BEGIN");
 
         const appointment = await client.query(
-            `UPDATE appointments SET status = $1, "updatedAt" = NOW() 
-             WHERE id = $2 RETURNING *`,
-            [status, appointmentId]
+            `SELECT a.id,
+            jsonb_build_object('id', d.id, 'name', d.name, 'email', d.email) AS doctor
+            FROM appointments a
+            JOIN doctors d ON d.id = a.doctor
+            WHERE id = $1`,
+            [appointmentId]
         );
+
 
         if (appointment.rowCount === 0) throw new ApiError(404, "Appointment not found");
 
         if (status === "accepted") {
-            let chatResult = await client.query(
-                `SELECT c.id FROM chats c
-                 JOIN chat_members cm1 ON c.id = cm1."chatId" AND cm1.member_id = $1
-                 JOIN chat_members cm2 ON c.id = cm2."chatId" AND cm2.member_id = $2
-                 WHERE c.chat_type = 'personal' LIMIT 1`,
-                [appointment.rows[0].owner, appointment.rows[0].doctor]
-            );
-
-            let chatId: string;
-
-            if (!chatResult.rows.length) {
-                const newChat = await client.query(
-                    `INSERT INTO chats (chat_type) VALUES ('personal') RETURNING id`
-                );
-                chatId = newChat.rows[0].id;
-                await client.query(
-                    `INSERT INTO chat_members ("chatId", member_id, member_model) 
-                     VALUES ($1, $2, 'User'), ($1, $3, 'Doctor')`,
-                    [chatId, appointment.rows[0].owner, appointment.rows[0].doctor]
-                );
-            } else {
-                chatId = chatResult.rows[0].id;
-                await client.query(
-                    `UPDATE chats SET status = 'active' WHERE id = $1`,
-                    [chatId]
-                );
-            }
-
-            const message = await client.query(
-                `INSERT INTO messages ("chatId", sender, sender_model, chat_type, text)
-                 VALUES ($1, $2, 'Doctor', 'personal', $3)
-                 RETURNING id, text`,
-                [chatId, appointment.rows[0].doctor,
-                    `Your appointment on ${appointment.rows[0].date} at ${appointment.rows[0].time} has been accepted by the doctor.`]
-            );
-
-            await client.query(
-                `INSERT INTO unread_messages ("chatId", user_id, "lastMessage", "unreadCount")
-                 VALUES ($1, $2, $3, 1)
-                 ON CONFLICT ("chatId", user_id) DO UPDATE SET
-                    "unreadCount" = unread_messages."unreadCount" + 1,
-                    "lastMessage" = $3`,
-                [chatId, appointment.rows[0].owner, message.rows[0].text]
-            );
-
-            await client.query(
-                `UPDATE chats SET "lastMessage" = $1, "updatedAt" = NOW() WHERE id = $2`,
-                [message.rows[0].id, chatId]
-            );
-
-            clearCache(`chats:${appointment.rows[0].owner}`);
-            clearCache(`chats:${appointment.rows[0].doctor}`);
-            clearCache(`chat_messages_${appointment.rows[0].owner}_${chatId}`);
-            clearCache(`all_chats:`);
+            await approveAppointment(appointment.rows[0].doctor, appointmentId)
+        } else if (status === "completed") {
+            await endAppointment(appointment.rows[0].doctor, appointmentId, null, null, null, null)
+        } else {
+            await client.query(`UPDATE appointments SET status = $1 WHERE id = $2`, [status, appointmentId])
         }
 
         await client.query("COMMIT");

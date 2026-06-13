@@ -5,6 +5,7 @@ import { getIO } from "../../../sockets/socket";
 import ApiError from "../../../utils/ApiError";
 import { getAge } from "../../../utils/getPetAge";
 import { sendEmail } from "../../../utils/sendEmail";
+import { sendNotificationService } from "../../../utils/sendNotificationService";
 
 export const getAppointmentsRequestsForDoctor = async (doctor: any, params: any) => {
 
@@ -226,7 +227,7 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
             let isOnline = false;
 
             try {
-                const sockets = await io.in(`user:${userProfile.rows[0].id.toString()} `).fetchSockets();
+                const sockets = await io.in(`user:${userProfile.rows[0].id.toString()}`).fetchSockets();
                 isOnline = sockets.length > 0;
             } catch (err) {
                 isOnline = false;
@@ -234,14 +235,21 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
 
             if (isOnline) {
                 io.to(`user:${userProfile.rows[0].id.toString()} `).emit("notification", {
-                    type: "APPOINTMENT_REJECTED",
-                    title: "Appointment Rejected ❗",
+                    type: "APPOINTMENT_ACCEPTED",
+                    title: "Appointment Accepted ✅",
                     body: `Doctor ${doctor.name} has accepted your appoinment`,
                     data: {
                         appointmentId: appointment.rows[0].id,
                         date: appointment.rows[0].date,
                     }
                 })
+            } else {
+                sendNotificationService(
+                    userProfile.rows[0].id,
+                    "USER",
+                    "Appointment Confirmed ✅",
+                    `Your appointment with Dr. ${doctor.name} has been confirmed. Don't Be Late!`
+                );
             }
 
             // await Notification.create({
@@ -387,6 +395,7 @@ export const endAppointment = async (
     upCommingVaccination: any,
     files: any,
 ) => {
+    const io = getIO();
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -473,7 +482,36 @@ export const endAppointment = async (
         clearCache(`prevAppointmentsDoctor:${doctor.id}`);
         clearCache(`active_appointments_doctor:${doctor.id}`);
 
-        setImmediate(() => {
+        setImmediate(async () => {
+
+            let isOnline = false;
+
+            try {
+                const sockets = await io.in(`user:${appointmentResult.rows[0].owner.id.toString()}`).fetchSockets();
+                isOnline = sockets.length > 0;
+            } catch (err) {
+                isOnline = false;
+            }
+
+            if (isOnline) {
+                io.to(`user:${appointmentResult.rows[0].owner.id.toString()}`).emit("notification", {
+                    type: "APPOINTMENT_COMPLETED",
+                    title: "Appointment Completed ✅",
+                    body: `Doctor ${doctor.name} has completed your appoinment`,
+                    data: {
+                        appointmentId: appointmentResult.rows[0].id,
+                        date: appointmentResult.rows[0].date,
+                    }
+                })
+            } else {
+                sendNotificationService(
+                    appointmentResult.rows[0].owner.id,
+                    "USER",
+                    "Appointment Completed ✅",
+                    `Your appointment with Dr. ${doctor.name} has been completed. Tell Us Your Feelings!`
+                );
+            }
+
             sendEmail({
                 email: appointment.owner.email,
                 subject: "Appointment Completed Successfully 🐾",
