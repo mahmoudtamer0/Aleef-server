@@ -1,6 +1,7 @@
 import { clearCache, getCache, setCache } from "../../../cache";
 import pool from "../../../db";
 import { bookedAppointmentTemplate } from "../../../emails/appoinment.emails";
+import { User } from "../../../types/user";
 import ApiError from "../../../utils/ApiError";
 import { sendEmail } from "../../../utils/sendEmail";
 import { sendNotificationService } from "../../../utils/sendNotificationService";
@@ -15,11 +16,15 @@ export const bookAppointment = async (user: any, { pet, doctor, date, time, reas
         const [userResult, doctorResult, petResult] = await Promise.all([
             client.query(
                 `SELECT u.id, u.email, u.name,
-                        COUNT(a.id) FILTER (WHERE a.status = ANY(ARRAY['pending', 'accepted'])) AS active_appointments
-                FROM users u
-                LEFT JOIN appointments a ON a.owner = u.id
-                WHERE u.id = $1
-                GROUP BY u.id`,
+                        COUNT(a.id) FILTER (WHERE a.status = ANY(ARRAY['pending', 'accepted'])) AS active_appointments,
+                        COUNT(a.id) FILTER (
+                            WHERE a.status = 'cancelled-by-user'
+                            AND a."updatedAt" >= NOW() - INTERVAL '15 days'
+                        ) AS recent_cancellations
+                 FROM users u
+                 LEFT JOIN appointments a ON a.owner = u.id
+                 WHERE u.id = $1
+                 GROUP BY u.id`,
                 [user.id]
             ),
             client.query(
@@ -193,4 +198,50 @@ export const getPrevAppointments = async (user: any) => {
 
     setCache(cacheKey, result.rows, 300);
     return result.rows;
+};
+
+export const cancelAppointmentByUser = async (user: User, appointmentId: string, reason: string) => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const appointmentResult = await client.query(
+            `UPDATE appointments
+             SET status = 'cancelled-by-owner', "updatedAt" = NOW(),"cancelledReason" = $3
+             WHERE id = $1
+               AND owner = $2
+               AND status IN ('pending', 'accepted')
+             RETURNING *`,
+            [appointmentId, user.id, reason]
+        );
+
+        if (!appointmentResult.rows.length) {
+            throw new ApiError(404, "appointment not found");
+        }
+
+
+        await client.query("COMMIT");
+
+        clearCache(`activeAppointment:${user.id}`);
+        clearCache(`prevAppointments:${user.id}`);
+        clearCache(`appointment_details_user:${appointmentId}`);
+        clearCache(`appointmentsRequests:${appointmentResult.rows[0].doctor}`);
+        clearCache(`active_appointments_doctor:${appointmentResult.rows[0].doctor}_${appointmentResult.rows[0].date}`);
+        clearCache(`appointment_details_doctor:${appointmentId}`);
+
+        setImmediate(() => {
+            sendNotificationService(
+                appointmentResult.rows[0].doctor,
+                "DOCTOR",
+                "Appointment Cancelled 🐾",
+                `${user.name} has cancelled their appointment.`
+            );
+        });
+
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
+    }
 };

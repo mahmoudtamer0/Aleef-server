@@ -53,3 +53,7 @@ export const addAppointmentSchema = Joi.object({
 export const rejectAppoinmentSchema = Joi.object({
     rejectionReason: Joi.string().min(10).max(500).required(),
 })
+
+export const cancelAppointmentByUserSchema = Joi.object({
+    reason: Joi.string().max(500).required(),
+})

@@ -1,7 +1,7 @@
 import { getCache, setCache, clearCache } from "../../../cache";
 import pool from "../../../db";
 import ApiError from "../../../utils/ApiError";
-import { approveAppointment, endAppointment } from "./doctor.service";
+import { approveAppointment, endAppointment, rejectAppointment } from "./doctor.service";
 
 export const getAllAppoinments = async (reqQuery: any) => {
     const { page = "1", limit = "10", search = "", status } = reqQuery;
@@ -90,7 +90,7 @@ export const changeAppointmentStatus = async (appointmentId: any, status: any) =
             jsonb_build_object('id', d.id, 'name', d.name, 'email', d.email) AS doctor
             FROM appointments a
             JOIN doctors d ON d.id = a.doctor
-            WHERE id = $1`,
+            WHERE a.id = $1`,
             [appointmentId]
         );
 
@@ -100,8 +100,17 @@ export const changeAppointmentStatus = async (appointmentId: any, status: any) =
         if (status === "accepted") {
             await approveAppointment(appointment.rows[0].doctor, appointmentId)
         } else if (status === "completed") {
-            await endAppointment(appointment.rows[0].doctor, appointmentId, null, null, null, null)
-        } else {
+            const medicalRecord = {
+                title: "all is good",
+                condition: "good",
+                description: "the pet is healthy and happy"
+            }
+
+            await endAppointment(appointment.rows[0].doctor, appointmentId, medicalRecord, null, null, null)
+        } else if (status === "rejected") {
+            await rejectAppointment(appointment.rows[0].doctor, appointmentId, "Your appointment has been rejected for no reason")
+        }
+        else {
             await client.query(`UPDATE appointments SET status = $1 WHERE id = $2`, [status, appointmentId])
         }
 
@@ -118,6 +127,7 @@ export const changeAppointmentStatus = async (appointmentId: any, status: any) =
         return;
     } catch (err) {
         await client.query("ROLLBACK");
+        console.log(err);
         throw err;
     } finally {
         client.release();

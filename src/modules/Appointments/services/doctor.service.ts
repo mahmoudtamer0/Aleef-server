@@ -2,12 +2,13 @@ import { getCache, setCache, clearCache } from "../../../cache";
 import pool from "../../../db";
 import { acceptedAppointmentTemplate, endAppointmentTemplate, rejectedAppointmentTemplate } from "../../../emails/appoinment.emails";
 import { getIO } from "../../../sockets/socket";
+import { User } from "../../../types/user";
 import ApiError from "../../../utils/ApiError";
 import { getAge } from "../../../utils/getPetAge";
 import { sendEmail } from "../../../utils/sendEmail";
 import { sendNotificationService } from "../../../utils/sendNotificationService";
 
-export const getAppointmentsRequestsForDoctor = async (doctor: any, params: any) => {
+export const getAppointmentsRequestsForDoctor = async (doctor: User, params: any) => {
 
     const page = Number(params.page) || 1;
     const limit = 5;
@@ -49,7 +50,7 @@ export const getAppointmentsRequestsForDoctor = async (doctor: any, params: any)
 
 }
 
-export const getActiveAppoinmentsForDoctor = async (doctor: any, date: any) => {
+export const getActiveAppoinmentsForDoctor = async (doctor: User, date: any) => {
     if (!date) date = new Date().toISOString().split('T')[0];
 
     const formattedDate = date.split('-').reverse().join('-');
@@ -80,9 +81,8 @@ export const getActiveAppoinmentsForDoctor = async (doctor: any, date: any) => {
     return appointments;
 }
 
-export const getAppointmentDetailsForDoctor = async (doctor: any, appointmentId: any) => {
+export const getAppointmentDetailsForDoctor = async (doctor: User, appointmentId: string) => {
 
-    console.log("getAppointmentDetailsForDoctor")
 
     const cacheKey = `appointment_details_doctor:${appointmentId}`;
     const cached = getCache(cacheKey);
@@ -130,7 +130,7 @@ export const getAppointmentDetailsForDoctor = async (doctor: any, appointmentId:
 
 }
 
-export const approveAppointment = async (doctor: any, appointmentId: any) => {
+export const approveAppointment = async (doctor: User, appointmentId: string) => {
     const io = getIO();
 
     const client = await pool.connect();
@@ -233,6 +233,8 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
                 isOnline = false;
             }
 
+            console.log("isOnline", isOnline);
+
             if (isOnline) {
                 io.to(`user:${userProfile.rows[0].id.toString()} `).emit("notification", {
                     type: "APPOINTMENT_ACCEPTED",
@@ -283,8 +285,8 @@ export const approveAppointment = async (doctor: any, appointmentId: any) => {
 }
 
 export const rejectAppointment = async (
-    doctor: any,
-    appointmentId: any,
+    doctor: User,
+    appointmentId: string,
     rejectionReason: string
 ) => {
 
@@ -360,6 +362,13 @@ export const rejectAppointment = async (
                         }
                     }
                 );
+            } else {
+                sendNotificationService(
+                    userProfile.rows[0].id,
+                    "USER",
+                    "Appointment Rejected ❗",
+                    `Your appointment with Dr. ${doctor.name} has been rejected. Book a new appointment!`
+                );
             }
 
             sendEmail({
@@ -387,9 +396,54 @@ export const rejectAppointment = async (
     }
 };
 
+export const cancelAppointmentByDoctor = async (doctor: User, appointmentId: string) => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const appointmentResult = await client.query(
+            `UPDATE appointments
+             SET status = 'cancelled-by-doctor', "updatedAt" = NOW()
+             WHERE id = $1
+               AND doctor = $2
+               AND status IN ('pending', 'accepted')
+             RETURNING *`,
+            [appointmentId, doctor.id]
+        );
+
+        if (!appointmentResult.rows.length) {
+            throw new ApiError(404, "appointment not found or cannot be cancelled");
+        }
+
+        await client.query("COMMIT");
+
+        clearCache(`activeAppointment:${appointmentResult.rows[0].owner}`);
+        clearCache(`prevAppointments:${appointmentResult.rows[0].owner}`);
+        clearCache(`appointment_details_user:${appointmentId}`);
+        clearCache(`appointmentsRequests:${doctor.id}`);
+        clearCache(`active_appointments_doctor:${doctor.id}_${appointmentResult.rows[0].date}`);
+        clearCache(`appointment_details_doctor:${appointmentId}`);
+
+        setImmediate(() => {
+            sendNotificationService(
+                appointmentResult.rows[0].owner,
+                "USER",
+                "Appointment Cancelled 🐾",
+                `Dr. ${doctor.name} has cancelled your appointment.`
+            );
+        });
+
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
+    }
+};
+
 export const endAppointment = async (
-    doctor: any,
-    appointmentId: any,
+    doctor: User,
+    appointmentId: string,
     medicalRecord: any,
     vaccination: any,
     upCommingVaccination: any,
