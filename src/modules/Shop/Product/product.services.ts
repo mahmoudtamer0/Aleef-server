@@ -109,13 +109,15 @@ export const getProducts = async (reqQuery: any): Promise<any> => {
 
     const products = await pool.query(mainQuery);
 
+    const totalCount = products.rows[0]?.total_count ?? 0;
+
     const response = {
         products: products.rows,
         results: products.rowCount,
-        totalProducts: products.rows[0].total_count,
-        totalPages: Math.ceil(products.rows[0].total_count / limit),
+        totalProducts: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
         page
-    };
+    }
 
     setCache(`products:${reqQuery.page}_${reqQuery.limit}_${reqQuery.sort}_${reqQuery.category}_${reqQuery.minPrice}_${reqQuery.maxPrice}_${reqQuery.search}`, response, 500);
     return {
