@@ -180,7 +180,7 @@ export const getAppoinmentDetailsForAdmin = catchAsync(async (req, res, next) =>
 
 
 export const prevAppointmentsForDoctor = catchAsync(async (req, res, next) => {
-    const doctor = req.user;
+    const doctor = req.user as User;
     const appointments = await doctorServices.prevAppointmentsForDoctor(doctor);
 
     return res.status(200).json({
@@ -201,4 +201,33 @@ export const activeAppoinmentsForDoctor = catchAsync(async (req, res, next) => {
         appointments: appointments
     })
 
+})
+
+export const checkPendingReview = catchAsync(async (req, res, next) => {
+    const user = req.user as User;
+    const pendingReview = await userServices.checkPendingReview(user);
+    return res.status(200).json({
+        status: "success",
+        pendingReview: pendingReview === "empty" ? null : pendingReview
+    })
+
+})
+
+export const addReview = catchAsync(async (req, res, next) => {
+    const { appointmentId } = req.params as { appointmentId: string };
+    const { rate, comment } = req.body;
+    const user = req.user as User;
+    await userServices.addReview(user, appointmentId, rate, comment);
+    return res.status(200).json({
+        status: "success",
+    })
+})
+
+export const skipAppointmentReview = catchAsync(async (req, res, next) => {
+    const { appointmentId } = req.params as { appointmentId: string };
+    const user = req.user as User;
+    await userServices.skipAppointmentReview(user, appointmentId);
+    return res.status(200).json({
+        status: "success",
+    })
 })

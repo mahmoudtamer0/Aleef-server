@@ -57,3 +57,11 @@ export const rejectAppoinmentSchema = Joi.object({
 export const cancelAppointmentByUserSchema = Joi.object({
     reason: Joi.string().max(500).required(),
 })
+
+export const addReviewSchema = Joi.object({
+    rate: Joi.number().max(5).min(1).required().messages({
+        "any.required": "Rate is required",
+        "number.base": "Rate must be between 1 and 5",
+    }),
+    comment: Joi.string().max(500).min(0).optional(),
+})

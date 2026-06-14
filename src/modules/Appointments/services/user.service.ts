@@ -249,3 +249,120 @@ export const cancelAppointmentByUser = async (user: User, appointmentId: string,
         client.release();
     }
 };
+
+export const checkPendingReview = async (user: User) => {
+    const cacheKey = `pending_review:${user.id}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
+
+    const result = await pool.query(
+        `SELECT a.id as appointmentId,
+            jsonb_build_object('id', d.id, 'name', d.name, 'profilePic', d."profilePic", 'specialization', d.specialization) AS doctor
+        FROM appointments a
+        LEFT JOIN doctors d ON a.doctor = d.id
+        WHERE a.owner = $1 AND a.status = 'completed'
+        AND a."isReviewed" = false
+        ORDER BY a."updatedAt" DESC LIMIT 1`,
+        [user.id]
+    );
+
+    const response = result.rows.length > 0 ? result.rows[0] : "empty";
+    setCache(cacheKey, response, 300);
+    return response;
+}
+
+export const addReview = async (user: User, appointmentId: string, rate: number, comment: string) => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const appointmentResult = await client.query(
+            `UPDATE appointments
+             SET "isReviewed" = true, "updatedAt" = NOW()
+             WHERE id = $1
+               AND owner = $2
+               AND status = 'completed'
+               AND "isReviewed" = false
+             RETURNING id,doctor`,
+            [appointmentId, user.id]
+        );
+
+        if (!appointmentResult.rows.length) {
+            throw new ApiError(404, "appointment not found");
+        }
+
+        await Promise.all([
+            client.query(
+                `UPDATE doctors
+                 SET "rating" = ("rating" * "ratingsCount" + $2) / ("ratingsCount" + 1),
+                     "ratingsCount" = "ratingsCount" + 1,
+                     "updatedAt" = NOW()
+                 WHERE id = $1`,
+                [appointmentResult.rows[0].doctor, rate]
+            ),
+            client.query(
+                `INSERT INTO doctor_reviews(doctor, "user", rate, comment, "createdAt", "updatedAt")
+                VALUES($1, $2, $3, $4, NOW(), NOW())`,
+                [appointmentResult.rows[0].doctor, user.id, rate, comment ?? null]
+            )
+        ])
+
+        await client.query("COMMIT");
+
+        clearCache(`activeAppointment:${user.id}`);
+        clearCache(`prevAppointments:${user.id}`);
+        clearCache(`appointment_details_user:${appointmentId}`);
+        clearCache(`appointment_details_doctor:${appointmentId}`);
+        clearCache(`pending_review:${user.id}`);
+
+        setImmediate(() => {
+            sendNotificationService(
+                appointmentResult.rows[0].doctor,
+                "DOCTOR",
+                "Appointment Reviewed 🐾",
+                `${user.name} has reviewed your appointment.`
+            );
+        });
+
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
+    }
+}
+
+export const skipAppointmentReview = async (user: User, appointmentId: string) => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const appointmentResult = await client.query(
+            `UPDATE appointments
+             SET "isReviewed" = true, "updatedAt" = NOW()
+             WHERE id = $1
+               AND owner = $2
+               AND status = 'completed'
+               AND "isReviewed" = false
+             RETURNING id,doctor`,
+            [appointmentId, user.id]
+        );
+
+        if (!appointmentResult.rows.length) {
+            throw new ApiError(404, "appointment not found");
+        }
+
+        await client.query("COMMIT");
+
+        clearCache(`pending_review:${user.id}`);
+        clearCache(`prevAppointments:${user.id}`);
+        clearCache(`appointment_details_user:${appointmentId}`);
+        clearCache(`appointment_details_doctor:${appointmentId}`);
+
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
+    }
+}

@@ -1,8 +1,8 @@
 import express from "express";
-import { activeAppoinmentsForDoctor, approveAppointment, bookAppointment, cancelAppointmentByUser, changeAppoinmentStatus, endAppoinment, getActiveAppointment, getAllAppoinments, getAppoinmentDetailsForAdmin, getAppointmentDetails, getAppointmentsRequestsForDoctor, getPrevAppoinments, prevAppointmentsForDoctor, rejectAppointment } from "./appointment.controler";
+import { activeAppoinmentsForDoctor, addReview, approveAppointment, bookAppointment, cancelAppointmentByUser, changeAppoinmentStatus, checkPendingReview, endAppoinment, getActiveAppointment, getAllAppoinments, getAppoinmentDetailsForAdmin, getAppointmentDetails, getAppointmentsRequestsForDoctor, getPrevAppoinments, prevAppointmentsForDoctor, rejectAppointment, skipAppointmentReview } from "./appointment.controler";
 import { upload } from "../../middlewares/appoinmentUploads"
 import validate from "../../middlewares/userValidate";
-import { addAppointmentSchema, cancelAppointmentByUserSchema, rejectAppoinmentSchema } from "./appointment.validation";
+import { addAppointmentSchema, addReviewSchema, cancelAppointmentByUserSchema, rejectAppoinmentSchema } from "./appointment.validation";
 import { verifyToken } from "../../middlewares/verifyToken";
 import { allowTo } from "../../middlewares/allowTo";
 
@@ -27,6 +27,15 @@ router.route("/get-my-previous-appointments")
 
 router.route("/doctor-performance")
     .get(verifyToken, allowTo("DOCTOR"), prevAppointmentsForDoctor)
+
+router.route("/check-pending-review")
+    .get(verifyToken, checkPendingReview)
+
+router.route("/add-review/:appointmentId")
+    .post(verifyToken, allowTo("USER", "ADMIN", "MODERATOR"), validate(addReviewSchema), addReview);
+
+router.route("/skip-review/:appointmentId")
+    .post(verifyToken, allowTo("USER", "ADMIN", "MODERATOR"), skipAppointmentReview);
 
 router.route("/approve-appointment/:appointmentId")
     .post(verifyToken, allowTo("DOCTOR"), approveAppointment);
