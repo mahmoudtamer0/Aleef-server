@@ -49,7 +49,7 @@ export const bookAppointment = async (user: any, { pet, doctor, date, time, reas
             throw new ApiError(400, "you have an active appointment, cancel your active appointment to be eligible to book another one");
         }
 
-        if (Number(userResult.rows[0].recent_cancellations) > 2) {
+        if (Number(userResult.rows[0].recent_cancellations) > 0) {
             throw new ApiError(400, "you have too many cancelled appointments,wait a few days before booking another one");
         }
 
