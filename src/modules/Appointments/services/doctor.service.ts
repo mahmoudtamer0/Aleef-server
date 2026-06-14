@@ -138,7 +138,7 @@ export const approveAppointment = async (doctor: User, appointmentId: string) =>
         await client.query("BEGIN");
 
         const appointment = await client.query(
-            `UPDATE appointments SET status = 'accepted' WHERE id = $1 AND doctor = $2 AND status = 'pending' RETURNING *`,
+            `UPDATE appointments SET status = 'accepted', "updatedAt" = NOW() WHERE id = $1 AND doctor = $2 AND status = 'pending' RETURNING *`,
             [appointmentId, doctor.id]
         );
 
@@ -298,6 +298,8 @@ export const rejectAppointment = async (
 
         await client.query("BEGIN");
 
+        console.log("doctor", doctor)
+
         const appointment = await client.query(
             `UPDATE appointments
              SET status = 'rejected',
@@ -396,23 +398,24 @@ export const rejectAppointment = async (
     }
 };
 
-export const cancelAppointmentByDoctor = async (doctor: User, appointmentId: string) => {
+
+export const cancelAppointmentByDoctor = async (doctor: User, appointmentId: string, reason: string) => {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
 
         const appointmentResult = await client.query(
             `UPDATE appointments
-             SET status = 'cancelled-by-doctor', "updatedAt" = NOW()
+             SET status = 'cancelled-by-doctor', "updatedAt" = NOW(), "cancelledReason" = $3
              WHERE id = $1
                AND doctor = $2
                AND status IN ('pending', 'accepted')
              RETURNING *`,
-            [appointmentId, doctor.id]
+            [appointmentId, doctor.id, reason]
         );
 
         if (!appointmentResult.rows.length) {
-            throw new ApiError(404, "appointment not found or cannot be cancelled");
+            throw new ApiError(404, "appointment not found");
         }
 
         await client.query("COMMIT");

@@ -1,7 +1,8 @@
 import { getCache, setCache, clearCache } from "../../../cache";
 import pool from "../../../db";
 import ApiError from "../../../utils/ApiError";
-import { approveAppointment, endAppointment, rejectAppointment } from "./doctor.service";
+import { approveAppointment, cancelAppointmentByDoctor, endAppointment, rejectAppointment } from "./doctor.service";
+import { cancelAppointmentByUser } from "./user.service";
 
 export const getAllAppoinments = async (reqQuery: any) => {
     const { page = "1", limit = "10", search = "", status } = reqQuery;
@@ -87,9 +88,11 @@ export const changeAppointmentStatus = async (appointmentId: any, status: any) =
 
         const appointment = await client.query(
             `SELECT a.id,
-            jsonb_build_object('id', d.id, 'name', d.name, 'email', d.email) AS doctor
+            jsonb_build_object('id', d.id, 'name', d.name, 'email', d.email) AS doctor,
+            jsonb_build_object('id', u.id, 'name', u.name, 'email', u.email) AS owner
             FROM appointments a
             JOIN doctors d ON d.id = a.doctor
+            JOIN users u ON u.id = a.owner
             WHERE a.id = $1`,
             [appointmentId]
         );
@@ -105,16 +108,19 @@ export const changeAppointmentStatus = async (appointmentId: any, status: any) =
                 condition: "good",
                 description: "the pet is healthy and happy"
             }
-
             await endAppointment(appointment.rows[0].doctor, appointmentId, medicalRecord, null, null, null)
         } else if (status === "rejected") {
             await rejectAppointment(appointment.rows[0].doctor, appointmentId, "Your appointment has been rejected for no reason")
+        } else if (status === "cancelled-by-owner") {
+            await cancelAppointmentByUser(appointment.rows[0].owner, appointmentId, "pet owner has cancelled the appointment")
+        } else if (status === "cancelled-by-doctor") {
+            await cancelAppointmentByDoctor(appointment.rows[0].doctor, appointmentId, "doctor has cancelled the appointment")
         }
         else {
             await client.query(`UPDATE appointments SET status = $1 WHERE id = $2`, [status, appointmentId])
         }
 
-        await client.query("COMMIT");
+        await client.query("COMMIT")
 
         clearCache(`activeAppointment:${appointment.rows[0].owner}`);
         clearCache(`appointmentsRequests:${appointment.rows[0].doctor}`);

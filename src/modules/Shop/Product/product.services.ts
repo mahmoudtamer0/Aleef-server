@@ -98,7 +98,9 @@ export const getProducts = async (reqQuery: any): Promise<any> => {
 
     if (sort) {
         if (sort == "best-selling") {
-            mainQuery += ` ORDER BY p.buys DESC`
+            mainQuery += ` ORDER BY p.buys DESC,p.stock DESC`
+        } else {
+            mainQuery += ` ORDER BY p.stock DESC, p."updatedAt" DESC`
         }
     } else {
         mainQuery += ` ORDER BY p.stock DESC, p."updatedAt" DESC`
