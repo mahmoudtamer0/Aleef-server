@@ -241,7 +241,7 @@ export const getAvailableDoctors = async (reqQuery: { search?: string, status?: 
 
     const mainQuery = `
         SELECT
-            d.id, d.name, d.email, d.phone, d.city, d.specialization,
+            d.id, d.name, d.city, d.specialization,
             d.status, d."profilePic", d.address, d.rating, d."ratingsCount",
             d."appointmentFee", d."createdAt",
             COUNT(CASE WHEN a.status = 'completed' THEN 1 END) AS completed_appointments,
@@ -278,7 +278,7 @@ export const getDoctor = async (doctorId: string) => {
 
     const [doctorResult, reviewsResult] = await Promise.all([
         pool.query(`
-            SELECT id, name, email,about, phone, city, specialization, status, 
+            SELECT id, name, email,about, city, specialization, status, 
                 "profilePic", address, rating, "ratingsCount", 
                 "appointmentFee", "createdAt"
             FROM doctors 
