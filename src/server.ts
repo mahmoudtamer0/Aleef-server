@@ -30,8 +30,8 @@ server.listen(PORT, () => {
 });
 
 
-setInterval(async () => {
-    pool.query("SELECT 1").then(() => {
-        console.log("✅ PostgreSQL warmed up");
-    });
-}, 5 * 60 * 1000);
+// setInterval(async () => {
+//     pool.query("SELECT 1").then(() => {
+//         console.log("✅ PostgreSQL warmed up");
+//     });
+// }, 5 * 60 * 1000);
