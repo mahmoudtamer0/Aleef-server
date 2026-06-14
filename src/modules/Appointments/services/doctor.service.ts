@@ -51,9 +51,12 @@ export const getAppointmentsRequestsForDoctor = async (doctor: User, params: any
 }
 
 export const getActiveAppoinmentsForDoctor = async (doctor: User, date: any) => {
-    if (!date) date = new Date().toISOString().split('T')[0];
+    if (!date) {
+        date = new Date().toISOString().split('T')[0];
+    } else {
+        date = date.split('-').reverse().join('-');
+    }
 
-    const formattedDate = date.split('-').reverse().join('-');
 
     const cacheKey = `active_appointments_doctor:${doctor.id}_${date}`;
     const cached = getCache(cacheKey);
@@ -70,7 +73,7 @@ export const getActiveAppoinmentsForDoctor = async (doctor: User, date: any) => 
         WHERE a.doctor = $1 AND a.status = 'accepted' AND a.date = $2::date
         ORDER BY a.time ASC
         `,
-        [doctor.id, formattedDate]
+        [doctor.id, date]
     );
 
     const appointments = result.rows.map(row => ({ ...row, date: row.date.split('-').reverse().join('-') })
@@ -591,7 +594,9 @@ export const endAppointment = async (
     }
 };
 
-export const prevAppointmentsForDoctor = async (doctor: any) => {
+export const prevAppointmentsForDoctor = async (doctor: User) => {
+
+    console.log("doctor", doctor)
 
     const cacheKey = `prevAppointmentsDoctor:${doctor.id}`;
     const cached = getCache(cacheKey);
@@ -603,7 +608,9 @@ export const prevAppointmentsForDoctor = async (doctor: any) => {
         jsonb_build_object('id', u.id, 'rate',d.rating,'ratingsCount',d."ratingsCount") AS doctor,
         jsonb_build_object('id', p.id, 'name', p.name, 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic") AS pet,
         COUNT(*) FILTER (WHERE a.status = 'completed') OVER() AS "completedCount",
-        COUNT(*) FILTER (WHERE a.status = 'cancelled') OVER() AS "completedCount",
+        COUNT(*) FILTER (WHERE a.status = 'cancelled-by-doctor') OVER() AS "cancelledCount",
+        COUNT(*) FILTER (WHERE a.status = 'cancelled-by-owner') OVER() AS "cancelledByOwnerCount",
+
         COUNT(*) OVER() AS "totalCount"
         FROM appointments a
         JOIN users u ON u.id = a.owner
@@ -614,7 +621,24 @@ export const prevAppointmentsForDoctor = async (doctor: any) => {
         [doctor.id]
     );
 
-    const appoinmentsCounts = { totalAppoinments: Number(result.rows[0]?.totalCount ?? 0), completedAppoinments: Number(result.rows[0]?.completedCount ?? 0) };
+    if (!result.rows.length) {
+        const response = {
+            appointments: [],
+            appoinmentsCounts: { totalAppoinments: 0, completedAppoinments: 0, cancelledAppoinments: 0 },
+            doctorRating: { rating: null, ratingCount: 0 }
+        };
+
+        setCache(cacheKey, response, 500);
+        return response;
+    }
+
+
+    const appoinmentsCounts = {
+        totalAppoinments: Number(result.rows[0]?.totalCount ?? 0),
+        completedAppoinments: Number(result.rows[0]?.completedCount ?? 0),
+        cancelledByOwnerAppoinments: Number(result.rows[0]?.cancelledByOwnerCount ?? 0),
+        cancelledAppoinments: Number(result.rows[0]?.cancelledCount ?? 0)
+    };
 
     const appoinments = result.rows.map(({ completedCount, totalCount, doctor, ...rest }) => rest);
 
