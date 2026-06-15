@@ -35,5 +35,5 @@ if (process.env["NODE_ENV"] === "production") {
         pool.query("SELECT 1").then(() => {
             console.log("✅ PostgreSQL warmed up");
         });
-    }, 5 * 60 * 1000);
+    }, 4.8 * 60 * 1000);
 }
