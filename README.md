@@ -1,57 +1,66 @@
-# 🐾 Aleef Server
+# 🐾 Aleef — Veterinary & Pet Care Platform
 
-A powerful and scalable backend system for a full-featured pet care platform.
-Aleef aims to provide everything pet owners need in one place — from managing pets to booking veterinary appointments and shopping.
+> A production-grade REST API for a full-featured pet care platform — built end-to-end by a full-stack developer, covering system design, database architecture, real-time features, and third-party integrations.
 
-> 🚧 This project is currently under active development.
-> 📮 [Postman Collection](https://www.postman.com/mahmoudtamer0-8816438/default-workspace/collection/73p0l07/aleef?action=share&source=copy-link&creator=50295562)
----
-
-## 🚀 Overview
-
-Aleef Server is a **Node.js + TypeScript** backend designed to handle real-world pet care services including:
-
-- 🐶 Pet management
-- 🏥 Veterinary appointment booking
-- 🛒 Pet products e-commerce
-- 📁 Medical records tracking
-- 👨‍⚕️ Doctor & user system
-
-Built with scalability and clean architecture in mind.
+📮 **[Postman Collection](https://www.postman.com/mahmoudtamer0-8816438/default-workspace/collection/73p0l07/aleef?action=share&source=copy-link&creator=50295562)** · 🌐 **[Live API](https://aleef-server-production.up.railway.app)**
 
 ---
 
-## ✨ Features
+## What is Aleef?
 
-- 🔐 **Authentication & Authorization** — JWT-based auth with OTP email verification
-- 👥 **Role-Based Access Control** — User / Doctor / Admin
-- 🐾 **Pet Management** — Add and manage pets with profile pictures
-- 📅 **Appointment System** — Book appointments, view doctor schedules & available slots
-- 🛒 **E-commerce Module** — Products, cart calculation, and orders (upcoming & previous)
-- ⭐ **Doctor Reviews** — Users can rate and review doctors
-- ☁️ **Image Upload** — Integrated with Cloudinary (single & multiple uploads)
-- 📧 **Email Notifications** — Powered by Brevo API
-- ⚡ **Real-time Features** — Powered by Socket.io
+Aleef is a veterinary platform where pet owners can manage their pets, book appointments with verified doctors, shop for pet products, and receive real-time notifications — all through a single backend that also serves a Flutter mobile app.
+
+This repository is the **Node.js/TypeScript backend**, designed and implemented independently as the primary portfolio project accompanying my graduation.
 
 ---
 
-## 🧠 Tech Stack
+## Technical Highlights
+
+### Database Architecture — PostgreSQL with Raw SQL
+Migrated the entire data layer from MongoDB/Mongoose to **PostgreSQL with raw parameterized queries** — no ORM — as a deliberate architectural decision for performance and control.
+
+
+
+### Real-time Notification System
+Built a **layered notification system** combining three delivery strategies:
+
+| Layer | Technology | Use Case |
+|---|---|---|
+| Persistent | PostgreSQL | Notification history & unread counts |
+| Real-time | Socket.IO | Instant delivery when user is online |
+| Offline push | Firebase Cloud Messaging (FCM) | Push notifications when user is offline |
+
+The system detects whether a user has an active socket connection before deciding which path to use, ensuring no notification is lost.
+
+### Authentication & Identity
+- JWT-based auth with OTP email verification via **Brevo API**
+- **Google Sign-In** integration (OAuth 2.0 token verification)
+- Role-based access control: `User / Doctor / Admin / Moderator`
+- Doctor registration flow with document upload and admin approval step
+
+### File Uploads
+Multi-strategy upload system using **Multer + Cloudinary** supporting single profile images, multiple document uploads, and product galleries.
+
+---
+
+## Tech Stack
 
 | Layer | Technology |
 |---|---|
 | Runtime | Node.js |
 | Language | TypeScript |
 | Framework | Express.js |
-| Database | MongoDB (Mongoose) |
-| Auth | JWT |
-| Real-time | Socket.io |
-| File Upload | Multer + Cloudinary |
+| Database | PostgreSQL (raw SQL, no ORM) |
+| Real-time | Socket.IO |
+| Push Notifications | Firebase Cloud Messaging |
+| Auth | JWT + Google OAuth 2.0 |
+| File Uploads | Multer + Cloudinary |
 | Email | Brevo API |
-| Validation | Custom schema validation |
+| Hosting | Railway |
 
 ---
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 src/
@@ -60,132 +69,122 @@ src/
 │   ├── doctors/
 │   ├── pets/
 │   ├── appointments/
+│   ├── notifications/
 │   ├── shop/
 │   └── orders/
 ├── middlewares/
 ├── utils/
+│   ├── cache.ts         # In-memory Map cache
+│   ├── socket.ts        # Socket.IO setup & helpers
+│   └── notifications.ts # FCM + DB + Socket dispatch logic
 ├── app.ts
 └── server.ts
 ```
 
 ---
 
-## ⚙️ Environment Variables
+## API Overview
 
-Create a `.env` file based on `.env.example`:
+> Full request/response documentation available in the **[Postman Collection](https://www.postman.com/mahmoudtamer0-8816438/default-workspace/collection/73p0l07/aleef?action=share&source=copy-link&creator=50295562)**.
+
+### 👤 Users
+| Method | Endpoint | Access |
+|---|---|---|
+| POST | `/api/v1/users/register` | Public |
+| POST | `/api/v1/users/verify-email` | Public |
+| POST | `/api/v1/users/login` | Public |
+| POST | `/api/v1/users/google-login` | Public |
+| GET | `/api/v1/users/me` | Authenticated |
+| PATCH | `/api/v1/users/edit-user-profile` | Authenticated |
+| GET | `/api/v1/users/get-all-users` | Admin |
+| POST | `/api/v1/users/ban-user/:userId` | Admin |
+
+### 👨‍⚕️ Doctors
+| Method | Endpoint | Access |
+|---|---|---|
+| POST | `/api/v1/doctors/register` | Public |
+| GET | `/api/v1/doctors/get-available-doctors` | Authenticated |
+| GET | `/api/v1/doctors/:doctorId` | Authenticated |
+| GET | `/api/v1/doctors/:doctorId/slots` | Authenticated |
+| POST | `/api/v1/doctors/:doctorId/add-review` | Authenticated |
+| GET | `/api/v1/doctors/get-doctors-requests` | Admin |
+| POST | `/api/v1/doctors/approve-request/:doctorId` | Admin |
+
+### 🐾 Pets
+| Method | Endpoint | Access |
+|---|---|---|
+| POST | `/api/v1/pets` | Authenticated |
+| GET | `/api/v1/pets/get-my-pets` | Authenticated |
+| GET | `/api/v1/pets/:petId` | Authenticated |
+
+### 🛒 Products & Orders
+| Method | Endpoint | Access |
+|---|---|---|
+| GET | `/api/v1/products` | Authenticated |
+| POST | `/api/v1/products/calculate-cart` | Authenticated |
+| POST | `/api/v1/orders` | Authenticated |
+| GET | `/api/v1/orders/my-upcoming-orders` | Authenticated |
+| GET | `/api/v1/orders/my-previous-orders` | Authenticated |
+
+### 🔔 Notifications
+| Method | Endpoint | Access |
+|---|---|---|
+| GET | `/api/v1/notifications` | Authenticated |
+| PATCH | `/api/v1/notifications/:id/read` | Authenticated |
+| POST | `/api/v1/notifications/register-token` | Authenticated |
+
+### 📅 Appointments
+| Method | Endpoint | Access |
+|---|---|---|
+| POST | `/api/v1/appointments` | Authenticated |
+| GET | `/api/v1/appointments/get-my-active-appointment` | Authenticated |
+
+---
+
+## Setup & Run
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/mahmoudtamer0/aleef-server
+cd aleef-server
+
+# 2. Install dependencies
+npm install
+
+# 3. Setup environment variables
+cp .env.example .env
+
+# 4. Run in development
+npm run dev
+```
+
+### Environment Variables
 
 ```env
 PORT=3000
 NODE_ENV=development
 
-DB_URL=your_database_url
+DATABASE_URL=your_postgres_connection_string
+
 JWT_SECRET=your_jwt_secret
 
 BREVO_API=your_brevo_api_key
 
-CLOUD_NAME=your_cloud_name
-CLOUD_API_KEY=your_api_key
-CLOUD_API_SECRET=your_api_secret
+CLOUD_NAME=your_cloudinary_cloud_name
+CLOUD_API_KEY=your_cloudinary_api_key
+CLOUD_API_SECRET=your_cloudinary_api_secret
+
+GOOGLE_CLIENT_ID=your_google_client_id
+
+FIREBASE_PROJECT_ID=your_firebase_project_id
+FIREBASE_CLIENT_EMAIL=your_firebase_client_email
+FIREBASE_PRIVATE_KEY=your_firebase_private_key
 ```
 
 ---
 
-## 🛠️ Setup & Run
+## Author
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/your-username/aleef-server
+**Mahmoud Tamer** — Full-Stack Developer (Node.js / TypeScript / React.js / PostgreSQL)
 
-# 2. Navigate to the project
-cd aleef-server
-
-# 3. Install dependencies
-npm install
-
-# 4. Setup environment variables
-cp .env.example .env
-
-# 5. Run in development mode
-npm run dev
-```
-
----
-
-## 📡 API Routes
-
-> 📮 [Postman Collection](https://www.postman.com/mahmoudtamer0-8816438/default-workspace/collection/73p0l07/aleef?action=share&source=copy-link&creator=50295562)
-
-### 👤 User Routes
-| Method | Endpoint | Description | Access |
-|---|---|---|---|
-| POST | `/api/v1/users/register` | Register new user with profile picture | Public |
-| POST | `/api/v1/users/verify-email` | Verify email using OTP | Public |
-| POST | `/api/v1/users/resend-otp` | Resend OTP | Public |
-| POST | `/api/v1/users/login` | Login user | Public |
-| GET | `/api/v1/users/me` | Get current logged-in user | Authenticated |
-| PATCH | `/api/v1/users/edit-user-profile` | Edit user profile | Authenticated |
-| POST | `/api/v1/users/logout` | Logout user | Authenticated |
-| GET | `/api/v1/users/get-all-users` | Get all users | Admin |
-| POST | `/api/v1/users/ban-user/:userId` | Ban a user | Admin |
-| GET | `/api/v1/users/:userId` | Get user details | Admin |
-
-### 👨‍⚕️ Doctor Routes
-| Method | Endpoint | Description | Access |
-|---|---|---|---|
-| POST | `/api/v1/doctors/register` | Doctor registration with documents | Public |
-| POST | `/api/v1/doctors/verify-email` | Verify doctor email | Public |
-| POST | `/api/v1/doctors/resend-otp` | Resend OTP | Public |
-| GET | `/api/v1/doctors/get-doctors-requests` | Get pending doctor requests | Admin |
-| GET | `/api/v1/doctors/get-all-doctors` | Get all doctors | Admin |
-| GET | `/api/v1/doctors/get-available-doctors` | Get available doctors | Authenticated |
-| POST | `/api/v1/doctors/approve-request/:doctorId` | Approve doctor request | Admin |
-| GET | `/api/v1/doctors/:doctorId` | Get doctor details | Authenticated |
-| GET | `/api/v1/doctors/:doctorId/schedual` | Get doctor schedule | Authenticated |
-| GET | `/api/v1/doctors/:doctorId/slots` | Get doctor available slots | Authenticated |
-| POST | `/api/v1/doctors/:doctorId/add-review` | Add review to doctor | Authenticated |
-
-### 🐾 Pet Routes
-| Method | Endpoint | Description | Access |
-|---|---|---|---|
-| POST | `/api/v1/pets` | Add new pet with profile picture | Authenticated |
-| GET | `/api/v1/pets/get-my-pets` | Get my pets | Authenticated |
-| GET | `/api/v1/pets/:petId` | Get pet profile | Authenticated |
-
-### 🛒 Product Routes
-| Method | Endpoint | Description | Access |
-|---|---|---|---|
-| POST | `/api/v1/products` | Add new product with images | Admin |
-| GET | `/api/v1/products` | Get all products | Authenticated |
-| POST | `/api/v1/products/calculate-cart` | Calculate cart total | Authenticated |
-| GET | `/api/v1/products/:prodId` | Get single product | Authenticated |
-
-### 📦 Order Routes
-| Method | Endpoint | Description | Access |
-|---|---|---|---|
-| POST | `/api/v1/orders` | Create new order | Authenticated |
-| GET | `/api/v1/orders/my-upcoming-orders` | Get upcoming orders | Authenticated |
-| GET | `/api/v1/orders/my-previous-orders` | Get previous orders | Authenticated |
-
-### 📅 Appointment Routes
-| Method | Endpoint | Description | Access |
-|---|---|---|---|
-| POST | `/api/v1/appointments` | Book a new appointment | Authenticated |
-| GET | `/api/v1/appointments/get-my-active-appointment` | Get active appointment | Authenticated |
-
----
-
-## 🧠 Technical Notes
-
-- 🔐 Routes protected using JWT authentication middleware
-- 👮 Role-based authorization via `allowTo("ADMIN")`
-- 📁 File uploads handled with Multer (single & multiple fields)
-- ✅ Input validation applied using custom validation schemas
-- 📧 OTP email verification on registration for both users and doctors
-
----
-
-## 👨‍💻 Author
-
-**Mahmoud Tamer** — Backend Developer (Node.js / TypeScript)
-
-📬 mahmoud.tamer.developer@gmail.com
+📬 mahmoud.tamer.developer@gmail.com · 🌐 [Portfolio](https://mahmoud-tamer-portfolio.vercel.app/) · 💻 [GitHub](https://github.com/mahmoudtamer0)
