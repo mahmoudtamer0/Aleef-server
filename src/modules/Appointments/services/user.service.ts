@@ -7,7 +7,7 @@ import { sendEmail } from "../../../utils/sendEmail";
 import { sendNotificationService } from "../../../utils/sendNotificationService";
 
 
-export const bookAppointment = async (user: any, { pet, doctor, date, time, reason, notes }: any) => {
+export const bookAppointment = async (user: User, { pet, doctor, date, time, reason, notes }: any) => {
 
     const client = await pool.connect();
     try {
@@ -109,7 +109,8 @@ export const bookAppointment = async (user: any, { pet, doctor, date, time, reas
 
 }
 
-export const getActiveAppointment = async (user: any) => {
+
+export const getActiveAppointment = async (user: User) => {
 
     const cacheKey = `activeAppointment:${user.id}`;
     const cached = getCache(cacheKey);

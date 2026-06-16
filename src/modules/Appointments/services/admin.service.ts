@@ -1,10 +1,10 @@
 import { getCache, setCache, clearCache } from "../../../cache";
 import pool from "../../../db";
 import ApiError from "../../../utils/ApiError";
-import { approveAppointment, cancelAppointmentByDoctor, endAppointment, rejectAppointment } from "./doctor.service";
+import { approveAppointment, cancelAppointmentByDoctor, endAppointment, rejectAppointment } from "./doctor/actions";
 import { cancelAppointmentByUser } from "./user.service";
 
-export const getAllAppoinments = async (reqQuery: any) => {
+export const getAllAppoinments = async (reqQuery: { page?: string, limit?: string, search?: string, status?: string }) => {
     const { page = "1", limit = "10", search = "", status } = reqQuery;
 
     const currentPage = Number(page);
@@ -79,9 +79,7 @@ export const getAllAppoinments = async (reqQuery: any) => {
 
 }
 
-
-
-export const changeAppointmentStatus = async (appointmentId: any, status: any) => {
+export const changeAppointmentStatus = async (appointmentId: string, status: string) => {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -140,7 +138,7 @@ export const changeAppointmentStatus = async (appointmentId: any, status: any) =
     }
 };
 
-export const getAppointmentDetailsForAdmin = async (appointmentId: any) => {
+export const getAppointmentDetailsForAdmin = async (appointmentId: string) => {
     const cacheKey = `appointment_details_admin:${appointmentId}`;
     const cached = getCache(cacheKey);
     if (cached) return cached;

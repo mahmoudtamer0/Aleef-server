@@ -1,6 +1,7 @@
 import catchAsync from "../../utils/catchAsync";
 import * as userServices from "./services/user.service"
-import * as doctorServices from "./services/doctor.service"
+import * as doctorActionsServices from "./services/doctor/actions"
+import * as doctorGetServices from "./services/doctor/getForDoctor"
 import * as adminServices from "./services/admin.service"
 import { User } from "../../types/user";
 
@@ -21,7 +22,7 @@ export const bookAppointment = catchAsync(async (req, res, next) => {
 
 export const getAllAppoinments = catchAsync(async (req, res, next) => {
 
-    const appointments = await adminServices.getAllAppoinments(req.query);
+    const appointments = await adminServices.getAllAppoinments(req.query as { page?: string, limit?: string, search?: string, status?: string });
 
     return res.status(200).json({
         status: "success",
@@ -52,7 +53,7 @@ export const getAppointmentsRequestsForDoctor = catchAsync(async (req, res, next
 
     const user = req.user as User;
 
-    const appointments = await doctorServices.getAppointmentsRequestsForDoctor(user, req.params);
+    const appointments = await doctorGetServices.getAppointmentsRequestsForDoctor(user, req.params);
 
     return res.status(200).json({
         status: "success",
@@ -77,7 +78,7 @@ export const getAppointmentDetails = catchAsync(async (req, res, next) => {
     if (user?.role == "USER" || user?.role == "ADMIN") {
         appointment = await userServices.getAppointmentDetailsForUser(appointmentId);
     } else {
-        appointment = await doctorServices.getAppointmentDetailsForDoctor(user, appointmentId);
+        appointment = await doctorGetServices.getAppointmentDetailsForDoctor(user, appointmentId);
     }
 
 
@@ -96,7 +97,7 @@ export const approveAppointment = catchAsync(async (req, res, next) => {
     const doctor = req.user as User;
     const { appointmentId } = req.params as { appointmentId: string };
 
-    const appointment = await doctorServices.approveAppointment(doctor, appointmentId);
+    const appointment = await doctorActionsServices.approveAppointment(doctor, appointmentId);
 
     return res.status(201).json({
         status: "success",
@@ -110,7 +111,7 @@ export const rejectAppointment = catchAsync(async (req, res, next) => {
     const { appointmentId } = req.params as { appointmentId: string };
     const { rejectionReason } = req.body as { rejectionReason: string };
 
-    const appointment = await doctorServices.rejectAppointment(doctor, appointmentId, rejectionReason);
+    const appointment = await doctorActionsServices.rejectAppointment(doctor, appointmentId, rejectionReason);
 
     return res.status(201).json({
         status: "success",
@@ -150,7 +151,7 @@ export const endAppoinment = catchAsync(async (req, res, next) => {
     const { appointmentId } = req.params as { appointmentId: string };
     const { medicalRecord, vaccination, upCommingVaccination } = req.body;
 
-    await doctorServices.endAppointment(doctor, appointmentId, medicalRecord, vaccination, upCommingVaccination, files);
+    await doctorActionsServices.endAppointment(doctor, appointmentId, medicalRecord, vaccination, upCommingVaccination, files);
 
     return res.status(201).json({
         status: "success",
@@ -159,7 +160,7 @@ export const endAppoinment = catchAsync(async (req, res, next) => {
 
 export const changeAppoinmentStatus = catchAsync(async (req, res, next) => {
 
-    const { appointmentId } = req.params;
+    const { appointmentId } = req.params as { appointmentId: string };
     const { status } = req.body;
     await adminServices.changeAppointmentStatus(appointmentId, status);
 
@@ -169,7 +170,7 @@ export const changeAppoinmentStatus = catchAsync(async (req, res, next) => {
 })
 
 export const getAppoinmentDetailsForAdmin = catchAsync(async (req, res, next) => {
-    const { appointmentId } = req.params;
+    const { appointmentId } = req.params as { appointmentId: string };
 
     const appointment = await adminServices.getAppointmentDetailsForAdmin(appointmentId);
     return res.status(200).json({
@@ -181,7 +182,7 @@ export const getAppoinmentDetailsForAdmin = catchAsync(async (req, res, next) =>
 
 export const prevAppointmentsForDoctor = catchAsync(async (req, res, next) => {
     const doctor = req.user as User;
-    const appointments = await doctorServices.prevAppointmentsForDoctor(doctor);
+    const appointments = await doctorGetServices.prevAppointmentsForDoctor(doctor);
 
     return res.status(200).json({
         status: "success",
@@ -194,7 +195,7 @@ export const prevAppointmentsForDoctor = catchAsync(async (req, res, next) => {
 export const activeAppoinmentsForDoctor = catchAsync(async (req, res, next) => {
     const doctor = req.user as User;
     const { date } = req.query;
-    const appointments = await doctorServices.getActiveAppoinmentsForDoctor(doctor, date);
+    const appointments = await doctorGetServices.getActiveAppoinmentsForDoctor(doctor, date);
 
     return res.status(200).json({
         status: "success",
