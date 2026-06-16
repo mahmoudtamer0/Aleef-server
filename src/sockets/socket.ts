@@ -24,6 +24,7 @@ export const initSocket = (server: any) => {
 
     io.on("connection", (socket) => {
         console.log("Socket connected :", socket.id);
+        console.log(`Connected  user:${(socket as any).user.id}`);
         socket.join(`user:${(socket as any).user.id}`);
 
         chatSockets(io, socket);
