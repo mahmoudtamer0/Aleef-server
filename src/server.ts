@@ -28,12 +28,3 @@ pool.connect()
 server.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });
-
-
-if (process.env["NODE_ENV"] === "production") {
-    setInterval(async () => {
-        pool.query("SELECT 1").then(() => {
-            console.log("✅ PostgreSQL warmed up");
-        });
-    }, 6 * 60 * 1000);
-}

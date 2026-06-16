@@ -56,7 +56,7 @@ export const getProducts = async (reqQuery: any): Promise<any> => {
     const filters: string[] = []
 
     const page = reqQuery.page * 1 || 1;
-    const limit = reqQuery.limit < 8 ? reqQuery.limit * 1 || 8 : 8;
+    const limit = reqQuery.limit < 6 ? reqQuery.limit * 1 || 6 : 6;
     const offset = (page - 1) * limit
 
 
@@ -157,7 +157,7 @@ export const getProduct = async ({ prodId }: any) => {
 
     const response = product.rows[0];
 
-    setCache(`product:${prodId}`, response, 500);
+    setCache(`product:${prodId}`, response, 300);
     return response;
 
 }
