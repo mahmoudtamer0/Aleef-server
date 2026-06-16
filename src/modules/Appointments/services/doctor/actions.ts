@@ -430,6 +430,8 @@ export const endAppointment = async (
                 isOnline = false;
             }
 
+            console.log("isOnline", isOnline);
+
             if (isOnline) {
                 io.to(`user:${appointmentResult.rows[0].owner.id.toString()}`).emit("notification", {
                     type: "APPOINTMENT_COMPLETED",
