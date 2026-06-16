@@ -9,22 +9,23 @@ initSocket(server);
 
 const PORT = process.env["PORT"] || 3000;
 
+// server.ts
 pool.connect()
     .then(client => {
         client.release();
-        if (process.env["NODE_ENV"] === "production") {
-            pool.query("SELECT 1").then(() => {
-                console.log("✅ PostgreSQL warmed up");
-            });
-        }
-
         console.log("✅ PostgreSQL Connected");
+
+        server.listen(PORT, () => {
+            console.log(`🚀 Server running on port ${PORT}`);
+        });
     })
     .catch(err => {
         console.error("❌ PostgreSQL connection failed:", err);
         process.exit(1);
     });
 
-server.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-});
+if (process.env["NODE_ENV"] === "production") {
+    setInterval(() => {
+        pool.query("SELECT 1").catch(console.error);
+    }, 3 * 60 * 1000);
+}

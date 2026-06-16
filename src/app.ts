@@ -1,9 +1,7 @@
-
 require("dotenv").config();
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-// import mongoSanitize from "express-mongo-sanitize";
 import hpp from "hpp";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
@@ -19,21 +17,16 @@ import globalErrorHandler from "./middlewares/error";
 const app = express();
 app.set("trust proxy", 1);
 
-
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
-// app.use(mongoSanitize({ allowDots: true }));
 app.use(hpp());
-
+app.use(cookieParser());
 
 const apiLimiter = rateLimit({
     windowMs: 5 * 60 * 1000,
     max: 100,
-    message: {
-        status: "fail",
-        message: "Too many requests, try again later."
-    },
+    message: { status: "fail", message: "Too many requests, try again later." },
     standardHeaders: true,
     legacyHeaders: false,
 });
@@ -41,32 +34,25 @@ const apiLimiter = rateLimit({
 const authLimiter = rateLimit({
     windowMs: 1 * 60 * 1000,
     max: 5,
-    message: "Too many login attempts, try again later"
+    message: { status: "fail", message: "Too many login attempts, try again later" }
 });
 
 
 
-app.use(cookieParser());
 
-app.use(apiLimiter)
+app.use('/api/v1/users/login', authLimiter);
+app.use('/api/v1/users', apiLimiter, usersRouter);
+app.use('/api/v1/doctors', apiLimiter, doctorRouter);
+app.use('/api/v1/products', apiLimiter, productsRouter);
+app.use('/api/v1/orders', apiLimiter, ordersRouter);
+app.use('/api/v1/pets', apiLimiter, petsRouter);
+app.use('/api/v1/appointments', apiLimiter, appointmentsRouter);
+app.use('/api/v1/chats', apiLimiter, chatRouter);
 
-app.use('/api/v1/users/login', authLimiter)
-app.use('/api/v1/users', usersRouter)
-app.use('/api/v1/doctors', doctorRouter)
-app.use('/api/v1/products', productsRouter)
-app.use('/api/v1/orders', ordersRouter)
-app.use('/api/v1/pets', petsRouter)
-app.use('/api/v1/appointments', appointmentsRouter)
-app.use('/api/v1/chats', chatRouter)
-app.use('/api/v1', (req, res, next) => {
-    res.status(404).json({
-        status: "success",
-        message: "Welcome to Aleef API"
-    })
-    next();
+app.use('/api/v1', (req, res) => {
+    res.status(404).json({ status: "fail", message: "Route not found" });
 });
-//Global Error Handler
+
 app.use(globalErrorHandler);
-
 
 export default app;

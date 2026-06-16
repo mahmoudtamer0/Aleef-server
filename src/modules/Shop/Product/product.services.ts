@@ -40,76 +40,66 @@ export const addProduct = async ({ title, description, originalPrice, discount, 
 
 
 export const getProducts = async (reqQuery: any): Promise<any> => {
+    const { category, minPrice, maxPrice, search, sort } = reqQuery;
 
-    const { category,
-        minPrice,
-        maxPrice,
-        search,
-        sort } = reqQuery;
+    const page = Math.max(1, reqQuery.page * 1 || 1);
+    const limit = 6;
+    const offset = (page - 1) * limit;
 
-    const cached = getCache(`products:${reqQuery.page}_${reqQuery.limit}_${reqQuery.sort}_${reqQuery.category}_${reqQuery.minPrice}_${reqQuery.maxPrice}_${reqQuery.search}`);
-    if (cached) {
-        console.log("cached")
-        return cached;
+    const cacheKey = `products:${page}_${limit}_${sort}_${category}_${minPrice}_${maxPrice}_${search}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
+
+    const params: any[] = [];
+    const filters: string[] = [];
+
+    if (search && search !== "") {
+        params.push(`%${search}%`);
+        filters.push(`(p.title ILIKE $${params.length} OR p.description ILIKE $${params.length} OR c.name ILIKE $${params.length})`);
     }
 
-    const filters: string[] = []
-
-    const page = reqQuery.page * 1 || 1;
-    const limit = reqQuery.limit < 6 ? reqQuery.limit * 1 || 6 : 6;
-    const offset = (page - 1) * limit
-
-
-    let mainQuery = `SELECT 
-        p.id, p.title, p.description, p."originalPrice", p."finalPrice",
-        p.discount, p.stock, p.buys,
-        p."averageRate", p."ratingsQuantity", p."createdAt", p."updatedAt",
-        jsonb_build_object('url', p.thumbnail_url, 'cloudinary_id', p.thumbnail_cloudinary_id) AS thumbnail,
-        json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name)) AS categories,
-        COUNT(*) OVER() AS total_count
-    FROM products p
-    LEFT JOIN product_categories pc ON p.id = pc.product_id
-    LEFT JOIN categories c ON pc.category_id = c.id
-    `;
-
-    if (search && search != "") {
-        const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        filters.push(`(p.title ILIKE '%${safeSearch}%' OR p.description ILIKE '%${safeSearch}%' OR c.name ILIKE '%${safeSearch}%')`)
-    }
-
-    if (category && category != "") {
-        filters.push(`c.name = '${category}'`)
+    if (category && category !== "") {
+        params.push(category);
+        filters.push(`c.name = $${params.length}`);
     }
 
     if (minPrice) {
-        filters.push(`p."finalPrice" >= ${Number(minPrice)}`)
+        params.push(Number(minPrice));
+        filters.push(`p."finalPrice" >= $${params.length}`);
     }
 
     if (maxPrice) {
-        filters.push(`p."finalPrice" <= ${Number(maxPrice)}`)
+        params.push(Number(maxPrice));
+        filters.push(`p."finalPrice" <= $${params.length}`);
     }
 
+    const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
 
-    if (filters.length > 0) {
-        mainQuery += ` WHERE ${filters.join(" AND ")}`
-    }
+    const orderClause = sort === "best-selling"
+        ? `ORDER BY p.buys DESC, p.stock DESC`
+        : `ORDER BY p.stock DESC, p."updatedAt" DESC`;
 
-    mainQuery += ` GROUP BY p.id`;
+    params.push(limit, offset);
+    const limitClause = `LIMIT $${params.length - 1} OFFSET $${params.length}`;
 
-    if (sort) {
-        if (sort == "best-selling") {
-            mainQuery += ` ORDER BY p.buys DESC,p.stock DESC`
-        } else {
-            mainQuery += ` ORDER BY p.stock DESC, p."updatedAt" DESC`
-        }
-    } else {
-        mainQuery += ` ORDER BY p.stock DESC, p."updatedAt" DESC`
-    }
+    const mainQuery = `
+        SELECT 
+            p.id, p.title, p.description, p."originalPrice", p."finalPrice",
+            p.discount, p.stock, p.buys,
+            p."averageRate", p."ratingsQuantity", p."createdAt", p."updatedAt",
+            jsonb_build_object('url', p.thumbnail_url, 'cloudinary_id', p.thumbnail_cloudinary_id) AS thumbnail,
+            json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name)) AS categories,
+            COUNT(*) OVER() AS total_count
+        FROM products p
+        LEFT JOIN product_categories pc ON p.id = pc.product_id
+        LEFT JOIN categories c ON pc.category_id = c.id
+        ${whereClause}
+        GROUP BY p.id
+        ${orderClause}
+        ${limitClause}
+    `;
 
-    mainQuery += ` LIMIT ${limit} OFFSET ${offset}`
-
-
-    const products = await pool.query(mainQuery);
+    const products = await pool.query(mainQuery, params);
 
     const totalCount = products.rows[0]?.total_count ?? 0;
 
@@ -119,14 +109,11 @@ export const getProducts = async (reqQuery: any): Promise<any> => {
         totalProducts: totalCount,
         totalPages: Math.ceil(totalCount / limit),
         page
-    }
-
-    setCache(`products:${reqQuery.page}_${reqQuery.limit}_${reqQuery.sort}_${reqQuery.category}_${reqQuery.minPrice}_${reqQuery.maxPrice}_${reqQuery.search}`, response, 500);
-    return {
-        ...response
     };
 
-}
+    setCache(cacheKey, response, 500);
+    return response;
+};
 
 export const getProduct = async ({ prodId }: any) => {
 
