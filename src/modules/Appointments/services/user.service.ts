@@ -315,6 +315,7 @@ export const addReview = async (user: User, appointmentId: string, rate: number,
         clearCache(`appointment_details_user:${appointmentId}`);
         clearCache(`appointment_details_doctor:${appointmentId}`);
         clearCache(`pending_review:${user.id}`);
+        clearCache(`doctor_details:${appointmentResult.rows[0].doctor}`);
 
         setImmediate(() => {
             sendNotificationService(

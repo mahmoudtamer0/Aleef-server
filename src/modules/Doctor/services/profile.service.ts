@@ -276,6 +276,10 @@ export const getAvailableDoctors = async (reqQuery: { search?: string, status?: 
 
 export const getDoctor = async (doctorId: string) => {
 
+    const cacheKey = `doctor_details:${doctorId}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
+
     const [doctorResult, reviewsResult] = await Promise.all([
         pool.query(`
             SELECT id, name, email,about, city, specialization, status, 
@@ -298,11 +302,15 @@ export const getDoctor = async (doctorId: string) => {
 
     if (!doctorResult.rows.length) throw new ApiError(404, "Doctor not found");
 
-
-    return {
+    const response = {
         doctor: doctorResult.rows[0],
         reviews: reviewsResult.rows
     }
+
+    setCache(cacheKey, response, 300);
+
+
+    return response;
 }
 
 export const getMeDoctor = async (doctor: User) => {

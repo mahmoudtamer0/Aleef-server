@@ -436,8 +436,8 @@ export const endAppointment = async (
                     title: "Appointment Completed ✅",
                     body: `Doctor ${doctor.name} has completed your appoinment`,
                     data: {
-                        appointmentId: appointmentResult.rows[0].id,
-                        date: appointmentResult.rows[0].date,
+                        type: "appointment",//order,chat_message,
+                        date: appointmentResult.rows[0].id,//order.id,chat.id,
                     }
                 })
             } else {
