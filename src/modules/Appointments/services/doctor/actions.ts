@@ -440,7 +440,7 @@ export const endAppointment = async (
                     body: `Doctor ${doctor.name} has completed your appoinment`,
                     data: {
                         type: "appointment",//order,chat_message,
-                        date: appointmentResult.rows[0].id,//order.id,chat.id,
+                        appointmentId: appointmentResult.rows[0].id,//order.id,chat.id,
                     }
                 })
             } else {
