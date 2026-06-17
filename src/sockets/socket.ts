@@ -8,7 +8,9 @@ export const initSocket = (server: any) => {
     io = new Server(server, {
         cors: {
             origin: "*",
-        }
+        },
+        pingInterval: 10000,
+        pingTimeout: 5000,
     });
 
     io.use((socket, next) => {
@@ -29,7 +31,8 @@ export const initSocket = (server: any) => {
         chatSockets(io, socket);
         chatBotSockets(io, socket);
 
-        socket.on("disconnect", () => {
+        socket.on("disconnect", (reason) => {
+            console.log(`Disconnected user:${(socket as any).user.id} — reason: ${reason}`);
             (socket as any).currentChat = null;
             socket.leave(`user:${(socket as any).user.id}`);
         });
