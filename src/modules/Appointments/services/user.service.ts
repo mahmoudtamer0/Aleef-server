@@ -177,7 +177,7 @@ export const getAppointmentDetailsForUser = async (appointmentId: any) => {
     }
     const response = { appointment: appointment.rows[0], chat };
 
-    setCache(cacheKey, response, 500);
+    setCache(cacheKey, response, 100);
 
 
     return response;
