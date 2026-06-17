@@ -416,7 +416,7 @@ export const endAppointment = async (
         clearCache(`pet_profile:${appointment.pet.id}`);
         clearCache(`appointments:`);
         clearCache(`prevAppointmentsDoctor:${doctor.id}`);
-        clearCache(`active_appointments_doctor:${doctor.id}`);
+        clearCache(`active_appointments_doctor:${doctor.id}_${appointment.date}`);
         clearCache(`pending_review:${appointment.owner.id}`);
 
         setImmediate(async () => {

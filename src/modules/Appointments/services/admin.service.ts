@@ -127,6 +127,7 @@ export const changeAppointmentStatus = async (appointmentId: string, status: str
         clearCache(`appointments:`);
         clearCache(`prevAppointments:${appointment.rows[0].owner}`);
         clearCache(`prevAppointments:${appointment.rows[0].doctor}`);
+        clearCache(`appointment_details_doctor:${appointmentId}`);
 
         return;
     } catch (err) {
