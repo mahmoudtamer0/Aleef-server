@@ -211,10 +211,21 @@ export const login = async ({ email, password }: { email: string, password: stri
     return { doctor, token };
 }
 
-export const logOut = async (user: User) => {
+
+export const addFcmToken = async (doctor: User, fcmToken: any) => {
+
+    await pool.query(
+        `UPDATE sessions SET "fcmToken" = $1 WHERE id = $2`,
+        [fcmToken, doctor.sessionId]
+    );
+
+    return;
+}
+
+export const logOut = async (doctor: User) => {
     try {
-        await pool.query("DELETE FROM sessions WHERE id = $1", [user.sessionId]);
-        clearCache(`session:${user.sessionId}`);
+        await pool.query("DELETE FROM sessions WHERE id = $1", [doctor.sessionId]);
+        clearCache(`session:${doctor.sessionId}`);
         return "success"
     } catch (err) {
         throw new ApiError(500, "error")

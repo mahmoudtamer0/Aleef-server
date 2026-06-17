@@ -1,5 +1,5 @@
 import express from "express";
-import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors, approveDoctorRequest, getDoctor, getDoctorSchedual, getDoctorSlots, login, getAvailableDoctors, getDoctorToAdmin, getMeDoctor, editDoctor, getDoctorScheduleForDoctor, editDoctorSchedule, logOut } from "./doctor.controler";
+import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors, approveDoctorRequest, getDoctor, getDoctorSchedual, getDoctorSlots, login, getAvailableDoctors, getDoctorToAdmin, getMeDoctor, editDoctor, getDoctorScheduleForDoctor, editDoctorSchedule, logOut, addFcmToken } from "./doctor.controler";
 import { upload } from "../../middlewares/doctorProfilepic"
 import validate from "../../middlewares/userValidate";
 import { registerSchema, verifyOtpSchema, resendOtpSchema, editDoctorProfileSchema, editScheduleSchema } from "./doctor.validation";
@@ -30,6 +30,9 @@ router.route("/resend-otp")
 router.route("/logout")
     .post(verifyToken, logOut)
 
+router.route("/add-fcmToken")
+    .post(verifyToken, addFcmToken)
+
 router.route("/get-doctors-requests")
     .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllDoctorsRequests)
 
@@ -56,10 +59,6 @@ router.route("/:doctorId/schedual")
 
 router.route("/:doctorId/slots")
     .get(verifyToken, getDoctorSlots)
-
-// router.route("/:doctorId/add-review")
-//     .post(verifyToken, validate(addReviewSchema), addReviewToDoctor)
-
 
 router.route("/details-for-admin/:doctorId")
     .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getDoctorToAdmin)

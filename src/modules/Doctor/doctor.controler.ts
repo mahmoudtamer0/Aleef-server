@@ -60,7 +60,6 @@ export const login = catchAsync(async (req, res, next) => {
 
 export const logOut = catchAsync(async (req, res, next) => {
 
-    if (!req.user) return res.status(401).json({ status: "error", message: "Unauthorized" })
     const user = req.user as User
     const status = await authService.logOut(user)
 
@@ -222,17 +221,16 @@ export const editDoctorSchedule = catchAsync(async (req, res, next) => {
     })
 })
 
+export const addFcmToken = catchAsync(async (req, res, next) => {
 
+    const { fcmToken } = req.body;
+    const doctor = req.user as User;
 
+    await authService.addFcmToken(doctor, fcmToken);
 
-// export const addReviewToDoctor = catchAsync(async (req, res, next) => {
-//     const { doctorId } = req.params
-//     const user = req.user
-//     const review = await doctorService.addReviewToDoctor(user, doctorId, req.body)
+    return res.status(200).json({
+        status: "success",
+        message: "added successfully"
+    });
 
-//     return res.status(200).json({
-//         status: "success",
-//         review
-//     })
-
-// })
+})
