@@ -304,7 +304,7 @@ export const addReview = async (user: User, appointmentId: string, rate: number,
             client.query(
                 `INSERT INTO doctor_reviews(doctor, "user", rate, comment, "createdAt", "updatedAt")
                 VALUES($1, $2, $3, $4, NOW(), NOW())`,
-                [appointmentResult.rows[0].doctor, user.id, rate, comment ?? null]
+                [appointmentResult.rows[0].doctor, user.id, rate, comment && comment.length > 0 ? comment : null]
             )
         ])
 
