@@ -467,7 +467,7 @@ export const endAppointment = async (
                 body: `Your appointment with Dr. ${doctor.name} has been completed. Tell Us Your Feelings!`,
                 userId: appointmentResult.rows[0].owner.id,
                 type: "appointment",
-                appointmentId: appointment.rows[0].id,
+                appointmentId: appointmentResult.rows[0].id,
             });
 
             sendEmail({
