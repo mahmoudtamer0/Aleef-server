@@ -52,7 +52,7 @@ export const getDoctorSchedual = async (doctorId: string): Promise<any> => {
 
 export const getDoctorSlots = async (doctorId: string, date: string): Promise<any> => {
 
-    const cacheKey = `doctor_slots_${date}:${doctorId}`;
+    const cacheKey = `doctor_slots_${doctorId}:${date}`;
     const cached = getCache(cacheKey);
     if (cached) return cached;
 
@@ -130,7 +130,7 @@ export const editDoctor = async (doctor: User, body: { name: string, phone: stri
 
     if (result.rowCount === 0) throw new ApiError(404, "Doctor not found");
 
-    clearCache("me_doctor:")
+    clearCache(`me_doctor:${doctor.id}`)
 
 
 
@@ -145,7 +145,7 @@ export const editDoctor = async (doctor: User, body: { name: string, phone: stri
 }
 
 export const getDoctorScheduleForDoctor = async (doctor: User) => {
-    const cacheKey = `doctor_schedule:${doctor.id}`;
+    const cacheKey = `doctor_me_schedual:${doctor.id}`;
     const cached = getCache(cacheKey);
     if (cached) return cached;
 
@@ -193,7 +193,9 @@ export const editDoctorSchedule = async (doctor: User, schedule: { day_of_week: 
 
         await client.query("COMMIT");
 
-        clearCache(`doctor_schedule:${doctor.id}`);
+        clearCache(`doctor_schedual:${doctor.id}`);
+        clearCache(`doctor_me_schedual:${doctor.id}`);
+        clearCache(`doctor_slots_${doctor.id}:`);
 
         return newSchedule;
 
