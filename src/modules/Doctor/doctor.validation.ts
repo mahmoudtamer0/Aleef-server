@@ -65,6 +65,6 @@ export const editScheduleSchema = Joi.object({
                 .pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/)
                 .when('is_available', { is: true, then: Joi.required() }),
             is_available: Joi.boolean().required(),
-        })
+        }).options({ stripUnknown: true })
     ).min(1).required()
 });
