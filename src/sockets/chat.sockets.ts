@@ -6,16 +6,22 @@ import { sendNotificationService } from "../utils/sendNotificationService";
 export = (io: any, socket: any) => {
 
     socket.on("join_chat", async (chatId: string) => {
+        const member = await pool.query(
+            `SELECT 1 FROM chat_members WHERE "chatId" = $1 AND member_id = $2`,
+            [chatId, socket.user.id]
+        );
+        if (!member.rowCount) return;
 
         (socket as any).currentChat = chatId;
-
         socket.join(chatId);
 
-        const member = await pool.query(`UPDATE unread_messages SET "unreadCount"=$1 WHERE user_id = $2 AND "chatId" = $3 RETURNING id`, [0, socket.user.id, chatId]);
-
-        if (member.rowCount === 0) {
-            await pool.query(`INSERT INTO unread_messages (user_id, "chatId", "lastMessage", "unreadCount") VALUES ($1, $2, $3, $4)`, [socket.user.id, chatId, "", 0]);
-        }
+        await pool.query(
+            `INSERT INTO unread_messages (user_id, "chatId", "lastMessage", "unreadCount")
+             VALUES ($1, $2, '', 0)
+             ON CONFLICT ("chatId", user_id) DO UPDATE SET "unreadCount" = 0
+             RETURNING id`,
+            [socket.user.id, chatId]
+        );
     });
 
 
