@@ -114,7 +114,6 @@ export const approveAppointment = async (doctor: User, appointmentId: string) =>
 
 
             if (isOnline) {
-                console.log("yes online", isOnline);
                 io.to(`user:${userProfile.rows[0].id.toString()} `).emit("notification", {
                     type: "APPOINTMENT_ACCEPTED",
                     title: "Appointment Accepted ✅",
@@ -124,15 +123,15 @@ export const approveAppointment = async (doctor: User, appointmentId: string) =>
                         date: appointment.rows[0].date,
                     }
                 })
-            } else {
-                console.log("not online", isOnline);
-                sendNotificationService(
-                    userProfile.rows[0].id,
-                    "USER",
-                    "Appointment Confirmed ✅",
-                    `Your appointment with Dr. ${doctor.name} has been confirmed. Don't Be Late!`
-                );
             }
+
+            sendNotificationService(
+                userProfile.rows[0].id,
+                "USER",
+                "Appointment Confirmed ✅",
+                `Your appointment with Dr. ${doctor.name} has been confirmed. Don't Be Late!`
+            );
+
 
             // await Notification.create({
             //     userId: userProfile._id,
@@ -243,14 +242,15 @@ export const rejectAppointment = async (
                         }
                     }
                 );
-            } else {
-                sendNotificationService(
-                    userProfile.rows[0].id,
-                    "USER",
-                    "Appointment Rejected ❗",
-                    `Your appointment with Dr. ${doctor.name} has been rejected. Book a new appointment!`
-                );
             }
+
+            sendNotificationService(
+                userProfile.rows[0].id,
+                "USER",
+                "Appointment Rejected ❗",
+                `Your appointment with Dr. ${doctor.name} has been rejected. Book a new appointment!`
+            );
+
 
             sendEmail({
                 email: userProfile.rows[0].email,
@@ -442,14 +442,15 @@ export const endAppointment = async (
                         appointmentId: appointmentResult.rows[0].id,//order.id,chat.id,
                     }
                 })
-            } else {
-                sendNotificationService(
-                    appointmentResult.rows[0].owner.id,
-                    "USER",
-                    "Appointment Completed ✅",
-                    `Your appointment with Dr. ${doctor.name} has been completed. Tell Us Your Feelings!`
-                );
             }
+
+            sendNotificationService(
+                appointmentResult.rows[0].owner.id,
+                "USER",
+                "Appointment Completed ✅",
+                `Your appointment with Dr. ${doctor.name} has been completed. Tell Us Your Feelings!`
+            );
+
 
             sendEmail({
                 email: appointment.owner.email,
