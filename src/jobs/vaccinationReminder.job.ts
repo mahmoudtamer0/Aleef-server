@@ -11,7 +11,6 @@ export const vaccinationReminder = () => {
 
     cron.schedule('* * * * *', async () => {
         try {
-            console.log("vaccination reminder");
             const upcomingVaccinationReminders = await pool.query(
                 `SELECT 
                     v.id as vaccination_id,
