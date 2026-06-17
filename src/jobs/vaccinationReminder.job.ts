@@ -4,6 +4,7 @@ import pool from "../db";
 import { sendNotificationService } from '../utils/notifications/sendNotificationService';
 import { sendEmail } from '../utils/sendEmail';
 import { vaccinationReminderTemplate } from '../emails/vaccinationReminder.email';
+import { createNotification } from '../utils/notifications/createNotificationRow';
 // import { sendEmail } from "../utils/email";
 
 
@@ -32,8 +33,10 @@ export const vaccinationReminder = () => {
             for (const vaccin of upcomingVaccinationReminders.rows) {
 
                 Promise.allSettled([
-                    sendNotificationService(vaccin.owner_id,
-                        "USER", "Vaccination Reminder 🐾",
+                    sendNotificationService(
+                        vaccin.owner_id,
+                        "USER",
+                        "Vaccination Reminder 🐾",
                         `${vaccin.pet_name} Has a vaccination due on ${new Date(vaccin.nextDueDate).toLocaleDateString('en-US', {
                             weekday: 'long',
                             year: 'numeric',
@@ -55,6 +58,18 @@ export const vaccinationReminder = () => {
                             month: 'long',
                             day: 'numeric',
                         })),
+                    }),
+                    await createNotification({
+                        title: "Vaccination Reminder 🐾",
+                        body: `${vaccin.pet_name} Has a vaccination due on ${new Date(vaccin.nextDueDate).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                        })}. Please remember to take it.`,
+                        userId: vaccin.owner_id,
+                        type: "pet",
+                        petId: vaccin.pet_id,
                     })
                 ])
 
