@@ -117,6 +117,7 @@ export = (io: any, socket: any) => {
             } else if (isOnline) {
 
 
+
                 const unreadResult = await pool.query(
                     `INSERT INTO unread_messages ("chatId", user_id, "lastMessage", "unreadCount")
                      VALUES ($1, $2, $3, 1)
@@ -134,6 +135,29 @@ export = (io: any, socket: any) => {
                     unreadCount: unreadResult.rows[0].unreadCount,
                     updatedAt: new Date()
                 })
+
+
+
+                io.to(`user:${other_member_id}`).emit("notification", {
+                    type: "MESSAGE",
+                    title: sender.name,
+                    body: message.text,
+                    data: {
+                        type: "chat",
+                        chatId: data.chatId,
+                    }
+                })
+
+                const otherModel = model === "Doctor" ? "USER" : "DOCTOR";
+
+                sendNotificationService(
+                    other_member_id,
+                    otherModel,
+                    sender.name,
+                    formattedMessage.text
+                );
+
+
             } else {
                 await pool.query(
                     `INSERT INTO unread_messages ("chatId", user_id, "lastMessage", "unreadCount")

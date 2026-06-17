@@ -102,6 +102,8 @@ export const approveAppointment = async (doctor: User, appointmentId: string) =>
 
         setImmediate(async () => {
 
+
+
             let isOnline = false;
 
             try {
@@ -112,15 +114,14 @@ export const approveAppointment = async (doctor: User, appointmentId: string) =>
             }
 
 
-
             if (isOnline) {
-                io.to(`user:${userProfile.rows[0].id.toString()} `).emit("notification", {
+                io.to(`user:${userProfile.rows[0].id.toString()}`).emit("notification", {
                     type: "APPOINTMENT_ACCEPTED",
                     title: "Appointment Accepted ✅",
                     body: `Doctor ${doctor.name} has accepted your appoinment`,
                     data: {
+                        type: "appointment",
                         appointmentId: appointment.rows[0].id,
-                        date: appointment.rows[0].date,
                     }
                 })
             }
@@ -218,30 +219,23 @@ export const rejectAppointment = async (
             let isOnline = false;
 
             try {
-                const sockets = await io
-                    .in(`user:${userProfile.rows[0].id.toString()} `)
-                    .fetchSockets();
-
+                const sockets = await io.in(`user:${userProfile.rows[0].id.toString()}`).fetchSockets();
                 isOnline = sockets.length > 0;
-
-            } catch {
+            } catch (err) {
                 isOnline = false;
             }
 
-            if (isOnline) {
 
-                io.to(`user:${userProfile.rows[0].id.toString()} `).emit(
-                    "notification",
-                    {
-                        type: "APPOINTMENT_REJECTED",
-                        title: "Appointment Rejected ❗",
-                        body: rejectionReason,
-                        data: {
-                            appointmentId: appointment.rows[0].id,
-                            date: appointment.rows[0].date,
-                        }
+            if (isOnline) {
+                io.to(`user:${userProfile.rows[0].id.toString()}`).emit("notification", {
+                    type: "APPOINTMENT_ACCEPTED",
+                    title: "Appointment Rejected ❗",
+                    body: `Doctor ${doctor.name} has rejected your appoinment`,
+                    data: {
+                        type: "appointment",
+                        appointmentId: appointment.rows[0].id,
                     }
-                );
+                })
             }
 
             sendNotificationService(
