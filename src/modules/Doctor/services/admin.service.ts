@@ -134,7 +134,6 @@ export const getAllDoctors = async (reqQuery: { search?: string, status?: string
 
 
 export const getDoctorToAdmin = async (doctorId: string) => {
-    console.log("getDoctorToAdmin")
 
     const doctorResult = await pool.query(`
         SELECT d.id, d.name, d.email, d.phone, d.city, d.specialization, d.status,

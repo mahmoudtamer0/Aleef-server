@@ -191,8 +191,6 @@ export const editDoctorSchedule = async (doctor: User, schedule: { day_of_week: 
             newSchedule.push(dayResult.rows[0]);
         }
 
-        console.log("newSchedule", newSchedule)
-
         await client.query("COMMIT");
 
         clearCache(`doctor_schedule:${doctor.id}`);

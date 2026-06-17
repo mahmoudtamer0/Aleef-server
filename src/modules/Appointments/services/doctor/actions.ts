@@ -111,9 +111,10 @@ export const approveAppointment = async (doctor: User, appointmentId: string) =>
                 isOnline = false;
             }
 
-            console.log("isOnline", isOnline);
+
 
             if (isOnline) {
+                console.log("yes online", isOnline);
                 io.to(`user:${userProfile.rows[0].id.toString()} `).emit("notification", {
                     type: "APPOINTMENT_ACCEPTED",
                     title: "Appointment Accepted ✅",
@@ -124,6 +125,7 @@ export const approveAppointment = async (doctor: User, appointmentId: string) =>
                     }
                 })
             } else {
+                console.log("not online", isOnline);
                 sendNotificationService(
                     userProfile.rows[0].id,
                     "USER",
@@ -176,7 +178,6 @@ export const rejectAppointment = async (
 
         await client.query("BEGIN");
 
-        console.log("doctor", doctor)
 
         const appointment = await client.query(
             `UPDATE appointments
@@ -432,8 +433,6 @@ export const endAppointment = async (
 
 
             if (isOnline) {
-                console.log("isOnline", isOnline);
-                console.log("to user", appointmentResult.rows[0].owner.id.toString());
                 io.to(`user:${appointmentResult.rows[0].owner.id.toString()}`).emit("notification", {
                     type: "APPOINTMENT_COMPLETED",
                     title: "Appointment Completed ✅",

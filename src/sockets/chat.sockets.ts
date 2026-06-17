@@ -6,7 +6,6 @@ import { sendNotificationService } from "../utils/sendNotificationService";
 export = (io: any, socket: any) => {
 
     socket.on("join_chat", async (chatId: string) => {
-        console.log("User joined chat:", chatId);
 
         (socket as any).currentChat = chatId;
 
@@ -27,7 +26,6 @@ export = (io: any, socket: any) => {
 
     socket.on("send_message", async (data: { chatId: string; message: string }) => {
         try {
-            console.log("send_message")
             const model: "Doctor" | "User" =
                 socket.user.role === "DOCTOR" ? "Doctor" : "User";
 
