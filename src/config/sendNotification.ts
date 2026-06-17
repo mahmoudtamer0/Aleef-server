@@ -8,7 +8,6 @@ export const sendPushNotification = async (
     data?: Record<string, string>
 ) => {
     try {
-        console.log("fcmToken", fcmToken);
         const result = await admin.messaging().send({
             token: fcmToken,
             notification: { title, body },

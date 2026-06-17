@@ -7,7 +7,6 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
 
     const client = await pool.connect();
     try {
-        console.log(cart);
         await client.query("BEGIN");
 
         let subTotal = 0;

@@ -5,109 +5,6 @@ import pool from "../db";
 
 export = (io: any, socket: any) => {
 
-
-    // socket.on("chat_send", async (data: { message: string }) => {
-    //     try {
-    //         const chatBotApiKey = process.env["CHATBOT_API_KEY"];
-
-    //         if (!chatBotApiKey) {
-    //             io.to(socket.user.id).emit("error_message", {
-    //                 errMessage: "Chatbot API key is not configured"
-    //             });
-    //             return;
-    //         }
-    //         if (socket.user.role === "DOCTOR") {
-    //             io.to(socket.user.id).emit("error_message", {
-    //                 errMessage: "Doctors can't chat with chatbot :)"
-    //             });
-    //             return;
-    //         }
-
-
-    //         const botresponse = fetch(chatBotApiKey, {
-    //             method: "POST",
-    //             headers: {
-    //                 "Content-Type": "application/json"
-    //             },
-    //             body: JSON.stringify({
-    //                 msg: data.message
-    //             })
-    //         })
-
-
-
-
-    //         let chat = await Chat.findOne({
-    //             chatType: "chatbot",
-    //             "members.memberId": socket.user.id
-    //         }).lean();
-
-
-    //         if (!chat) {
-    //             chat = await Chat.create({
-    //                 chatType: "chatbot",
-    //                 members: [
-    //                     {
-    //                         memberId: socket.user.id,
-    //                         memberModel: "User"
-    //                     },
-    //                     {
-    //                         memberId: BOT_ID,
-    //                         memberModel: "Bot"
-    //                     }
-    //                 ]
-    //             });
-    //         }
-
-    //         const message = await createMessage({
-    //             chatId: chat._id.toString(),
-    //             sender: socket.user.id,
-    //             senderModel: "User",
-    //             message: data.message,
-    //             chatType: "chatbot"
-    //         });
-
-
-    //         socket.emit("chat_response", {
-    //             _id: message._id,
-    //             text: message.text,
-    //             sender: {
-    //                 _id: message.sender,
-    //             },
-    //             createdAt: message.createdAt,
-    //             isDeleted: message.isDeleted,
-    //         });
-
-    //         const res = await botresponse;
-    //         const dataTofetch: any = await res.json();
-
-
-    //         socket.emit("chat_response", {
-    //             message: dataTofetch?.Response,
-    //             sender: {
-    //                 _id: BOT_ID,
-    //             },
-    //             createdAt: message.createdAt,
-    //             isDeleted: false,
-    //         });
-
-    //         await createMessage({
-    //             chatId: chat._id.toString(),
-    //             sender: BOT_ID.toString(),
-    //             senderModel: "Bot",
-    //             message: dataTofetch?.Response,
-    //             chatType: "chatbot"
-    //         });
-
-    //         return;
-
-
-    //     } catch (err) {
-    //         console.error("Error sending message:", err);
-    //     }
-    // });
-
-
     socket.on("chat_send", async (data: { message: string }) => {
         try {
             const chatBotApiKey = process.env["CHATBOT_API_KEY"];
@@ -135,10 +32,6 @@ export = (io: any, socket: any) => {
                     msg: data.message
                 })
             })
-
-
-
-
 
             let chat = await pool.query(
                 `SELECT c.id FROM chats c
@@ -169,7 +62,6 @@ export = (io: any, socket: any) => {
                 }
 
             }
-
 
             const message = await pool.query(
                 `INSERT INTO messages ("chatId", sender, sender_model, chat_type, text)

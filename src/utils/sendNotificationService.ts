@@ -2,7 +2,7 @@ import { sendPushNotification } from "../config/sendNotification";
 import pool from "../db";
 
 export const sendNotificationService = async (userId: string, userRole: string, title: string, body: string) => {
-    console.log("sendNotificationService", userId, userRole, title, body);
+    console.log("sendNotificationService");
 
     if (!userId || !title || !body) throw new Error("Invalid data");
 
