@@ -166,8 +166,6 @@ export const login = async ({ email, password }: { email: string, password: stri
 
 export const google = async (idToken: string, device: string) => {
 
-    console.log(idToken)
-
     const googleClientId = process.env["GOOGLE_CLIENT_ID"];
     const googleAndroidClientId = process.env["GOOGLE_ANDROID_CLIENT_ID"];
 
@@ -185,7 +183,7 @@ export const google = async (idToken: string, device: string) => {
     const ticket = await client.verifyIdToken({
         idToken,
         audience: [
-            googleClientId, // Web Client ID
+            googleClientId,
             googleAndroidClientId
         ],
     });
@@ -204,15 +202,28 @@ export const google = async (idToken: string, device: string) => {
 
     let findUser = await pool.query(`SELECT email, id, name, role, "profilePic", status, "banExpiresAt" FROM users WHERE email = $1`, [email])
 
-    if (findUser.rows.length > 0 && findUser.rows[0].status == "banned" && findUser.rows[0].banExpiresAt) {
-        if (findUser.rows[0].banExpiresAt > new Date()) {
-            throw new ApiError(403, "your account is banned");
+    if (findUser.rows.length > 0 && findUser.rows[0].status === "banned") {
+        const banExpiry = findUser.rows[0].banExpiresAt;
+
+        if (banExpiry === null || new Date(banExpiry) > new Date()) {
+            if (findUser.rows[0].banExpiresAt === null) {
+                throw new ApiError(403, "your account is banned permanently, please contact support");
+            }
+            throw new ApiError(403, "your account is banned until " + new Date(banExpiry).toLocaleString());
         }
-        await pool.query("UPDATE users SET status = $1, \"banExpiresAt\" = $2 WHERE email = $3", ["active", null, email])
+
+        await pool.query(
+            `UPDATE users SET status = $1, "banExpiresAt" = $2 WHERE email = $3`,
+            ["active", null, email]
+        );
     }
 
     if (findUser.rows.length === 0) {
-        findUser = await pool.query(`INSERT INTO users (email, name, isEmailVerified,role,"profilePic") VALUES ($1, $2, $3, $4,$5) RETURNING id,name,email,role,profilePic`, [email, name, true, "USER", picture])
+        findUser = await pool.query(
+            `INSERT INTO users (email, name, "isEmailVerified", role, "profilePic") 
+             VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role, "profilePic"`,
+            [email, name, true, "USER", picture]
+        )
     }
 
     const session = await pool.query(
