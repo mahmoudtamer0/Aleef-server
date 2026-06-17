@@ -23,16 +23,6 @@ export = (io: any, socket: any) => {
             }
 
 
-            const botresponse = fetch(chatBotApiKey, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    msg: data.message
-                })
-            })
-
             let chat = await pool.query(
                 `SELECT c.id FROM chats c
                  JOIN chat_members cm ON c.id = cm."chatId"
@@ -63,31 +53,58 @@ export = (io: any, socket: any) => {
 
             }
 
-            const message = await pool.query(
-                `INSERT INTO messages ("chatId", sender, sender_model, chat_type, text)
-                 VALUES ($1, $2, $3, 'chatbot', $4)
-                 RETURNING id, "chatId", sender, sender_model, text, "isDeleted", "createdAt"`,
-                [chat.rows[0].id, socket.user.id, "User", data.message]
-            );
-
-            clearCache(`chatBotMessages_${socket.user.id}_${chat.rows[0].id}`);
-
             socket.emit("chat_response", {
-                _id: message.rows[0].id,
-                text: message.rows[0].text,
+                _id: "1",
+                text: data.message,
                 sender: {
                     id: socket.user.id,
                 },
-                createdAt: message.rows[0].createdAt,
-                isDeleted: message.rows[0].isDeleted,
+                createdAt: new Date(),
+                isDeleted: new Date(),
             });
+
+            clearCache(`chatBotMessages_${socket.user.id}_${chat.rows[0].id}`);
+
+            const checkPlan = await pool.query(`SELECT id,
+                COUNT(*) OVER() AS total_count
+                FROM messages
+                WHERE "chatId" = $1 AND sender_model = 'Bot' AND "createdAt" >= NOW() - INTERVAL '1 day'
+                `, [chat.rows[0].id]);
+
+
+            const count = parseInt(checkPlan.rows[0]?.total_count ?? "0");
+
+            if (count >= 10) {
+                socket.emit("chat_response", {
+                    message: "You have reached the daily limit of 10 messages",
+                    sender: { id: BOT_ID },
+                    createdAt: new Date(),
+                    isDeleted: false,
+                });
+                return;
+            }
+
+            const botresponse = fetch(chatBotApiKey, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    msg: data.message
+                })
+            })
 
             const res = await botresponse;
             const dataTofetch: any = await res.json();
 
             const botText = dataTofetch?.Response;
             if (!botText) {
-                socket.emit("error_message", { errMessage: "Chatbot didn't respond" });
+                socket.emit("error_message", {
+                    message: "Chatbot didn't respond",
+                    sender: { id: BOT_ID },
+                    createdAt: new Date(),
+                    isDeleted: false,
+                });
                 return;
             }
 
@@ -102,6 +119,13 @@ export = (io: any, socket: any) => {
 
             await pool.query(
                 `INSERT INTO messages ("chatId", sender, sender_model, chat_type, text)
+                 VALUES ($1, $2, $3, 'chatbot', $4)
+                 RETURNING id, "chatId", sender, sender_model, text, "isDeleted", "createdAt"`,
+                [chat.rows[0].id, socket.user.id, "User", data.message]
+            );
+
+            await pool.query(
+                `INSERT INTO messages ("chatId", sender, sender_model, chat_type, text)
                 VALUES ($1, $2, 'Bot', 'chatbot', $3)`,
                 [chat.rows[0].id, BOT_ID, botText]
             );
@@ -110,7 +134,15 @@ export = (io: any, socket: any) => {
 
 
         } catch (err) {
-            console.error("Error sending message:", err);
+            socket.emit("error_message", {
+                _id: "1",
+                text: "Chatbot didn't respond",
+                sender: {
+                    id: BOT_ID,
+                },
+                createdAt: new Date(),
+                isDeleted: false,
+            });
         }
     });
 
