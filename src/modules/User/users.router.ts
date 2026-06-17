@@ -1,5 +1,5 @@
 import express from "express";
-import { banUser, editUserProfile, getME, login, logOut, register, resendOtp, verifyEmail, getAllUsers, getUserToAdmin, google, addFcmToken } from "./users.controler";
+import { banUser, editUserProfile, getME, login, logOut, register, resendOtp, verifyEmail, getAllUsers, getUserToAdmin, google, addFcmToken, getUnreadNotificationsCount, getNotifications, markAllNotificationsAsRead } from "./users.controler";
 import { upload } from "../../middlewares/userProfileImage"
 import validate from "../../middlewares/userValidate";
 import { registerSchema, loginSchema, verifyOtpSchema, resendOtpSchema } from "./users.validation";
@@ -43,6 +43,15 @@ router.patch(
     upload.single("profilePic"),
     editUserProfile
 );
+
+router.route("/get-unread-notifications-count")
+    .get(verifyToken, getUnreadNotificationsCount)
+
+router.route("/get-notifications")
+    .get(verifyToken, getNotifications)
+
+router.route("/mark-all-notifications-as-read")
+    .patch(verifyToken, markAllNotificationsAsRead)
 
 router.route("/logout")
     .post(verifyToken, logOut)

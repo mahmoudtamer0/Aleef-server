@@ -150,6 +150,44 @@ export const addFcmToken = catchAsync(async (req, res, next) => {
 
 })
 
+export const getUnreadNotificationsCount = catchAsync(async (req, res, next) => {
+
+    const user = req.user as User
+
+    const count = await profileService.getUnreadNotificationsCount(user)
+
+    return res.status(200).json({
+        status: "success",
+        count: count
+    })
+})
+
+export const getNotifications = catchAsync(async (req, res, next) => {
+
+    const user = req.user as User
+
+    const notifications = await profileService.getNotifications(user)
+
+    return res.status(200).json({
+        status: "success",
+        notifications: notifications
+    })
+})
+
+export const markAllNotificationsAsRead = catchAsync(async (req, res, next) => {
+
+    const user = req.user as User
+
+    await profileService.markAllNotificationsAsRead(user)
+
+    return res.status(200).json({
+        status: "success",
+        message: "marked all notifications as read"
+    })
+})
+
+
+
 // export const forgetPassword = catchAsync(async (req, res, next) => {
 
 //     // const forget = null

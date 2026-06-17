@@ -13,6 +13,7 @@ import petsRouter from "./modules/Pet/pet.router";
 import appointmentsRouter from "./modules/Appointments/appointment.router";
 import chatRouter from "./modules/Chat/chat.router";
 import globalErrorHandler from "./middlewares/error";
+import { vaccinationReminder } from "./jobs/vaccinationReminder.job";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -37,7 +38,7 @@ const authLimiter = rateLimit({
     message: { status: "fail", message: "Too many login attempts, try again later" }
 });
 
-
+vaccinationReminder();
 
 
 app.use('/api/v1/users/login', authLimiter);

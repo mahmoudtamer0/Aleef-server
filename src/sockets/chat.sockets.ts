@@ -1,6 +1,6 @@
 import { clearCache } from "../cache";
 import pool from "../db";
-import { sendNotificationService } from "../utils/sendNotificationService";
+import { sendNotificationService } from "../utils/notifications/sendNotificationService";
 
 
 export = (io: any, socket: any) => {

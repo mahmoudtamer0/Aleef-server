@@ -1,5 +1,5 @@
-import { sendPushNotification } from "../config/sendNotification";
-import pool from "../db";
+import { sendPushNotification } from "../../config/sendNotification";
+import pool from "../../db";
 
 export const sendNotificationService = async (userId: string, userRole: string, title: string, body: string) => {
     console.log("sendNotificationService");

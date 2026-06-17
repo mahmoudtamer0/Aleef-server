@@ -4,7 +4,7 @@ import { bookedAppointmentTemplate } from "../../../emails/appoinment.emails";
 import { User } from "../../../types/user";
 import ApiError from "../../../utils/ApiError";
 import { sendEmail } from "../../../utils/sendEmail";
-import { sendNotificationService } from "../../../utils/sendNotificationService";
+import { sendNotificationService } from "../../../utils/notifications/sendNotificationService";
 
 
 export const bookAppointment = async (user: User, { pet, doctor, date, time, reason, notes }: any) => {
@@ -291,22 +291,28 @@ export const addReview = async (user: User, appointmentId: string, rate: number,
         if (!appointmentResult.rows.length) {
             throw new ApiError(404, "appointment not found");
         }
-
-        await Promise.all([
+        const queries = [
             client.query(
                 `UPDATE doctors
-                 SET "rating" = ("rating" * "ratingsCount" + $2) / ("ratingsCount" + 1),
-                     "ratingsCount" = "ratingsCount" + 1,
-                     "updatedAt" = NOW()
-                 WHERE id = $1`,
+               SET "rating" = ("rating" * "ratingsCount" + $2) / ("ratingsCount" + 1),
+                   "ratingsCount" = "ratingsCount" + 1,
+                   "updatedAt" = NOW()
+               WHERE id = $1`,
                 [appointmentResult.rows[0].doctor, rate]
             ),
-            client.query(
-                `INSERT INTO doctor_reviews(doctor, "user", rate, comment, "createdAt", "updatedAt")
-                VALUES($1, $2, $3, $4, NOW(), NOW())`,
-                [appointmentResult.rows[0].doctor, user.id, rate, comment && comment.length > 0 ? comment : null]
-            )
-        ])
+        ];
+
+        if (comment && comment.length > 0) {
+            queries.push(
+                client.query(
+                    `INSERT INTO doctor_reviews(doctor, "user", rate, comment, "createdAt", "updatedAt")
+                 VALUES($1, $2, $3, $4, NOW(), NOW())`,
+                    [appointmentResult.rows[0].doctor, user.id, rate, comment]
+                )
+            );
+        }
+
+        await Promise.all(queries);
 
         await client.query("COMMIT");
 

@@ -5,7 +5,8 @@ import { getIO } from "../../../../sockets/socket";
 import { User } from "../../../../types/user";
 import ApiError from "../../../../utils/ApiError";
 import { sendEmail } from "../../../../utils/sendEmail";
-import { sendNotificationService } from "../../../../utils/sendNotificationService";
+import { sendNotificationService } from "../../../../utils/notifications/sendNotificationService";
+import { createNotification } from "../../../../utils/notifications/createNotificationRow";
 
 
 export const approveAppointment = async (doctor: User, appointmentId: string) => {
@@ -129,9 +130,17 @@ export const approveAppointment = async (doctor: User, appointmentId: string) =>
             sendNotificationService(
                 userProfile.rows[0].id,
                 "USER",
-                "Appointment Confirmed ✅",
+                "Appointment Accepted ✅",
                 `Your appointment with Dr. ${doctor.name} has been confirmed. Don't Be Late!`
             );
+
+            await createNotification({
+                title: "Appointment Accepted ✅",
+                body: `Doctor ${doctor.name} has accepted your appoinment`,
+                userId: userProfile.rows[0].id,
+                type: "appointment",
+                appointmentId: appointment.rows[0].id,
+            });
 
 
             // await Notification.create({
@@ -244,6 +253,14 @@ export const rejectAppointment = async (
                 "Appointment Rejected ❗",
                 `Your appointment with Dr. ${doctor.name} has been rejected. Book a new appointment!`
             );
+
+            await createNotification({
+                title: "Appointment Rejected ❗",
+                body: `Your appointment with Dr. ${doctor.name} has been rejected. Book a new appointment!`,
+                userId: userProfile.rows[0].id,
+                type: "appointment",
+                appointmentId: appointment.rows[0].id,
+            });
 
 
             sendEmail({
@@ -445,6 +462,13 @@ export const endAppointment = async (
                 `Your appointment with Dr. ${doctor.name} has been completed. Tell Us Your Feelings!`
             );
 
+            await createNotification({
+                title: "Appointment Completed ✅",
+                body: `Your appointment with Dr. ${doctor.name} has been completed. Tell Us Your Feelings!`,
+                userId: appointmentResult.rows[0].owner.id,
+                type: "appointment",
+                appointmentId: appointment.rows[0].id,
+            });
 
             sendEmail({
                 email: appointment.owner.email,

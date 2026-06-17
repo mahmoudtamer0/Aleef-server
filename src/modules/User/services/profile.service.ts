@@ -110,3 +110,28 @@ export const editUserProfile = async (user: User, reqBody: { name?: string, phon
     return updatedUser?.rows[0]
 
 }
+
+export const getUnreadNotificationsCount = async (user: User): Promise<number> => {
+    const result = await pool.query(
+        `SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false`,
+        [user.id]
+    );
+    return parseInt(result.rows[0].count);
+};
+
+export const getNotifications = async (user: User) => {
+    const result = await pool.query(
+        `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 8`,
+        [user.id]
+    );
+    return result.rows;
+};
+
+export const markAllNotificationsAsRead = async (user: User) => {
+    await pool.query(
+        `UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false`,
+        [user.id]
+    );
+
+    return;
+};
