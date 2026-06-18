@@ -3,7 +3,7 @@ import { verifyToken } from "../../../middlewares/verifyToken"
 import { allowTo } from "../../../middlewares/allowTo"
 import { upload } from "../../../middlewares/productsUploads"
 import validate from "../../../middlewares/userValidate"
-import { addProductValidation, calculateCartSchema, editProductValidation } from "./product.validation"
+import { calculateCartSchema } from "./product.validation"
 import { addProduct, calculateCart, editProduct, getProduct, getProducts } from "./product.controler"
 
 
@@ -12,12 +12,11 @@ const router = express.Router()
 router.route("/")
     .post(
         verifyToken,
-        allowTo("ADMIN"),
+        allowTo("ADMIN", "MODERATOR"),
         upload.fields([
             { name: "thumbnail", maxCount: 1 },
-            { name: "productImages", maxCount: 5 }
+            { name: "productImages", maxCount: 5 },
         ]),
-        validate(addProductValidation),
         addProduct
     )
     .get(getProducts)
@@ -36,7 +35,6 @@ router.route("/:prodId")
             { name: "thumbnail", maxCount: 1 },
             { name: "productImages", maxCount: 5 }
         ]),
-        validate(editProductValidation),
         editProduct
     )
 

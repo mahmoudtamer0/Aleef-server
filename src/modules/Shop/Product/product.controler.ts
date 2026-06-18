@@ -1,3 +1,4 @@
+import ApiError from "../../../utils/ApiError";
 import catchAsync from "../../../utils/catchAsync";
 import * as productService from "./product.services"
 
@@ -5,16 +6,27 @@ import * as productService from "./product.services"
 
 
 export const addProduct = catchAsync(async (req, res, next) => {
+    const { title, description, originalPrice, discount, stock } = req.body;
 
-    const createProduct = await productService.addProduct(req.body, req.files)
+    let categories: string[] = [];
+    try {
+        categories = JSON.parse(req.body.categories ?? "[]");
+    } catch {
+        categories = [];
+    }
 
-    return res.status(201).json({
-        status: "success",
-        message: "product added successfuly",
-        createProduct
-    })
+    if (categories.length === 0) {
+        return next(new ApiError(400, "at least one category is required"));
+    }
 
-})
+
+    await productService.addProduct(
+        { title, description, originalPrice, discount, stock, categories },
+        req.files
+    );
+
+    res.status(201).json({ message: "product added successfully" });
+});
 
 
 export const getProducts = catchAsync(async (req, res, next) => {
@@ -61,6 +73,8 @@ export const calculateCart = catchAsync(async (req, res, next) => {
 export const editProduct = catchAsync(async (req, res, next) => {
 
     const { prodId } = req.params
+
+    console.log("prodId:", prodId);
 
     await productService.editProduct(
         prodId,

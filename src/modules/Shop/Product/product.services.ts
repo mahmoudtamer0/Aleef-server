@@ -1,41 +1,68 @@
-import { getCache, setCache } from "../../../cache";
+import { clearCache, getCache, setCache } from "../../../cache";
 import pool from "../../../db"
 import ApiError from "../../../utils/ApiError"
 import { generateFinalPrice } from "../../../utils/generateFinalPrice"
 
 
 
-export const addProduct = async ({ title, description, originalPrice, discount, category, stock }: any, reqFiles: any): Promise<any> => {
+// addProduct
+export const addProduct = async ({ title, description, originalPrice, discount, categories, stock }: any, reqFiles: any): Promise<any> => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
 
-    await pool.query("BEGIN");
-    const finalPrice = await generateFinalPrice(Number(originalPrice), Number(discount));
+        const finalPrice = Math.round(await generateFinalPrice(Number(originalPrice), Number(discount)));
+        const categoryList = Array.isArray(categories) ? categories : [categories];
 
-    const findCat = await pool.query(`SELECT id FROM categories WHERE name = $1`, [category.trim().toLowerCase()])
-    if (findCat.rowCount === 0) {
-        throw new ApiError(400, "invalid category")
-    }
-
-    const newProduct = await pool.query(`INSERT INTO products (title, description, "originalPrice", "finalPrice", discount, stock, thumbnail_url, thumbnail_cloudinary_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`, [
-        title,
-        description,
-        Number(originalPrice),
-        Number(finalPrice),
-        Number(discount),
-        stock,
-        reqFiles.thumbnail ? reqFiles.thumbnail[0].path : null,
-        reqFiles.thumbnail ? reqFiles.thumbnail[0].filename : null
-    ]);
-
-    if (reqFiles.productImages && reqFiles.productImages.length > 0) {
-        for (const img of reqFiles.productImages) {
-            await pool.query(`INSERT INTO product_images (product_id, url, cloudinary_id) VALUES ($1, $2, $3)`, [newProduct.rows[0].id, img.path, img.filename]);
+        const categoryIds: string[] = [];
+        for (const catName of categoryList) {
+            const findCat = await client.query(
+                `SELECT id FROM categories WHERE name = $1`,
+                [catName.trim().toLowerCase()]
+            );
+            if (findCat.rowCount === 0) throw new ApiError(400, `invalid category: ${catName}`);
+            categoryIds.push(findCat.rows[0].id);
         }
+
+        const newProduct = await client.query(
+            `INSERT INTO products (title, description, "originalPrice", "finalPrice", discount, stock, thumbnail_url, thumbnail_cloudinary_id) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+            [
+                title, description,
+                Number(originalPrice), Number(finalPrice), Number(discount), stock !== undefined && stock !== "" ? Number(stock) : 0,
+                reqFiles?.thumbnail?.[0]?.path ?? null,
+                reqFiles?.thumbnail?.[0]?.filename ?? null
+            ]
+        );
+
+        const productId = newProduct.rows[0].id;
+
+        if (reqFiles?.productImages?.length > 0) {
+            for (const img of reqFiles.productImages) {
+                await client.query(
+                    `INSERT INTO product_images (product_id, url, cloudinary_id) VALUES ($1, $2, $3)`,
+                    [productId, img.path, img.filename]
+                );
+            }
+        }
+
+        for (const catId of categoryIds) {
+            await client.query(
+                `INSERT INTO product_categories (product_id, category_id) VALUES ($1, $2)`,
+                [productId, catId]
+            );
+        }
+
+        await client.query("COMMIT");
+        return newProduct.rows[0];
+
+    } catch (err) {
+        console.error("❌ Error adding product:", err);
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
     }
-
-    await pool.query(`INSERT INTO product_categories (product_id, category_id) VALUES ($1, $2)`, [newProduct.rows[0].id, findCat.rows[0].id]);
-
-    await pool.query("COMMIT");
-    return newProduct.rows[0];
 }
 
 
@@ -188,120 +215,150 @@ export const calculateCart = async (cart: any) => {
 }
 
 
-export const editProduct = async (prodId: any, { title, description, originalPrice, discount, category, stock, deletedImages }: any, reqFiles: any
+export const editProduct = async (
+    prodId: any,
+    { title, description, originalPrice, discount, categories, stock, deletedImages }: any,
+    reqFiles: any
 ) => {
+    const client = await pool.connect();
 
-    const fields = [];
-    const values = [];
-    let index = 1;
+    try {
+        console.log(stock, discount, categories, originalPrice);
 
-    if (!prodId) {
-        throw new ApiError(400, "product id is required");
-    }
+        const fields: string[] = [];
+        const values: any[] = [];
+        let index = 1;
 
-    if (title) {
-        fields.push(`title = $${index}`);
-        values.push(title);
-        index++;
-    }
-
-    if (description) {
-        fields.push(`description = $${index}`);
-        values.push(description);
-        index++;
-    }
-
-    if (originalPrice !== undefined && discount !== undefined) {
-        const finalPrice = await generateFinalPrice(Number(originalPrice), Number(discount));
-        fields.push(`"originalPrice" = $${index}`);
-        values.push(Number(originalPrice));
-        index++;
-        fields.push(`discount = $${index}`);
-        values.push(Number(discount));
-        index++;
-        fields.push(`"finalPrice" = $${index}`);
-        values.push(Number(finalPrice));
-        index++;
-    }
-
-    if (originalPrice !== undefined && !discount && discount === undefined) {
-        const findProduct = await pool.query(`SELECT discount FROM products WHERE id = $1`, [prodId]);
-        const discountValue = findProduct.rows[0].discount || 0;
-        const finalPrice = await generateFinalPrice(Number(originalPrice), Number(discountValue || 0));
-
-        fields.push(`"originalPrice" = $${index}`);
-        values.push(Number(originalPrice));
-        index++;
-        fields.push(`"finalPrice" = $${index}`);
-        values.push(Number(finalPrice));
-        index++;
-    }
-
-    if (discount !== undefined && !originalPrice && originalPrice === undefined) {
-        const findProduct = await pool.query(`SELECT "originalPrice" FROM products WHERE id = $1`, [prodId]);
-        const originalPriceValue = findProduct.rows[0].originalPrice || 0;
-        const finalPrice = await generateFinalPrice(Number(originalPriceValue), Number(discount));
-        fields.push(`discount = $${index}`);
-        values.push(Number(discount));
-        index++;
-        fields.push(`"finalPrice" = $${index}`);
-        values.push(Number(finalPrice));
-        index++;
-    }
-
-    if (stock !== undefined) {
-        fields.push(`stock = $${index}`);
-        values.push(Number(stock));
-        index++;
-    }
-
-
-    if (reqFiles?.productImages?.length > 0) {
-
-        const images = reqFiles.productImages.map(
-            (img: { path: string; filename: string }) => ({
-                url: img.path,
-                cloudinary_id: img.filename
-            })
-        );
-        for (const img of images) {
-            await pool.query(`INSERT INTO product_images (product_id, url, cloudinary_id) VALUES ($1, $2, $3)`, [prodId, img.url, img.cloudinary_id]);
+        if (!prodId) {
+            throw new ApiError(400, "product id is required");
         }
-    }
 
-    if (reqFiles?.thumbnail?.length > 0) {
-        const thumbnail = {
-            url: reqFiles.thumbnail[0].path,
-            cloudinary_id: reqFiles.thumbnail[0].filename
-        };
-        fields.push(`thumbnail_url = $${index}`);
-        values.push(thumbnail.url);
-        index++;
-        fields.push(`thumbnail_cloudinary_id = $${index}`);
-        values.push(thumbnail.cloudinary_id);
-        index++;
-    }
-
-    if (deletedImages && Array.isArray(deletedImages)) {
-        for (const imgId of deletedImages) {
-            await pool.query(`DELETE FROM product_images WHERE id = $1 AND product_id = $2`, [imgId, prodId]);
+        if (title) {
+            fields.push(`title = $${index}`);
+            values.push(title);
+            index++;
         }
-    }
 
-    if (category) {
-        const findCat = await pool.query(`SELECT id FROM categories WHERE name = $1`, [category.trim().toLowerCase()]);
-        if (findCat.rowCount === 0) {
-            throw new ApiError(400, "invalid category");
+        if (description) {
+            fields.push(`description = $${index}`);
+            values.push(description);
+            index++;
         }
-        const categoryId = findCat.rows[0].id;
-        await pool.query(`DELETE FROM product_categories WHERE product_id = $1`, [prodId]);
-        await pool.query(`INSERT INTO product_categories (product_id, category_id) VALUES ($1, $2)`, [prodId, categoryId]);
+
+        const hasPrice = originalPrice !== undefined && originalPrice !== null;
+        const hasDiscount = discount !== undefined && discount !== null;
+
+        if (hasPrice || hasDiscount) {
+            const findProduct = await client.query(
+                `SELECT "originalPrice", discount FROM products WHERE id = $1`,
+                [prodId]
+            );
+            const currentPrice = Number(findProduct.rows[0].originalPrice);
+            const currentDiscount = Number(findProduct.rows[0].discount);
+
+            const finalOriginalPrice = hasPrice ? Number(originalPrice) : currentPrice;
+            const finalDiscount = hasDiscount ? Number(discount) : currentDiscount;
+            const finalPrice = Math.round(await generateFinalPrice(finalOriginalPrice, finalDiscount));
+
+            if (hasPrice) {
+                fields.push(`"originalPrice" = $${index}`);
+                values.push(finalOriginalPrice);
+                index++;
+            }
+            if (hasDiscount) {
+                fields.push(`discount = $${index}`);
+                values.push(finalDiscount);
+                index++;
+            }
+            fields.push(`"finalPrice" = $${index}`);
+            values.push(finalPrice);
+            index++;
+        }
+
+        if (stock !== undefined) {
+            fields.push(`stock = $${index}`);
+            values.push(Number(stock));
+            index++;
+        }
+
+        if (reqFiles?.productImages?.length > 0) {
+            const images = reqFiles.productImages.map(
+                (img: { path: string; filename: string }) => ({
+                    url: img.path,
+                    cloudinary_id: img.filename,
+                })
+            );
+            for (const img of images) {
+                await client.query(
+                    `INSERT INTO product_images (product_id, url, cloudinary_id) VALUES ($1, $2, $3)`,
+                    [prodId, img.url, img.cloudinary_id]
+                );
+            }
+        }
+
+        if (reqFiles?.thumbnail?.length > 0) {
+            const thumbnail = {
+                url: reqFiles.thumbnail[0].path,
+                cloudinary_id: reqFiles.thumbnail[0].filename,
+            };
+            fields.push(`thumbnail_url = $${index}`);
+            values.push(thumbnail.url);
+            index++;
+            fields.push(`thumbnail_cloudinary_id = $${index}`);
+            values.push(thumbnail.cloudinary_id);
+            index++;
+        }
+
+        if (deletedImages && Array.isArray(deletedImages)) {
+            for (const imgId of deletedImages) {
+                await client.query(
+                    `DELETE FROM product_images WHERE id = $1 AND product_id = $2`,
+                    [imgId, prodId]
+                );
+            }
+        }
+
+        if (categories) {
+            const categoryList: string[] = Array.isArray(categories) ? categories : [categories];
+
+            await client.query(`DELETE FROM product_categories WHERE product_id = $1`, [prodId]);
+
+            for (const catName of categoryList) {
+                const findCat = await client.query(
+                    `SELECT id FROM categories WHERE name = $1`,
+                    [catName.trim().toLowerCase()]
+                );
+                if (findCat.rowCount === 0) {
+                    throw new ApiError(400, `invalid category: ${catName}`);
+                }
+                await client.query(
+                    `INSERT INTO product_categories (product_id, category_id) VALUES ($1, $2)`,
+                    [prodId, findCat.rows[0].id]
+                );
+            }
+        }
+
+        if (fields.length > 0) {
+            console.log("fields:", fields);
+            values.push(prodId);
+            await client.query(
+                `UPDATE products SET ${fields.join(", ")} WHERE id = $${index}`,
+                [...values]
+            );
+        }
+
+        await client.query("COMMIT");
+
+        clearCache(`product:${prodId}`);
+
+
+        return;
+    } catch (err: any) {
+        await client.query("ROLLBACK");
+        console.error("❌ Error editing product:", err.message, err.code);
+        throw err;
+    } finally {
+        client.release();
     }
 
-    if (fields.length > 0) {
-        values.push(prodId);
-        await pool.query(`UPDATE products SET ${fields.join(", ")} WHERE id = $${index}`, [...values]);
-    }
-
-    return;
-}
+};
