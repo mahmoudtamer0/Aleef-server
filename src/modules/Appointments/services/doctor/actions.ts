@@ -1,6 +1,6 @@
 import { clearCache } from "../../../../cache";
 import pool from "../../../../db";
-import { acceptedAppointmentTemplate, rejectedAppointmentTemplate, endAppointmentTemplate } from "../../../../emails/appoinment.emails";
+import { endAppointmentTemplate } from "../../../../emails/appoinment.emails";
 import { getIO } from "../../../../sockets/socket";
 import { User } from "../../../../types/user";
 import ApiError from "../../../../utils/ApiError";
@@ -144,25 +144,14 @@ export const approveAppointment = async (doctor: User, appointmentId: string) =>
             });
 
 
-            // await Notification.create({
-            //     userId: userProfile._id,
-            //     title: "Appointment accepted",
-            //     body: `Doctor ${doctor.name} has accepted your appoinment`,
-            //     type: "APPOINTMENT",
-            //     data: {
-            //         appointmentId: appointment._id,
-            //         date: appointment.date,
-            //     }
-            // })
-
-            sendEmail({
-                email: userProfile.rows[0].email,
-                subject: "Appointment Accepted ✅",
-                text: `Hello ${userProfile.rows[0].name}, your appointment has been accepted on ${appointment.rows[0].date} at ${appointment.rows[0].time}.`,
-                message: acceptedAppointmentTemplate(userProfile.rows[0].name, appointment.rows[0].date, appointment.rows[0].time, appointment.rows[0].reason),
-            }).catch(err => {
-                console.error("Email failed:", err);
-            });
+            // sendEmail({
+            //     email: userProfile.rows[0].email,
+            //     subject: "Appointment Accepted ✅",
+            //     text: `Hello ${userProfile.rows[0].name}, your appointment has been accepted on ${appointment.rows[0].date} at ${appointment.rows[0].time}.`,
+            //     message: acceptedAppointmentTemplate(userProfile.rows[0].name, appointment.rows[0].date, appointment.rows[0].time, appointment.rows[0].reason),
+            // }).catch(err => {
+            //     console.error("Email failed:", err);
+            // });
         })
 
 
@@ -264,14 +253,14 @@ export const rejectAppointment = async (
             });
 
 
-            sendEmail({
-                email: userProfile.rows[0].email,
-                subject: "Appointment Update ❗",
-                text: `Hello ${userProfile.rows[0].name}, your appointment request on ${appointment.rows[0].date} at ${appointment.rows[0].time} could not be accepted.`,
-                message: rejectedAppointmentTemplate(userProfile.rows[0].name, appointment.rows[0].date, appointment.rows[0].time, appointment.rows[0].reason, appointment.rows[0].rejectionReason),
-            }).catch(err => {
-                console.error("Email failed:", err);
-            });
+            // sendEmail({
+            //     email: userProfile.rows[0].email,
+            //     subject: "Appointment Update ❗",
+            //     text: `Hello ${userProfile.rows[0].name}, your appointment request on ${appointment.rows[0].date} at ${appointment.rows[0].time} could not be accepted.`,
+            //     message: rejectedAppointmentTemplate(userProfile.rows[0].name, appointment.rows[0].date, appointment.rows[0].time, appointment.rows[0].reason, appointment.rows[0].rejectionReason),
+            // }).catch(err => {
+            //     console.error("Email failed:", err);
+            // });
 
         });
 

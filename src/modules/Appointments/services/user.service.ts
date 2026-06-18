@@ -62,14 +62,30 @@ export const bookAppointment = async (user: User, { pet, doctor, date, time, rea
             throw new ApiError(400, "sorry this time is not available for this doctor, please select another time slot");
         }
 
+        const checkFirstAppointment = await client.query(
+            `SELECT COUNT(*) AS total_count
+             FROM appointments
+             WHERE owner = $1 AND status = 'completed'`,
+            [user.id]
+        );
+
+        let finalAppointmentFee = doctorResult.rows[0].appointmentFee;
+        let discount = 0;
+
+        if (Number(checkFirstAppointment.rows[0].total_count) === 0) {
+            finalAppointmentFee = 0;
+            discount = doctorResult.rows[0].appointmentFee;
+        }
+
+
 
         const appointmentResult = await client.query(
-            `INSERT INTO appointments(owner, pet, doctor, date, time, reason, notes,"appoinmentFee")
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+            `INSERT INTO appointments(owner, pet, doctor, date, time, reason, notes,"appoinmentFee",discount)
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING * `,
             [
                 user.id, pet, doctor, date, time, reason,
-                notes && notes.trim().length > 0 ? notes : null, doctorResult.rows[0].appointmentFee
+                notes && notes.trim().length > 0 ? notes : null, finalAppointmentFee, discount
             ]
         );
 
