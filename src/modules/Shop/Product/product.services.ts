@@ -16,9 +16,10 @@ export const addProduct = async ({ title, description, originalPrice, discount, 
 
         const categoryIds: string[] = [];
         for (const catName of categoryList) {
+            const name = catName.trim().toLowerCase();
             const findCat = await client.query(
                 `SELECT id FROM categories WHERE name = $1`,
-                [catName.trim().toLowerCase()]
+                [name]
             );
             if (findCat.rowCount === 0) throw new ApiError(400, `invalid category: ${catName}`);
             categoryIds.push(findCat.rows[0].id);
