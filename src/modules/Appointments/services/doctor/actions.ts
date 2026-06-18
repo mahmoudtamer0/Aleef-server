@@ -343,6 +343,7 @@ export const endAppointment = async (
     vaccination: any,
     upCommingVaccination: any,
     files: any,
+    chatExpiryDays: any,
 ) => {
     const io = getIO();
     const client = await pool.connect();
@@ -420,6 +421,27 @@ export const endAppointment = async (
             [appointmentId]
         );
 
+        const chatResult = await client.query(
+            `SELECT c.id FROM chats c
+             JOIN chat_members cm ON c.id = cm."chatId"
+             WHERE cm.member_id = $1 AND c.chat_type = 'personal'
+             AND c.id IN (
+                 SELECT "chatId" FROM chat_members WHERE member_id = $2
+             )`,
+            [appointment.owner.id, doctor.id]
+        );
+
+        const chatId = chatResult.rows[0]?.id;
+
+        if (chatId) {
+            await client.query(
+                `UPDATE chats 
+                 SET status = 'active', "expiresAt" = NOW() + ($1 || ' days')::INTERVAL
+                 WHERE id = $2`,
+                [chatExpiryDays || 0, chatId]
+            );
+        }
+
         await client.query("COMMIT");
 
         clearCache(`appointment_details_user:${appointmentId}`);
@@ -429,7 +451,7 @@ export const endAppointment = async (
         clearCache(`pet_profile:${appointment.pet.id}`);
         clearCache(`appointments:`);
         clearCache(`prevAppointmentsDoctor:${doctor.id}`);
-        clearCache(`active_appointments_doctor:${doctor.id}_${appointment.date}`);
+        clearCache(`active_appointments_doctor:${doctor.id}_`);
         clearCache(`pending_review:${appointment.owner.id}`);
         clearCache(`appointments_and_orders_count:${appointment.owner.id}`);
 

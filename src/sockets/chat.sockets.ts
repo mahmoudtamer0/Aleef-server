@@ -44,7 +44,7 @@ export = (io: any, socket: any) => {
                 return;
             }
             const chatResult = await pool.query(
-                `SELECT c.id, c."updatedAt", cm.member_id AS other_member_id, cm.member_model AS other_member_model,
+                `SELECT c.id, c."expiresAt", c."updatedAt", cm.member_id AS other_member_id, cm.member_model AS other_member_model,
                 CASE WHEN cm.member_model = 'User' THEN
                     jsonb_build_object('id', ou.id, 'name', ou.name, 'profilePic', ou."profilePic")
                 WHEN cm.member_model = 'Doctor' THEN
@@ -67,6 +67,22 @@ export = (io: any, socket: any) => {
             );
 
             if (!chatResult.rows.length) return;
+
+            if (chatResult.rows[0].expiresAt && new Date(chatResult.rows[0].expiresAt) < new Date()) {
+                await pool.query(
+                    `UPDATE chats SET status = 'closed' WHERE id = $1`,
+                    [data.chatId]
+                );
+                socket.emit("receive_message", {
+                    id: "0000-00000-000000-000",
+                    text: "This chat has expired and is now closed. 🔒",
+                    sender: { id: "000000-120000000", name: "System", profilePic: null },
+                    chatId: data.chatId,
+                    createdAt: new Date(),
+                    isDeleted: false,
+                });
+                return;
+            }
 
             const { other_member_id } = chatResult.rows[0];
 

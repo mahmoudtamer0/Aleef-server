@@ -2,7 +2,7 @@ import express from "express";
 import { activeAppoinmentsForDoctor, addReview, approveAppointment, bookAppointment, cancelAppointmentByUser, changeAppoinmentStatus, checkPendingReview, endAppoinment, getActiveAppointment, getAllAppoinments, getAppoinmentDetailsForAdmin, getAppointmentDetails, getAppointmentsRequestsForDoctor, getPrevAppoinments, prevAppointmentsForDoctor, rejectAppointment, skipAppointmentReview } from "./appointment.controler";
 import { upload } from "../../middlewares/appoinmentUploads"
 import validate from "../../middlewares/userValidate";
-import { addAppointmentSchema, addReviewSchema, cancelAppointmentByUserSchema, rejectAppoinmentSchema } from "./appointment.validation";
+import { addAppointmentSchema, addReviewSchema, cancelAppointmentByUserSchema, endAppointmentSchema, rejectAppoinmentSchema } from "./appointment.validation";
 import { verifyToken } from "../../middlewares/verifyToken";
 import { allowTo } from "../../middlewares/allowTo";
 
@@ -44,7 +44,7 @@ router.route("/reject-appointment/:appointmentId")
     .post(verifyToken, allowTo("DOCTOR"), validate(rejectAppoinmentSchema), rejectAppointment);
 
 router.route("/end-appointment/:appointmentId")
-    .patch(verifyToken, upload.array("attachments", 5), allowTo("DOCTOR"), endAppoinment);
+    .patch(verifyToken, upload.array("attachments", 5), allowTo("DOCTOR"), validate(endAppointmentSchema), endAppoinment);
 
 router.route("/change-status/:appointmentId")
     .patch(verifyToken, allowTo("ADMIN", "MODERATOR"), changeAppoinmentStatus);

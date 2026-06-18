@@ -149,9 +149,9 @@ export const endAppoinment = catchAsync(async (req, res, next) => {
     const doctor = req.user as User;
     const files = req.files
     const { appointmentId } = req.params as { appointmentId: string };
-    const { medicalRecord, vaccination, upCommingVaccination } = req.body;
+    const { medicalRecord, vaccination, upCommingVaccination, chatExpiryDays } = req.body;
 
-    await doctorActionsServices.endAppointment(doctor, appointmentId, medicalRecord, vaccination, upCommingVaccination, files);
+    await doctorActionsServices.endAppointment(doctor, appointmentId, medicalRecord, vaccination, upCommingVaccination, files, chatExpiryDays);
 
     return res.status(201).json({
         status: "success",

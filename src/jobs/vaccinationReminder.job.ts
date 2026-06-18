@@ -81,4 +81,17 @@ export const vaccinationReminder = () => {
             }
         } catch (err) { console.error(err) }
     })
+
+    cron.schedule('0 * * * *', async () => {
+        await pool.query(
+            `UPDATE chats SET status = 'closed' WHERE "expiresAt" < NOW() AND status = 'active'`
+        );
+    });
+
+    cron.schedule('0 0 * * *', async () => {
+        await Promise.all([
+            pool.query(`DELETE FROM sessions WHERE expires_at < NOW()`),
+            pool.query(`DELETE FROM messages WHERE chat_type = 'chatbot' AND "createdAt" < NOW() - INTERVAL '1 day'`),
+        ]);
+    });
 }

@@ -46,10 +46,6 @@ export const addAppointmentSchema = Joi.object({
     });
 
 
-
-
-
-
 export const rejectAppoinmentSchema = Joi.object({
     rejectionReason: Joi.string().min(10).max(500).required(),
 })
@@ -65,3 +61,25 @@ export const addReviewSchema = Joi.object({
     }),
     comment: Joi.string().max(500).min(0).optional(),
 })
+
+
+export const endAppointmentSchema = Joi.object({
+    medicalRecord: Joi.object({
+        title: Joi.string().required(),
+        condition: Joi.string().required(),
+        description: Joi.string().required(),
+    }).required(),
+
+    vaccination: Joi.object({
+        vaccineName: Joi.string().required(),
+        dose: Joi.string().optional(),
+        notes: Joi.string().optional(),
+    }).optional(),
+
+    upCommingVaccination: Joi.object({
+        vaccineName: Joi.string().required(),
+        nextDueDate: Joi.string().optional(),
+    }).optional(),
+
+    chatExpiryDays: Joi.number().integer().min(1).optional(),
+});
