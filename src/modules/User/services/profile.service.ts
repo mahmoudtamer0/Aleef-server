@@ -95,7 +95,7 @@ export const editUserProfile = async (user: User, reqBody: { name?: string, phon
 
     if (fields.length > 0) {
         values.push(user.id)
-        updatedUser = await pool.query(`UPDATE users SET ${fields.join(", ")} WHERE id = $${index} RETURNING id,name,email,phone,profilePic`, values);
+        updatedUser = await pool.query(`UPDATE users SET ${fields.join(", ")} WHERE id = $${index} RETURNING id,name,email,phone,"profilePic"`, values);
     }
 
     if (oldImageId) {
