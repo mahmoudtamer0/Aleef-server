@@ -430,6 +430,7 @@ export const endAppointment = async (
         clearCache(`prevAppointmentsDoctor:${doctor.id}`);
         clearCache(`active_appointments_doctor:${doctor.id}_${appointment.date}`);
         clearCache(`pending_review:${appointment.owner.id}`);
+        clearCache(`appointments_and_orders_count:${appointment.owner.id}`);
 
         setImmediate(async () => {
 

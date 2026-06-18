@@ -1,5 +1,5 @@
 import express from "express";
-import { banUser, editUserProfile, getME, login, logOut, register, resendOtp, verifyEmail, getAllUsers, getUserToAdmin, google, addFcmToken, getUnreadNotificationsCount, getNotifications, markAllNotificationsAsRead } from "./users.controler";
+import { banUser, editUserProfile, getME, login, logOut, register, resendOtp, verifyEmail, getAllUsers, getUserToAdmin, google, addFcmToken, getUnreadNotificationsCount, getNotifications, markAllNotificationsAsRead, getAppoinmentsAndOrdersCount } from "./users.controler";
 import { upload } from "../../middlewares/userProfileImage"
 import validate from "../../middlewares/userValidate";
 import { registerSchema, loginSchema, verifyOtpSchema, resendOtpSchema } from "./users.validation";
@@ -33,6 +33,9 @@ router.route("/add-fcmToken")
 
 router.route("/me")
     .get(verifyToken, getME)
+
+router.route("/get-appointments-and-orders-count")
+    .get(verifyToken, getAppoinmentsAndOrdersCount)
 
 router.route("/get-all-users")
     .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllUsers)

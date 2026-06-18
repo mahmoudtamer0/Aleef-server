@@ -186,7 +186,14 @@ export const markAllNotificationsAsRead = catchAsync(async (req, res, next) => {
     })
 })
 
-
+export const getAppoinmentsAndOrdersCount = catchAsync(async (req, res, next) => {
+    const user = req.user as User
+    const count = await profileService.getAppoinmentsAndOrdersCount(user)
+    return res.status(200).json({
+        status: "success",
+        count
+    })
+})
 
 // export const forgetPassword = catchAsync(async (req, res, next) => {
 

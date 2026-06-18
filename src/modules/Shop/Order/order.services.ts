@@ -77,6 +77,7 @@ export const createOrder = async (cart: any, shippingAddress: any, paymentMethod
 
         await client.query("COMMIT");
         clearCache(`upcomingOrders:${user.id}`);
+        clearCache(`appointments_and_orders_count:${user.id}`);
 
         setImmediate(() => {
             sendEmail({

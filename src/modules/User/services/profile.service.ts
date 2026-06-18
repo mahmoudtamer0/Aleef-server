@@ -1,3 +1,4 @@
+import { getCache, setCache } from "../../../cache";
 import pool from "../../../db";
 import { User } from "../../../types/user";
 import ApiError from "../../../utils/ApiError";
@@ -135,3 +136,25 @@ export const markAllNotificationsAsRead = async (user: User) => {
 
     return;
 };
+
+export const getAppoinmentsAndOrdersCount = async (user: User) => {
+    const cacheKey = `appointments_and_orders_count:${user.id}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
+
+    const appointments = await pool.query(
+        `SELECT COUNT(*) FROM appointments WHERE owner = $1`,
+        [user.id]
+    );
+    const orders = await pool.query(
+        `SELECT COUNT(*) FROM orders WHERE user_id = $1`,
+        [user.id]
+    );
+
+    const response = {
+        appointments: appointments.rows[0].count,
+        orders: orders.rows[0].count
+    }
+    setCache(cacheKey, response, 300);
+    return response;
+}
