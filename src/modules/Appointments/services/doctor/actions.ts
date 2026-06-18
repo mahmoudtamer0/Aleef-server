@@ -408,17 +408,11 @@ export const endAppointment = async (
 
         if (upCommingVaccination?.vaccineName) {
 
-            const [day, month, year] = upCommingVaccination.nextDueDate.split('-');
-            const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-
-            console.log("nextDueDate raw:", upCommingVaccination.nextDueDate);
-            console.log("formattedDate:", formattedDate);
-
             const created = await client.query(
                 `INSERT INTO vaccinations (pet, doctor, type, "vaccineName", "nextDueDate")
-                VALUES ($1, $2, 'upcomming', $3, $4)
-                RETURNING *`,
-                [appointment.pet.id, doctor.id, upCommingVaccination.vaccineName, formattedDate]
+                 VALUES ($1, $2, 'upcomming', $3, $4)
+                 RETURNING *`,
+                [appointment.pet.id, doctor.id, upCommingVaccination.vaccineName, upCommingVaccination.nextDueDate]
             );
             createdUpCommingVaccination = created.rows[0];
         }
