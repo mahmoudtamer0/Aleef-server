@@ -106,7 +106,7 @@ export const changeAppointmentStatus = async (appointmentId: string, status: str
                 condition: "good",
                 description: "the pet is healthy and happy"
             }
-            await endAppointment(appointment.rows[0].doctor, appointmentId, medicalRecord, null, null, null)
+            await endAppointment(appointment.rows[0].doctor, appointmentId, medicalRecord, null, null, null, 0)
         } else if (status === "rejected") {
             await rejectAppointment(appointment.rows[0].doctor, appointmentId, "Your appointment has been rejected for no reason")
         } else if (status === "cancelled-by-owner") {
