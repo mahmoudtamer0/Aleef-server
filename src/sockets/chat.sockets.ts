@@ -80,12 +80,14 @@ export = (io: any, socket: any) => {
                     sender: {
                         id: "00000000-0000-0000-0000-000000000000",
                         name: "System",
-                        profilePic: null
+                        profilePic: "sda"
                     },
                     chatId: data.chatId,
                     createdAt: new Date(),
                     isDeleted: false,
                 };
+
+                console.log("expiredMessage:", expiredMessage);
 
                 socket.emit("receive_message", expiredMessage);
                 return;
