@@ -201,3 +201,32 @@ export const deletePet = async (user: any, petId: string) => {
 
     return;
 };
+
+export const getMedicalRecordDetails = async (recordId: string) => {
+    const cacheKey = `medical_records:${recordId}`;
+    const cached = getCache(cacheKey);
+    if (cached) return cached;
+    const result = await pool.query(
+        `SELECT 
+            mr.id,
+            mr.condition,
+            mr.title,
+            mr.description,
+            mr.attachments,
+            mr.date,
+            mr."createdAt",
+            d.id as doctor_id,
+            d.name as doctor_name,
+            d."profilePic" as doctor_pic
+         FROM medical_records mr
+         JOIN doctors d ON d.id = mr.doctor
+         WHERE mr.id = $1`,
+        [recordId]
+    );
+
+    if (!result.rows.length) throw new ApiError(404, "Medical record not found");
+
+    setCache(cacheKey, result.rows[0], 200);
+
+    return result.rows[0];
+};

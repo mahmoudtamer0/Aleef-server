@@ -88,3 +88,15 @@ export const deletePet = catchAsync(async (req, res, next) => {
         message: "Pet deleted successfully"
     })
 });
+
+export const getMedicalRecordDetails = catchAsync(async (req, res, next) => {
+
+    const { recordId } = req.params as { recordId: string };
+
+    const medicalRecord = await petServices.getMedicalRecordDetails(recordId);
+
+    return res.status(200).json({
+        status: "success",
+        medicalRecord
+    })
+})

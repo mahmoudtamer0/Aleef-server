@@ -1,5 +1,5 @@
 import express from "express";
-import { addPet, editPet, getUserPets, getPetProfile, deletePet } from "./pet.controler";
+import { addPet, editPet, getUserPets, getPetProfile, deletePet, getMedicalRecordDetails } from "./pet.controler";
 import { upload } from "../../middlewares/petsUploads"
 import validate from "../../middlewares/userValidate";
 import { addPetSchema, editPetSchema } from "./pet.validation";
@@ -15,6 +15,9 @@ router.route("/get-my-pets")
 
 router.route("/get-user-pets/:userId")
     .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getUserPets)
+
+router.route("/medical-record/:recordId")
+    .get(verifyToken, getMedicalRecordDetails)
 
 
 router.route("/:petId")
