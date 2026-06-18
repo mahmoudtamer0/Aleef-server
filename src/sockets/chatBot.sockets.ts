@@ -22,6 +22,16 @@ export = (io: any, socket: any) => {
                 return;
             }
 
+            const botresponse = fetch(chatBotApiKey, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    msg: data.message
+                })
+            })
+
 
             let chat = await pool.query(
                 `SELECT c.id FROM chats c
@@ -65,34 +75,26 @@ export = (io: any, socket: any) => {
 
             clearCache(`chatBotMessages_${socket.user.id}_${chat.rows[0].id}`);
 
-            const checkPlan = await pool.query(`SELECT id,
-                COUNT(*) OVER() AS total_count
-                FROM messages
-                WHERE "chatId" = $1 AND sender_model = 'Bot' AND "createdAt" >= NOW() - INTERVAL '1 day'
-                `, [chat.rows[0].id]);
+            // const checkPlan = await pool.query(`SELECT id,
+            //     COUNT(*) OVER() AS total_count
+            //     FROM messages
+            //     WHERE "chatId" = $1 AND sender_model = 'Bot' AND "createdAt" >= NOW() - INTERVAL '1 day'
+            //     `, [chat.rows[0].id]);
 
 
-            const count = parseInt(checkPlan.rows[0]?.total_count ?? "0");
+            // const count = parseInt(checkPlan.rows[0]?.total_count ?? "0");
 
-            if (count >= 10) {
-                socket.emit("chat_response", {
-                    message: "You have reached the daily limit of 10 messages",
-                    sender: { id: BOT_ID },
-                    createdAt: new Date(),
-                    isDeleted: false,
-                });
-                return;
-            }
+            // if (count >= 10) {
+            //     socket.emit("chat_response", {
+            //         message: "You have reached the daily limit of 10 messages",
+            //         sender: { id: BOT_ID },
+            //         createdAt: new Date(),
+            //         isDeleted: false,
+            //     });
+            //     return;
+            // }
 
-            const botresponse = fetch(chatBotApiKey, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    msg: data.message
-                })
-            })
+
 
             const res = await botresponse;
             const dataTofetch: any = await res.json();
