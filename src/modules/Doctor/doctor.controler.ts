@@ -115,7 +115,7 @@ export const getMeDoctor = catchAsync(async (req, res, next) => {
 
 export const editDoctor = catchAsync(async (req, res, next) => {
     const doctor = req.user as User
-    const updatedDoctor = await profileService.editDoctor(doctor, req.body, req.files)
+    const updatedDoctor = await profileService.editDoctor(doctor, req.body, req.file)
 
     return res.status(200).json({
         status: "success",
