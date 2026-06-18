@@ -54,6 +54,8 @@ export const addProduct = async ({ title, description, originalPrice, discount, 
         }
 
         await client.query("COMMIT");
+
+        clearCache(`products:`);
         return newProduct.rows[0];
 
     } catch (err) {
