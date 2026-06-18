@@ -154,6 +154,33 @@ export = (io: any, socket: any) => {
             if (isInSameChat) {
                 io.to(`user:${other_member_id}`).emit("receive_message", formattedMessage);
 
+                const unreadResult = await pool.query(
+                    `INSERT INTO unread_messages ("chatId", user_id, "lastMessage", "unreadCount")
+                     VALUES ($1, $2, $3, 1)
+                     ON CONFLICT ("chatId", user_id) DO UPDATE SET
+                        "unreadCount" = unread_messages."unreadCount" + 1,
+                        "lastMessage" = $3
+                     RETURNING "unreadCount"`,
+                    [data.chatId, other_member_id, message.text]
+                );
+
+                io.to(`user:${other_member_id}`).emit("chat_updated", {
+                    id: data.chatId,
+                    person: { _id: sender.id, name: sender.name, profilePic: sender.profilePic },
+                    lastMessage: formattedMessage,
+                    unreadCount: unreadResult.rows[0].unreadCount,
+                    updatedAt: new Date()
+                })
+
+                const otherModel = model === "Doctor" ? "USER" : "DOCTOR";
+
+                sendNotificationService(
+                    other_member_id,
+                    otherModel,
+                    sender.name,
+                    formattedMessage.text
+                );
+
             } else if (isOnline) {
 
 
