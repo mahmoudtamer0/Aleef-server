@@ -73,14 +73,21 @@ export = (io: any, socket: any) => {
                     `UPDATE chats SET status = 'closed' WHERE id = $1`,
                     [data.chatId]
                 );
-                socket.emit("receive_message", {
-                    id: "0000-00000-000000-000",
+
+                const expiredMessage = {
+                    id: "00000000-0000-0000-0000-000000000000",
                     text: "This chat has expired and is now closed. 🔒",
-                    sender: { id: "000000-120000000", name: "System", profilePic: null },
+                    sender: {
+                        id: "00000000-0000-0000-0000-000000000000",
+                        name: "System",
+                        profilePic: null
+                    },
                     chatId: data.chatId,
                     createdAt: new Date(),
                     isDeleted: false,
-                });
+                };
+
+                socket.emit("receive_message", expiredMessage);
                 return;
             }
 
