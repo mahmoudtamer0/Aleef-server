@@ -88,7 +88,7 @@ export const getProducts = async (reqQuery: any): Promise<any> => {
     }
 
     if (category && category !== "") {
-        params.push(category);
+        params.push(category.trim().toLowerCase());
         filters.push(`c.name = $${params.length}`);
     }
 

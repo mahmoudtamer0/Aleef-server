@@ -1,9 +1,7 @@
 import { clearCache, getCache, setCache } from "../../../cache";
 import pool from "../../../db";
-import { bookedAppointmentTemplate } from "../../../emails/appoinment.emails";
 import { User } from "../../../types/user";
 import ApiError from "../../../utils/ApiError";
-import { sendEmail } from "../../../utils/sendEmail";
 import { sendNotificationService } from "../../../utils/notifications/sendNotificationService";
 
 
@@ -102,14 +100,14 @@ export const bookAppointment = async (user: User, { pet, doctor, date, time, rea
                 `${user.name} has requested an appointment for ${petResult.rows[0].name}, Please review the request.`
             );
 
-            sendEmail({
-                email: userResult.rows[0].email,
-                subject: "Appointment Booked Successfully 🐾",
-                text: "Your appointment has been booked successfully",
-                message: bookedAppointmentTemplate(userResult.rows[0].name, doctorResult.rows[0].name, doctorResult.rows[0].city, doctorResult.rows[0].address, doctorResult.rows[0].appointmentFee, date, time, reason),
-            }).catch(err => {
-                console.error("Email failed:", err);
-            });
+            // sendEmail({
+            //     email: userResult.rows[0].email,
+            //     subject: "Appointment Booked Successfully 🐾",
+            //     text: "Your appointment has been booked successfully",
+            //     message: bookedAppointmentTemplate(userResult.rows[0].name, doctorResult.rows[0].name, doctorResult.rows[0].city, doctorResult.rows[0].address, doctorResult.rows[0].appointmentFee, date, time, reason),
+            // }).catch(err => {
+            //     console.error("Email failed:", err);
+            // });
         });
 
         return appointmentResult.rows[0];
