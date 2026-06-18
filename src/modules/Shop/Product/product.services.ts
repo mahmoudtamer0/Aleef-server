@@ -363,3 +363,23 @@ export const editProduct = async (
     }
 
 };
+
+export const deleteProduct = async (prodId: any) => {
+    const client = await pool.connect();
+    try {
+        console.log("deleting product:", prodId);
+        await client.query("BEGIN");
+        await client.query(`DELETE FROM products WHERE id = $1`, [prodId]);
+        await client.query(`DELETE FROM product_images WHERE product_id = $1`, [prodId]);
+        await client.query(`DELETE FROM product_categories WHERE product_id = $1`, [prodId]);
+        await client.query("COMMIT");
+
+        clearCache(`products:`);
+    } catch (err: any) {
+        await client.query("ROLLBACK");
+        console.error("❌ Error deleting product:", err.message, err.code);
+        throw err;
+    } finally {
+        client.release();
+    }
+};

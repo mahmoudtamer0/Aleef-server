@@ -4,7 +4,7 @@ import { allowTo } from "../../../middlewares/allowTo"
 import { upload } from "../../../middlewares/productsUploads"
 import validate from "../../../middlewares/userValidate"
 import { calculateCartSchema } from "./product.validation"
-import { addProduct, calculateCart, editProduct, getProduct, getProducts } from "./product.controler"
+import { addProduct, calculateCart, deleteProduct, editProduct, getProduct, getProducts } from "./product.controler"
 
 
 const router = express.Router()
@@ -37,6 +37,7 @@ router.route("/:prodId")
         ]),
         editProduct
     )
+    .delete(verifyToken, allowTo("ADMIN", "MODERATOR"), deleteProduct)
 
 
 export default router

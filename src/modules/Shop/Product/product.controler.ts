@@ -86,3 +86,13 @@ export const editProduct = catchAsync(async (req, res, next) => {
         message: "product updated successfully",
     });
 });
+
+export const deleteProduct = catchAsync(async (req, res, next) => {
+    const { prodId } = req.params;
+
+    await productService.deleteProduct(prodId);
+
+    res.status(200).json({
+        message: "product deleted successfully",
+    });
+});
