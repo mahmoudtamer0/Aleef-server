@@ -162,14 +162,15 @@ export const getProduct = async ({ prodId }: any) => {
         WHERE products.id = $1
         GROUP BY products.id`, [prodId]);
 
-
     if (product.rowCount === 0) {
         throw new ApiError(404, "not found");
     }
 
-    if (product.rows[0].productImages && product.rows[0].productImages[0] !== null) {
-        product.rows[0].productImages.unshift(product.rows[0].thumbnail);
-    }
+    product.rows[0].productImages = (product.rows[0].productImages ?? [])
+        .filter((img: any) => img !== null && img.url !== null);
+
+    product.rows[0].productImages.unshift(product.rows[0].thumbnail);
+
 
     const response = product.rows[0];
 
@@ -225,7 +226,6 @@ export const editProduct = async (
     const client = await pool.connect();
 
     try {
-        console.log(stock, discount, categories, originalPrice);
 
         const fields: string[] = [];
         const values: any[] = [];
@@ -341,7 +341,6 @@ export const editProduct = async (
         }
 
         if (fields.length > 0) {
-            console.log("fields:", fields);
             values.push(prodId);
             await client.query(
                 `UPDATE products SET ${fields.join(", ")} WHERE id = $${index}`,

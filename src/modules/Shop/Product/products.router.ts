@@ -30,7 +30,7 @@ router.route("/:prodId")
     .get(getProduct)
     .patch(
         verifyToken,
-        allowTo("ADMIN"),
+        allowTo("ADMIN", "MODERATOR"),
         upload.fields([
             { name: "thumbnail", maxCount: 1 },
             { name: "productImages", maxCount: 5 }
