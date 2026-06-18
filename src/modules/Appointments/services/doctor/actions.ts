@@ -99,6 +99,7 @@ export const approveAppointment = async (doctor: User, appointmentId: string) =>
         clearCache(`doctor_schedual:${doctor.id}`);
         clearCache(`doctor_slots_${appointment.rows[0].date}:${doctor.id}`);
         clearCache(`appointments:`);
+        clearCache(`active_appointments_doctor:${doctor.id}_`);
 
 
         setImmediate(async () => {
