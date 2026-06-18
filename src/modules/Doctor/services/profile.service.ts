@@ -214,7 +214,7 @@ export const getAvailableDoctors = async (reqQuery: { search?: string, status?: 
     const { search, status, sort } = reqQuery;
 
     const page = Number(reqQuery.page) || 1;
-    const limit = Number(reqQuery.limit) > 5 ? 5 : Number(reqQuery.limit);
+    const limit = Math.min(Number(reqQuery.limit) || 10, 5);
     const offset = (page - 1) * limit;
 
     const cacheKey = `doctorsAvailable:${page}_${limit}_${sort}_${status}_${search}`;
