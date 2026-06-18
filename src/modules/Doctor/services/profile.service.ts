@@ -107,6 +107,7 @@ export const editDoctor = async (doctor: User, body: { name: string, phone: stri
     if (slotduration) { fields.push(`slotduration = $${paramIndex}`); params.push(slotduration); paramIndex++; }
 
     if (reqFile) {
+        console.log("reqFile");
         fields.push(`"profilePic" = $${paramIndex}`); params.push(reqFile.path); paramIndex++;
         fields.push(`cloudinary_id = $${paramIndex}`); params.push(reqFile.filename); paramIndex++;
     }
