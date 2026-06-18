@@ -5,7 +5,11 @@ import { sendNotificationService } from "../utils/notifications/sendNotification
 
 export = (io: any, socket: any) => {
 
-    socket.on("join_chat", async (chatId: string) => {
+    socket.on("join_chat", async (data: any) => {
+        const chatId = typeof data === 'string' ? data : data?.chatId;
+
+        if (!chatId || typeof chatId !== 'string') return;
+
         const member = await pool.query(
             `SELECT 1 FROM chat_members WHERE "chatId" = $1 AND member_id = $2`,
             [chatId, socket.user.id]
@@ -25,7 +29,10 @@ export = (io: any, socket: any) => {
     });
 
 
-    socket.on("leave_chat", (chatId: string) => {
+    socket.on("leave_chat", (data: any) => {
+        const chatId = typeof data === 'string' ? data : data?.chatId;
+        if (!chatId) return;
+
         socket.leave(chatId);
         (socket as any).currentChat = null;
     });
@@ -134,7 +141,9 @@ export = (io: any, socket: any) => {
 
 
             const sockets = await io.in(`user:${other_member_id}`).fetchSockets();
-            const isInSameChat = sockets.some((s: any) => s.currentChat === data.chatId);
+            const isInSameChat = sockets.some(
+                (s: any) => s.currentChat === data.chatId || io.sockets.adapter.rooms.get(data.chatId)?.has(s.id)
+            );
             const isOnline = sockets.length > 0;
 
 
