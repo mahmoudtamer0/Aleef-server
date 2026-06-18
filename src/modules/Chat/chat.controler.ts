@@ -40,6 +40,14 @@ export const getChatbotMessages = catchAsync(async (req, res, next) => {
     })
 })
 
+export const uploadChatPhoto = catchAsync(async (req, res, next) => {
+    const image = req.file?.path;
+
+    return res.status(200).json({
+        status: "success",
+        image
+    })
+})
 
 export const getAllChats = catchAsync(async (req, res, next) => {
 

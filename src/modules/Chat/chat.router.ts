@@ -1,8 +1,9 @@
 import express from "express";
 
 import { verifyToken } from "../../middlewares/verifyToken";
-import { getAllChats, getChatbotMessages, getChatMessages, getChatMessagesForAdmin, getChats } from "./chat.controler";
+import { getAllChats, getChatbotMessages, getChatMessages, getChatMessagesForAdmin, getChats, uploadChatPhoto } from "./chat.controler";
 import { allowTo } from "../../middlewares/allowTo";
+import { upload } from "../../middlewares/userProfileImage";
 const router = express.Router()
 
 
@@ -12,6 +13,10 @@ router.route("/")
 
 router.route("/all")
     .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllChats)
+
+
+router.route("/chatbot/image")
+    .post(upload.single("image"), uploadChatPhoto)
 
 router.route("/chatbot")
     .get(verifyToken, getChatbotMessages)
