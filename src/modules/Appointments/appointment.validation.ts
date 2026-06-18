@@ -81,5 +81,5 @@ export const endAppointmentSchema = Joi.object({
         nextDueDate: Joi.string().optional(),
     }).optional(),
 
-    chatExpiryDays: Joi.number().integer().min(1).optional(),
+    chatExpiryDays: Joi.number().integer().optional(),
 });
