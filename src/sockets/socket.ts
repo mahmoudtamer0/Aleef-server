@@ -9,8 +9,8 @@ export const initSocket = (server: any) => {
         cors: {
             origin: "*",
         },
-        pingInterval: 10000,
-        pingTimeout: 5000,
+        pingInterval: 25000,
+        pingTimeout: 20000,
     });
 
     io.use((socket, next) => {
