@@ -81,7 +81,7 @@ export = (io: any, socket: any) => {
                 `INSERT INTO messages ("chatId", sender, sender_model, chat_type, text,image)
                  VALUES ($1, $2, $3, 'chatbot', $4, $5)
                  RETURNING id, "chatId", sender, sender_model, text, "isDeleted", "createdAt"`,
-                [chat.rows[0].id, socket.user.id, "User", data.message, data.image]
+                [chat.rows[0].id, socket.user.id, "User", data.message, data.image ?? null]
             );
 
 
