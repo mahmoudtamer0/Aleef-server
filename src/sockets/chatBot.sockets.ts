@@ -31,7 +31,7 @@ export = (io: any, socket: any) => {
                 },
                 body: JSON.stringify({
                     msg: data.message ?? "?",
-                    image_url: data.image ?? "..",
+                    image_url: data.image ?? null
                 })
             })
 
