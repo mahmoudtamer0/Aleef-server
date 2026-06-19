@@ -30,8 +30,8 @@ export = (io: any, socket: any) => {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    msg: data.message,
-                    image_url: data.image,
+                    msg: data.message ?? "",
+                    image_url: data.image ?? "",
                 })
             })
 
