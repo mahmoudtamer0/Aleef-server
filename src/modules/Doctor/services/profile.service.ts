@@ -289,7 +289,11 @@ export const getAvailableDoctors = async (reqQuery: {
 
     const totalDoctors = result.rows[0]?.total_count ?? 0;
 
-    const finalDoctors = result.rows.map((doc: any) => ({ ...doc, minitus: doc.distance_km ? Math.round(doc.distance_km * 1.5) : null }));
+    const finalDoctors = result.rows.map((doc: any) => ({
+        ...doc,
+        distance_km: doc.distance_km ? Math.round(Number(doc.distance_km)) : null,
+        minutes: doc.distance_km ? Math.round(Number(doc.distance_km) * 1.5) : null
+    }));
 
     const response = {
         doctors: finalDoctors,
