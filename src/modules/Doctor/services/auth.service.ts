@@ -30,6 +30,7 @@ export const doctorRegister = async ({ email, name, password, phone, specializat
             throw new ApiError(400, "profile picture is required")
         }
         let doctor;
+        const fee = parseFloat(appointmentFee);
         if (findDoctor.rows.length > 0 && findDoctor.rows[0].isEmailVerified == false) {
             doctor = await client.query(
                 `UPDATE doctors SET name = $1, phone = $2, password = $3, "license_number" = $4, 
@@ -39,7 +40,7 @@ export const doctorRegister = async ({ email, name, password, phone, specializat
                 WHERE email = $16 RETURNING id`,
                 [name, phone, hashedPassword, license_number, city, address, specialization,
                     reqFiles.profilePic[0].path, reqFiles.profilePic[0].filename,
-                    hashedOtp, expires, appointmentFee, lat, lng,
+                    hashedOtp, expires, fee, lat, lng,
                     `https://www.google.com/maps?q=${lat},${lng}`,
                     email]
             )
@@ -51,7 +52,7 @@ export const doctorRegister = async ({ email, name, password, phone, specializat
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
                 [email, name, phone, hashedPassword, license_number, city, address, specialization,
                     reqFiles.profilePic[0].path, reqFiles.profilePic[0].filename,
-                    hashedOtp, expires, appointmentFee, lat, lng,
+                    hashedOtp, expires, fee, lat, lng,
                     `https://www.google.com/maps?q=${lat},${lng}`]
             )
         }
