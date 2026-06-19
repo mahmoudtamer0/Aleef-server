@@ -8,7 +8,7 @@ import { hashPassword } from "../../../utils/hashPassword";
 import { sendEmail } from "../../../utils/sendEmail";
 import crypto from "crypto";
 import { clearCache } from "../../../cache";
-import { loginTemplate, resendOtpTemplate, verifyEmailTemplate, verifyOtpTemplate } from "../../../emails/user.emails";
+import { forgetPasswordTemplate, loginTemplate, resendOtpTemplate, verifyEmailTemplate, verifyOtpTemplate } from "../../../emails/user.emails";
 import { User } from "../../../types/user";
 
 export const register = async ({ email, name, password, phone }: { email: string, name: string, password: string, phone: string }) => {
@@ -279,6 +279,103 @@ export const changePassword = async (user: User, currentPassword: string, newPas
         client.release();
     }
 }
+
+export const forgetPassword = async (email: string) => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const { otp, hashedOtp } = generateOTP()
+
+        const userProfile = await client.query(`SELECT id,name FROM users WHERE email = $1`, [email]);
+
+        if (!userProfile.rows.length) throw new ApiError(404, "user not found");
+
+        await client.query(
+            `DELETE FROM password_reset_tokens WHERE "user" = $1`,
+            [userProfile.rows[0].id]
+        );
+
+        await client.query(
+            `INSERT INTO password_reset_tokens (user, token, "expiresAt")
+             VALUES ($1, $2, NOW() + INTERVAL '15 minutes')`,
+            [userProfile.rows[0].id, hashedOtp]
+        );
+
+        setImmediate(() => {
+            sendEmail({
+                email: email,
+                subject: "Reset Password",
+                text: "",
+                message: forgetPasswordTemplate(userProfile.rows[0].name, otp),
+            }).catch(err => console.error("Email failed:", err));
+        });
+
+        await client.query("COMMIT");
+
+        return;
+
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
+    }
+};
+
+export const resetPassword = async (newPassword: string, otp: string) => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const hashedOtp = crypto
+            .createHash("sha256")
+            .update(String(otp))
+            .digest("hex");
+
+        const passwordResetToken = await client.query(
+            `SELECT * FROM password_reset_tokens WHERE token = $1 AND "expiresAt" > NOW()`,
+            [hashedOtp]
+        );
+
+        if (!passwordResetToken.rows.length) throw new ApiError(400, "invalid token");
+
+
+        const userResult = await client.query(
+            `SELECT password FROM users WHERE id = $1`,
+            [passwordResetToken.rows[0].user]
+        );
+
+        const isSamePassword = await checkPassword(newPassword, userResult.rows[0].password);
+        if (isSamePassword) {
+            throw new ApiError(400, "New password must be different from the old one");
+        }
+
+
+        const hashedPassword = await hashPassword(newPassword);
+
+
+        await client.query(
+            `UPDATE users SET password = $1 WHERE id = $2`,
+            [hashedPassword, passwordResetToken.rows[0].user]
+        );
+
+        await client.query(
+            `DELETE FROM password_reset_tokens WHERE user = $1 AND token = $2`,
+            [passwordResetToken.rows[0].user, hashedOtp]
+        );
+
+        await client.query("COMMIT");
+
+        return;
+
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
+    }
+};
 
 export const addFcmToken = async (user: any, fcmToken: any) => {
 

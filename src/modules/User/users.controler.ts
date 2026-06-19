@@ -218,6 +218,25 @@ export const changePassword = catchAsync(async (req, res, next) => {
     })
 })
 
+export const forgetPassword = catchAsync(async (req, res, next) => {
+    const { email } = req.body;
+    await authService.forgetPassword(email);
+    return res.status(200).json({
+        status: "success",
+        message: "Password reset email sent"
+    })
+})
+
+export const resetPassword = catchAsync(async (req, res, next) => {
+    const { newPassword, otp } = req.body;
+    await authService.resetPassword(newPassword, otp);
+
+    return res.status(200).json({
+        status: "success",
+        message: "Password reset successfully"
+    })
+})
+
 export const banUser = catchAsync(async (req, res, next) => {
 
     const baan = await adminService.banUser(req)

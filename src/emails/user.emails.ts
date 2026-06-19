@@ -234,3 +234,18 @@ export const unBanUserTemplate = (
     </div>
     `
 }
+
+export const forgetPasswordTemplate = (name: string, otp: string) => {
+    return `
+    <div style="background-color: #F5F5F5; padding: 20px; margin: 20px; border-radius: 5px;">
+        <h1 style="text-align: center; margin-bottom: 20px;">Reset Password</h1>
+        <p style="text-align: center; margin-bottom: 20px;">
+            Hello ${name}, please click the button below to reset your password.
+        </p>
+
+        <p style="text-align: center; margin-bottom: 20px;">
+            your password reset code is: <span style="font-weight: bold; color: #267D77;">${otp}</span>
+        </p>
+    </div>
+    `;
+}
