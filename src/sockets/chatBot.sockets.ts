@@ -77,6 +77,14 @@ export = (io: any, socket: any) => {
                 isDeleted: new Date(),
             });
 
+            await pool.query(
+                `INSERT INTO messages ("chatId", sender, sender_model, chat_type, text,image)
+                 VALUES ($1, $2, $3, 'chatbot', $4, $5)
+                 RETURNING id, "chatId", sender, sender_model, text, "isDeleted", "createdAt"`,
+                [chat.rows[0].id, socket.user.id, "User", data.message, data.image]
+            );
+
+
             clearCache(`chatBotMessages_${socket.user.id}_${chat.rows[0].id}`);
 
             // const checkPlan = await pool.query(`SELECT id,
@@ -123,12 +131,6 @@ export = (io: any, socket: any) => {
                 isDeleted: false,
             });
 
-            await pool.query(
-                `INSERT INTO messages ("chatId", sender, sender_model, chat_type, text,image)
-                 VALUES ($1, $2, $3, 'chatbot', $4, $5)
-                 RETURNING id, "chatId", sender, sender_model, text, "isDeleted", "createdAt"`,
-                [chat.rows[0].id, socket.user.id, "User", data.message, data.image]
-            );
 
             await pool.query(
                 `INSERT INTO messages ("chatId", sender, sender_model, chat_type, text)
