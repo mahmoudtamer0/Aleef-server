@@ -12,7 +12,7 @@ import crypto from "crypto";
 
 
 
-export const doctorRegister = async ({ email, name, password, phone, specialization, license_number, city, address, appointmentFee }: any, reqFiles: any) => {
+export const doctorRegister = async ({ email, name, password, phone, specialization, license_number, city, address, appointmentFee, lat, lng }: any, reqFiles: any) => {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -31,15 +31,29 @@ export const doctorRegister = async ({ email, name, password, phone, specializat
         }
         let doctor;
         if (findDoctor.rows.length > 0 && findDoctor.rows[0].isEmailVerified == false) {
-            doctor = await client.query("UPDATE doctors SET name = $1, phone = $2, password = $3, \"license_number\" = $4, \"city\" = $5, \"address\" = $6, \"specialization\" = $7, \"profilePic\" = $8, \"cloudinary_id\" = $9,  \"emailVerificationCode\" = $10, \"emailVerificationExpires\" = $11,appointmentFee = $12 WHERE email = $13 RETURNING id",
+            doctor = await client.query(
+                `UPDATE doctors SET name = $1, phone = $2, password = $3, "license_number" = $4, 
+                "city" = $5, "address" = $6, "specialization" = $7, "profilePic" = $8, 
+                "cloudinary_id" = $9, "emailVerificationCode" = $10, "emailVerificationExpires" = $11, 
+                appointmentFee = $12, lat = $13, lng = $14, location_link = $15 
+                WHERE email = $16 RETURNING id`,
                 [name, phone, hashedPassword, license_number, city, address, specialization,
                     reqFiles.profilePic[0].path, reqFiles.profilePic[0].filename,
-                    hashedOtp, expires, appointmentFee, email])
+                    hashedOtp, expires, appointmentFee, lat, lng,
+                    `https://www.google.com/maps?q=${lat},${lng}`,
+                    email]
+            )
         } else {
-            doctor = await client.query("INSERT INTO doctors (email, name, phone, password, \"license_number\", \"city\", \"address\", \"specialization\", \"profilePic\", \"cloudinary_id\", \"emailVerificationCode\", \"emailVerificationExpires\",appointmentFee) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,$13) RETURNING id",
+            doctor = await client.query(
+                `INSERT INTO doctors (email, name, phone, password, "license_number", "city", "address", 
+                "specialization", "profilePic", "cloudinary_id", "emailVerificationCode", 
+                "emailVerificationExpires", appointmentFee, lat, lng, location_link) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
                 [email, name, phone, hashedPassword, license_number, city, address, specialization,
                     reqFiles.profilePic[0].path, reqFiles.profilePic[0].filename,
-                    hashedOtp, expires, appointmentFee])
+                    hashedOtp, expires, appointmentFee, lat, lng,
+                    `https://www.google.com/maps?q=${lat},${lng}`]
+            )
         }
 
         await client.query(`
