@@ -106,9 +106,17 @@ export const getProducts = async (reqQuery: any): Promise<any> => {
 
     const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
 
-    const orderClause = sort === "best-selling"
-        ? `ORDER BY p.buys DESC, p.stock DESC`
-        : `ORDER BY p.stock DESC, p."updatedAt" DESC`;
+    let orderClause = `ORDER BY p.stock DESC, p."updatedAt" DESC`;
+
+    if (sort === "popular") {
+        orderClause = `ORDER BY p.buys DESC, p.stock DESC`;
+    } else if (sort === "price_asc") {
+        orderClause = `ORDER BY p."finalPrice" ASC, p.stock DESC, p."updatedAt" DESC`;
+    } else if (sort === "price_desc") {
+        orderClause = `ORDER BY p."finalPrice" DESC, p.stock DESC, p."updatedAt" DESC`;
+    } else if (sort === "newest") {
+        orderClause = `ORDER BY p."updatedAt" DESC, p.stock DESC`;
+    }
 
     params.push(limit, offset);
     const limitClause = `LIMIT $${params.length - 1} OFFSET $${params.length}`;
