@@ -67,7 +67,7 @@ export = (io: any, socket: any) => {
             }
 
             socket.emit("chat_response", {
-                _id: "1",
+                _id: crypto.randomUUID(),
                 text: data.message,
                 sender: {
                     id: socket.user.id,
