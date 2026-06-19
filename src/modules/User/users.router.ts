@@ -2,7 +2,7 @@ import express from "express";
 import { banUser, editUserProfile, getME, login, logOut, register, resendOtp, verifyEmail, getAllUsers, getUserToAdmin, google, addFcmToken, getUnreadNotificationsCount, getNotifications, markAllNotificationsAsRead, getAppoinmentsAndOrdersCount, changePassword } from "./users.controler";
 import { upload } from "../../middlewares/userProfileImage"
 import validate from "../../middlewares/userValidate";
-import { registerSchema, loginSchema, verifyOtpSchema, resendOtpSchema } from "./users.validation";
+import { registerSchema, loginSchema, verifyOtpSchema, resendOtpSchema, changePasswordSchema } from "./users.validation";
 import { verifyToken } from "../../middlewares/verifyToken";
 import { allowTo } from "../../middlewares/allowTo";
 
@@ -48,7 +48,7 @@ router.patch(
 );
 
 router.route("/change-password")
-    .patch(verifyToken, changePassword)
+    .patch(verifyToken, validate(changePasswordSchema), changePassword)
 
 router.route("/get-unread-notifications-count")
     .get(verifyToken, getUnreadNotificationsCount)
