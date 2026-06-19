@@ -156,6 +156,7 @@ export const getChatbotMessages = async (user: any) => {
     const messagesResult = await pool.query(
         `SELECT
             id,
+            image,
             "chatId" AS chatId,
             "isDeleted" AS "isDeleted",
             text,
