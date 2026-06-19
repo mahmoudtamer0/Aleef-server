@@ -126,6 +126,7 @@ export = (io: any, socket: any) => {
             clearCache(`chatBotMessages_${socket.user.id}_${chat.rows[0].id}`);
 
             socket.emit("chat_response", {
+                _id: crypto.randomUUID(),
                 message: botText,
                 sender: { id: BOT_ID },
                 createdAt: new Date(),
