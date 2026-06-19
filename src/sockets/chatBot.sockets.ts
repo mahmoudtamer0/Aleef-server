@@ -5,7 +5,7 @@ import pool from "../db";
 
 export = (io: any, socket: any) => {
 
-    socket.on("chat_send", async (data: { message: string }) => {
+    socket.on("chat_send", async (data: { message: string, image: string }) => {
         try {
             const chatBotApiKey = process.env["CHATBOT_API_KEY"];
 
@@ -22,13 +22,16 @@ export = (io: any, socket: any) => {
                 return;
             }
 
+            console.log("data:", data);
+
             const botresponse = fetch(chatBotApiKey, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    msg: data.message
+                    msg: data.message,
+                    image_url: data.image,
                 })
             })
 
@@ -69,6 +72,7 @@ export = (io: any, socket: any) => {
                 sender: {
                     id: socket.user.id,
                 },
+                image: data.image,
                 createdAt: new Date(),
                 isDeleted: new Date(),
             });
