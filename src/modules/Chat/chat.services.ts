@@ -83,6 +83,7 @@ export const getChatMessages = async (chatId: any, user: any) => {
     const messagesResult = await pool.query(
         `SELECT
             m.id,
+            m.image,
             m."chatId" AS "chatId",
             m."isDeleted" AS "isDeleted",
             m.text,
