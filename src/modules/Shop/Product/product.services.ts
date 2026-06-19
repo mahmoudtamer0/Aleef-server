@@ -71,6 +71,7 @@ export const addProduct = async ({ title, description, originalPrice, discount, 
 
 export const getProducts = async (reqQuery: any): Promise<any> => {
     const { category, minPrice, maxPrice, search, sort } = reqQuery;
+    console.log("getProducts", reqQuery);
 
     const page = Math.max(1, reqQuery.page * 1 || 1);
     const limit = 6;
