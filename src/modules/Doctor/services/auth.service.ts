@@ -203,6 +203,10 @@ export const login = async ({ email, password }: { email: string, password: stri
         await pool.query("UPDATE doctors SET status = $1, \"banExpiresAt\" = $2 WHERE email = $3", ["active", null, email])
     }
 
+    if (findDoctor.rows[0].status == "pending") {
+        throw new ApiError(400, "your account is under review");
+    }
+
     const session = await pool.query(
         `INSERT INTO sessions (doctor_id, device, expires_at)
             VALUES ($1, $2, NOW() + INTERVAL '7 days') RETURNING id`,

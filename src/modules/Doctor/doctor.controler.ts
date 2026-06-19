@@ -162,7 +162,7 @@ export const getAllDoctors = catchAsync(async (req, res, next) => {
 
 export const getAvailableDoctors = catchAsync(async (req, res, next) => {
 
-    const doctors = await profileService.getAvailableDoctors(req.query as { search: string, status: string, sort: string, page: string, limit: string })
+    const doctors = await profileService.getAvailableDoctors(req.query as { search: string, status: string, sort: string, page: string, limit: string, user_lat?: string, user_lng?: string })
 
     return res.status(200).json({
         status: "success",

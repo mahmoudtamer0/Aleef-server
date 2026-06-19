@@ -209,21 +209,42 @@ export const editDoctorSchedule = async (doctor: User, schedule: { day_of_week: 
 
 };
 
-export const getAvailableDoctors = async (reqQuery: { search?: string, status?: string, sort?: string, page?: string, limit?: string }) => {
+export const getAvailableDoctors = async (reqQuery: {
+    search?: string, status?: string, sort?: string,
+    page?: string, limit?: string,
+    user_lat?: string, user_lng?: string
+}) => {
 
     const { search, status, sort } = reqQuery;
+    const user_lat = reqQuery.user_lat ? parseFloat(reqQuery.user_lat) : null;
+    const user_lng = reqQuery.user_lng ? parseFloat(reqQuery.user_lng) : null;
 
     const page = Number(reqQuery.page) || 1;
     const limit = Math.min(Number(reqQuery.limit) || 10, 5);
     const offset = (page - 1) * limit;
 
-    const cacheKey = `doctorsAvailable:${page}_${limit}_${sort}_${status}_${search}`;
+    const cacheKey = `doctorsAvailable:${page}_${limit}_${sort}_${status}_${search}_${user_lat}_${user_lng}`;
     const cached = getCache(cacheKey);
     if (cached) return cached;
 
     const filters: string[] = [];
     const params: any[] = [];
     let paramIndex = 1;
+
+    let distanceSelect = `NULL AS distance_km`;
+    if (user_lat !== null && user_lng !== null) {
+        distanceSelect = `
+            ROUND(CAST(
+                6371 * acos(
+                    cos(radians($${paramIndex})) * cos(radians(d.lat)) *
+                    cos(radians(d.lng) - radians($${paramIndex + 1})) +
+                    sin(radians($${paramIndex})) * sin(radians(d.lat))
+                )
+            AS numeric), 2) AS distance_km
+        `;
+        params.push(user_lat, user_lng);
+        paramIndex += 2;
+    }
 
     if (search && search !== "") {
         filters.push(`(
@@ -237,20 +258,28 @@ export const getAvailableDoctors = async (reqQuery: { search?: string, status?: 
         paramIndex++;
     }
 
-    const whereClause = filters.length > 0 ? `WHERE ${filters.join(" AND ")} ` : "";
+    const whereClause = filters.length > 0
+        ? `WHERE ${filters.join(" AND ")} AND d.status = 'active'`
+        : `WHERE d.status = 'active'`;
+
+    const orderBy = (user_lat !== null && user_lng !== null)
+        ? `ORDER BY distance_km ASC`
+        : `ORDER BY completed_appointments DESC`;
+
 
     const mainQuery = `
         SELECT
             d.id, d.name, d.city, d.specialization,
             d.status, d."profilePic", d.address, d.rating, d."ratingsCount",
             d."appointmentFee", d."createdAt",
+            ${distanceSelect},
             COUNT(CASE WHEN a.status = 'completed' THEN 1 END) AS completed_appointments,
             COUNT(*) OVER() AS total_count
         FROM doctors d
         LEFT JOIN appointments a ON d.id = a.doctor
-        ${whereClause} AND d.status = 'active'
+        ${whereClause}
         GROUP BY d.id
-        ORDER BY completed_appointments DESC
+        ${orderBy}
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 
@@ -260,8 +289,10 @@ export const getAvailableDoctors = async (reqQuery: { search?: string, status?: 
 
     const totalDoctors = result.rows[0]?.total_count ?? 0;
 
+    const finalDoctors = result.rows.map((doc: any) => ({ ...doc, minitus: doc.distance_km ? Math.round(doc.distance_km * 1.5) : null }));
+
     const response = {
-        doctors: result.rows,
+        doctors: finalDoctors,
         results: result.rowCount,
         totalDoctors: Number(totalDoctors),
         totalPages: Math.ceil(Number(totalDoctors) / limit),
