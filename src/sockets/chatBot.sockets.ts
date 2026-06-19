@@ -113,7 +113,8 @@ export = (io: any, socket: any) => {
 
             const botText = dataTofetch?.Response;
             if (!botText) {
-                socket.emit("error_message", {
+                socket.emit("chat_response", {
+                    _id: crypto.randomUUID(),
                     message: "Chatbot didn't respond",
                     sender: { id: BOT_ID },
                     createdAt: new Date(),
