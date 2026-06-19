@@ -69,6 +69,18 @@ export const logOut = catchAsync(async (req, res, next) => {
     })
 })
 
+export const changePassword = catchAsync(async (req, res, next) => {
+    const { currentPassword, newPassword } = req.body;
+    const user = req.user as User;
+
+    await authService.changePassword(user, currentPassword, newPassword);
+
+    return res.status(200).json({
+        status: "success",
+        message: "Password changed successfully"
+    })
+})
+
 export const getAllDoctorsRequests = catchAsync(async (req, res, next) => {
 
     const { search, page, limit } = req.query as { search: string; page: string; limit: string };

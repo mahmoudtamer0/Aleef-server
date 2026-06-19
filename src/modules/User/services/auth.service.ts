@@ -245,6 +245,41 @@ export const google = async (idToken: string, device: string) => {
     return { user, token };
 }
 
+export const changePassword = async (user: User, currentPassword: string, newPassword: string) => {
+    const client = await pool.connect();
+    try {
+
+        await client.query("BEGIN");
+
+        const userProfile = await client.query(`SELECT id, password FROM users WHERE id = $1`, [user.id]);
+        if (!userProfile.rows.length) throw new ApiError(404, "user not found");
+
+        const checkedPass = await checkPassword(currentPassword, userProfile.rows[0].password);
+
+        if (!checkedPass) throw new ApiError(400, "current password is not correct");
+
+
+        const hashedPassword = await hashPassword(newPassword);
+
+
+        await client.query("UPDATE users SET password = $1 WHERE id = $2", [hashedPassword, user.id]);
+
+        const userSessions = await client.query(`DELETE FROM sessions WHERE user_id = $1 AND id != $2 RETURNING id`, [user.id, user.sessionId]);
+
+
+        await client.query("COMMIT");
+        userSessions.rows.forEach(session => clearCache(`session:${session.id}`));
+
+        return;
+
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw new ApiError(500, "something went wrong");
+    } finally {
+        client.release();
+    }
+}
+
 export const addFcmToken = async (user: any, fcmToken: any) => {
 
     await pool.query(

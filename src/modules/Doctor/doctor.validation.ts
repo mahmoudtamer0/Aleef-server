@@ -70,3 +70,20 @@ export const editScheduleSchema = Joi.object({
         }).options({ stripUnknown: true })
     ).min(1).required()
 });
+
+export const changePasswordSchema = Joi.object({
+    currentPassword: Joi.string()
+        .required()
+        .messages({
+            "any.required": "current password is required",
+        }),
+    newPassword: Joi.string()
+        .min(8)
+        .pattern(new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$"))
+        .required()
+        .messages({
+            "string.pattern.base": "Password must have at least 8 characters, 1 uppercase, 1 lowercase, 1 number and 1 special character",
+            "string.min": "Password must be at least 8 characters long",
+            "any.required": "Password is required",
+        }),
+});

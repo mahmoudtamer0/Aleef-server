@@ -206,6 +206,18 @@ export const getAppoinmentsAndOrdersCount = catchAsync(async (req, res, next) =>
 
 // })
 
+export const changePassword = catchAsync(async (req, res, next) => {
+    const { currentPassword, newPassword } = req.body;
+    const user = req.user as User;
+
+    await authService.changePassword(user, currentPassword, newPassword);
+
+    return res.status(200).json({
+        status: "success",
+        message: "Password changed successfully"
+    })
+})
+
 export const banUser = catchAsync(async (req, res, next) => {
 
     const baan = await adminService.banUser(req)

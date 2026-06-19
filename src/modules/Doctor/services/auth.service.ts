@@ -241,6 +241,42 @@ export const addFcmToken = async (doctor: User, fcmToken: any) => {
     return;
 }
 
+
+export const changePassword = async (doctor: User, currentPassword: string, newPassword: string) => {
+    const client = await pool.connect();
+    try {
+
+        await client.query("BEGIN");
+
+        const doctorProfile = await client.query(`SELECT id, password FROM doctors WHERE id = $1`, [doctor.id]);
+        if (!doctorProfile.rows.length) throw new ApiError(404, "doctor not found");
+
+        const checkedPass = await checkPassword(currentPassword, doctorProfile.rows[0].password);
+
+        if (!checkedPass) throw new ApiError(400, "current password is not correct");
+
+
+        const hashedPassword = await hashPassword(newPassword);
+
+
+        await client.query("UPDATE doctors SET password = $1 WHERE id = $2", [hashedPassword, doctor.id]);
+
+        const doctorSessions = await client.query(`DELETE FROM sessions WHERE doctor_id = $1 AND id != $2 RETURNING id`, [doctor.id, doctor.sessionId]);
+
+
+        await client.query("COMMIT");
+        doctorSessions.rows.forEach(session => clearCache(`session:${session.id}`));
+
+        return;
+
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw new ApiError(500, "something went wrong");
+    } finally {
+        client.release();
+    }
+}
+
 export const logOut = async (doctor: User) => {
     try {
         await pool.query("DELETE FROM sessions WHERE id = $1", [doctor.sessionId]);

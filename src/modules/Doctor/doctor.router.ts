@@ -1,8 +1,8 @@
 import express from "express";
-import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors, approveDoctorRequest, getDoctor, getDoctorSchedual, getDoctorSlots, login, getAvailableDoctors, getDoctorToAdmin, getMeDoctor, editDoctor, getDoctorScheduleForDoctor, editDoctorSchedule, logOut, addFcmToken } from "./doctor.controler";
+import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors, approveDoctorRequest, getDoctor, getDoctorSchedual, getDoctorSlots, login, getAvailableDoctors, getDoctorToAdmin, getMeDoctor, editDoctor, getDoctorScheduleForDoctor, editDoctorSchedule, logOut, addFcmToken, changePassword } from "./doctor.controler";
 import { upload } from "../../middlewares/doctorProfilepic"
 import validate from "../../middlewares/userValidate";
-import { registerSchema, verifyOtpSchema, resendOtpSchema, editDoctorProfileSchema, editScheduleSchema } from "./doctor.validation";
+import { registerSchema, verifyOtpSchema, resendOtpSchema, editDoctorProfileSchema, editScheduleSchema, changePasswordSchema } from "./doctor.validation";
 import { verifyToken } from "../../middlewares/verifyToken";
 import { allowTo } from "../../middlewares/allowTo";
 import { loginSchema } from "../User/users.validation";
@@ -25,7 +25,10 @@ router.route("/login")
     .post(validate(loginSchema), login)
 
 router.route("/resend-otp")
-    .post(validate(resendOtpSchema), resendOtp)
+    .patch(validate(resendOtpSchema), resendOtp)
+
+router.route("/change-password")
+    .patch(verifyToken, validate(changePasswordSchema), changePassword)
 
 router.route("/logout")
     .post(verifyToken, logOut)

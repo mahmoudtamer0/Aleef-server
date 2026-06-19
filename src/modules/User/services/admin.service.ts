@@ -107,6 +107,7 @@ export const banUser = async (req: any) => {
 
             await client.query("COMMIT");
 
+
             setImmediate(async () => {
                 await sendEmail({
                     email: user.rows[0].email,
@@ -133,6 +134,7 @@ export const banUser = async (req: any) => {
 
             userSessions.rows.forEach(session => clearCache(`session:${session.id}`));
             clearCache(`users_all_users_`);
+            clearCache(`session:`);
 
             await client.query("COMMIT");
 
