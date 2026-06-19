@@ -1,12 +1,13 @@
 import { clearCache, getCache, setCache } from "../../../cache";
 import pool from "../../../db";
+import { getIO } from "../../../sockets/socket";
 import { User } from "../../../types/user";
 import ApiError from "../../../utils/ApiError";
 import { sendNotificationService } from "../../../utils/notifications/sendNotificationService";
 
 
 export const bookAppointment = async (user: User, { pet, doctor, date, time, reason, notes }: any) => {
-
+    const io = getIO();
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -96,22 +97,36 @@ export const bookAppointment = async (user: User, { pet, doctor, date, time, rea
         clearCache(`activeAppointment:${user.id}`);
         clearCache(`appointmentsRequests:${doctor}`);
 
-        setImmediate(() => {
+        setImmediate(async () => {
+
+            let isOnline = false;
+
+            try {
+                const sockets = await io.in(`user:${appointmentResult.rows[0].owner.id.toString()}`).fetchSockets();
+                isOnline = sockets.length > 0;
+            } catch (err) {
+                isOnline = false;
+            }
+
+
+            if (isOnline) {
+                io.to(`user:${appointmentResult.rows[0].doctor.toString()}`).emit("notification", {
+                    type: "APPOINTMENT_REQUEST",
+                    title: "Appointment Completed ✅",
+                    body: `Doctor ${doctor.name} has completed your appoinment`,
+                    data: {
+                        type: "appointment",
+                        appointmentId: appointmentResult.rows[0].id,//order.id,chat.id,
+                    }
+                })
+            }
+
             sendNotificationService(
-                doctor,
+                appointmentResult.rows[0].doctor,
                 "DOCTOR",
                 "New Appointment Request 🐾",
                 `${user.name} has requested an appointment for ${petResult.rows[0].name}, Please review the request.`
             );
-
-            // sendEmail({
-            //     email: userResult.rows[0].email,
-            //     subject: "Appointment Booked Successfully 🐾",
-            //     text: "Your appointment has been booked successfully",
-            //     message: bookedAppointmentTemplate(userResult.rows[0].name, doctorResult.rows[0].name, doctorResult.rows[0].city, doctorResult.rows[0].address, doctorResult.rows[0].appointmentFee, date, time, reason),
-            // }).catch(err => {
-            //     console.error("Email failed:", err);
-            // });
         });
 
         return appointmentResult.rows[0];

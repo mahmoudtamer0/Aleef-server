@@ -193,6 +193,15 @@ export const prevAppointmentsForDoctor = catchAsync(async (req, res, next) => {
     })
 })
 
+export const getWalletTransactions = catchAsync(async (req, res, next) => {
+    const doctor = req.user as User;
+    const transactions = await doctorGetServices.getWalletTransactions(doctor);
+    return res.status(200).json({
+        status: "success",
+        transactions: transactions,
+    })
+})
+
 export const activeAppoinmentsForDoctor = catchAsync(async (req, res, next) => {
     const doctor = req.user as User;
     const { date } = req.query;

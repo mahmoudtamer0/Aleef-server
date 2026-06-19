@@ -1,5 +1,5 @@
 import express from "express";
-import { activeAppoinmentsForDoctor, addReview, approveAppointment, bookAppointment, cancelAppointmentByUser, changeAppoinmentStatus, checkPendingReview, endAppoinment, getActiveAppointment, getAllAppoinments, getAppoinmentDetailsForAdmin, getAppointmentDetails, getAppointmentsRequestsForDoctor, getPrevAppoinments, prevAppointmentsForDoctor, rejectAppointment, skipAppointmentReview } from "./appointment.controler";
+import { activeAppoinmentsForDoctor, addReview, approveAppointment, bookAppointment, cancelAppointmentByUser, changeAppoinmentStatus, checkPendingReview, endAppoinment, getActiveAppointment, getAllAppoinments, getAppoinmentDetailsForAdmin, getAppointmentDetails, getAppointmentsRequestsForDoctor, getPrevAppoinments, getWalletTransactions, prevAppointmentsForDoctor, rejectAppointment, skipAppointmentReview } from "./appointment.controler";
 import { upload } from "../../middlewares/appoinmentUploads"
 import validate from "../../middlewares/userValidate";
 import { addAppointmentSchema, addReviewSchema, cancelAppointmentByUserSchema, endAppointmentSchema, rejectAppoinmentSchema } from "./appointment.validation";
@@ -20,6 +20,9 @@ router.route("/requests")
 
 router.route("/active-appointments")
     .get(verifyToken, allowTo("DOCTOR"), activeAppoinmentsForDoctor)
+
+router.route("/wallet-transactions")
+    .get(verifyToken, allowTo("DOCTOR"), getWalletTransactions)
 
 
 router.route("/get-my-previous-appointments")

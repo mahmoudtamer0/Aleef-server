@@ -198,3 +198,34 @@ export const prevAppointmentsForDoctor = async (doctor: User) => {
 
     return response;
 }
+
+
+export const getWalletTransactions = async (doctor: User) => {
+
+
+    const result = await pool.query(
+        `SELECT 
+            ws.id,
+            ws.type,
+            ws.amount,
+            ws."balanceAfter",
+            ws.reason,
+            ws."createdAt",
+            ws."appointmentId",
+            jsonb_build_object('id', u.id, 'name', u.name) AS owner,
+            jsonb_build_object('id', p.id, 'name', p.name) AS pet
+        FROM wallet_transactions ws
+        JOIN doctor_wallet dw ON dw.id = ws."walletId"
+        JOIN appointments a ON a.id = ws."appointmentId"
+        JOIN users u ON u.id = a.owner
+        JOIN pets p ON p.id = a.pet
+        WHERE dw."doctor" = $1
+        ORDER BY ws."createdAt" DESC LIMIT 10`,
+        [doctor.id]
+    );
+
+
+
+
+    return result.rows;
+}
