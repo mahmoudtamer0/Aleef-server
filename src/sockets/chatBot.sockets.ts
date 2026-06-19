@@ -72,7 +72,7 @@ export = (io: any, socket: any) => {
                 sender: {
                     id: socket.user.id,
                 },
-                image: data.image,
+                image: data.image || null,
                 createdAt: new Date(),
                 isDeleted: new Date(),
             });
