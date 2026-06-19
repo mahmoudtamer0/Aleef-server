@@ -1,0 +1,1 @@
+export const APPOINTMENT_COMMISSION = 0.15;

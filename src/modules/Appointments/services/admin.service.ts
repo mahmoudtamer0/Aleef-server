@@ -146,7 +146,7 @@ export const getAppointmentDetailsForAdmin = async (appointmentId: string) => {
 
     const result = await pool.query(
         `SELECT a.id, a.date, a.time, a.reason, a.status, a.notes, a."rejectionReason",
-            a."createdAt", a."updatedAt", a."appoinmentFee",
+            a."createdAt", a."updatedAt", a."appointmentFee",
             jsonb_build_object('id', u.id, 'name', u.name, 'email', u.email, 'profilePic', u."profilePic") AS owner,
             jsonb_build_object('id', d.id, 'name', d.name, 'specialization', d.specialization, 'profilePic', d."profilePic") AS doctor,
             jsonb_build_object('id', p.id, 'name', p.name, 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic") AS pet

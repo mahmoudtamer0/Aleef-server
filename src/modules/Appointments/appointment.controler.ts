@@ -188,7 +188,8 @@ export const prevAppointmentsForDoctor = catchAsync(async (req, res, next) => {
         status: "success",
         appointments: appointments.appointments,
         appoinmentsCounts: appointments.appoinmentsCounts,
-        doctorRating: appointments.doctorRating
+        doctorRating: appointments.doctorRating,
+        wallet: appointments.wallet,
     })
 })
 

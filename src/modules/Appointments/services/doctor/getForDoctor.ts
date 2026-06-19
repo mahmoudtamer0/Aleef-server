@@ -92,7 +92,7 @@ export const getAppointmentDetailsForDoctor = async (doctor: User, appointmentId
 
     const appointment = await pool.query(
         `SELECT a.id, a.date, a.time, a.reason, a.status, a.notes,
-        a."createdAt", a."updatedAt",a."appoinmentFee",
+        a."createdAt", a."updatedAt",a."appointmentFee",
         jsonb_build_object('id', u.id, 'name', u.name, 'email', u.email,'phone', u.phone, 'profilePic', u."profilePic") AS owner,
         jsonb_build_object('id', p.id, 'name', p.name , 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic" , 'birthDate', p."birthDate", 'weight', p.weight) AS pet
         FROM appointments a
@@ -135,30 +135,38 @@ export const prevAppointmentsForDoctor = async (doctor: User) => {
     const cached = getCache(cacheKey);
     if (cached) return cached;
 
-    const result = await pool.query(
-        `SELECT a.id, a.date, a.time, a.reason, a.status,
-        jsonb_build_object('id', u.id, 'name', u.name) AS owner,
-        jsonb_build_object('id', u.id, 'rate',d.rating,'ratingsCount',d."ratingsCount") AS doctor,
-        jsonb_build_object('id', p.id, 'name', p.name, 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic") AS pet,
-        COUNT(*) FILTER (WHERE a.status = 'completed') OVER() AS "completedCount",
-        COUNT(*) FILTER (WHERE a.status = 'cancelled-by-doctor') OVER() AS "cancelledCount",
-        COUNT(*) FILTER (WHERE a.status = 'cancelled-by-owner') OVER() AS "cancelledByOwnerCount",
+    let [result, doctor_wallet] = await Promise.all([
+        pool.query(
+            `SELECT a.id, a.date, a.time, a.reason, a.status,
+            jsonb_build_object('id', u.id, 'name', u.name) AS owner,
+            jsonb_build_object('id', u.id, 'rate',d.rating,'ratingsCount',d."ratingsCount") AS doctor,
+            jsonb_build_object('id', p.id, 'name', p.name, 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic") AS pet,
+            COUNT(*) FILTER (WHERE a.status = 'completed') OVER() AS "completedCount",
+            COUNT(*) FILTER (WHERE a.status = 'cancelled-by-doctor') OVER() AS "cancelledCount",
+            COUNT(*) OVER() AS "totalCount"
+            FROM appointments a
+            JOIN users u ON u.id = a.owner
+            JOIN doctors d ON d.id = a.doctor
+            JOIN pets p ON p.id = a.pet
+            WHERE a.doctor = $1 AND a.status IN ('cancelled', 'completed')
+            ORDER BY a."updatedAt" DESC LIMIT 8`,
+            [doctor.id]
+        ),
+        pool.query(`SELECT balance,id FROM doctor_wallet WHERE doctor = $1`, [doctor.id]),
+    ]);
 
-        COUNT(*) OVER() AS "totalCount"
-        FROM appointments a
-        JOIN users u ON u.id = a.owner
-        JOIN doctors d ON d.id = a.doctor
-        JOIN pets p ON p.id = a.pet
-        WHERE a.doctor = $1 AND a.status IN ('cancelled', 'completed')
-        ORDER BY a."updatedAt" DESC LIMIT 8`,
-        [doctor.id]
-    );
+
+    if (doctor_wallet.rowCount === 0) {
+        doctor_wallet = await pool.query(`INSERT INTO doctor_wallet (doctor, balance) VALUES ($1, $2) RETURNING id,balance`, [doctor.id, 0]);
+    }
+
 
     if (!result.rows.length) {
         const response = {
             appointments: [],
             appoinmentsCounts: { totalAppoinments: 0, completedAppoinments: 0, cancelledAppoinments: 0 },
-            doctorRating: { rating: null, ratingCount: 0 }
+            doctorRating: { rating: null, ratingCount: 0 },
+            wallet: doctor_wallet.rows[0],
         };
 
         setCache(cacheKey, response, 500);
@@ -169,7 +177,6 @@ export const prevAppointmentsForDoctor = async (doctor: User) => {
     const appoinmentsCounts = {
         totalAppoinments: Number(result.rows[0]?.totalCount ?? 0),
         completedAppoinments: Number(result.rows[0]?.completedCount ?? 0),
-        cancelledByOwnerAppoinments: Number(result.rows[0]?.cancelledByOwnerCount ?? 0),
         cancelledAppoinments: Number(result.rows[0]?.cancelledCount ?? 0)
     };
 
@@ -183,7 +190,8 @@ export const prevAppointmentsForDoctor = async (doctor: User) => {
     const response = {
         appointments: appoinments,
         appoinmentsCounts,
-        doctorRating
+        doctorRating,
+        wallet: doctor_wallet.rows[0],
     };
 
     setCache(cacheKey, response, 500);

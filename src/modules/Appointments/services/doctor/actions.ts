@@ -7,6 +7,7 @@ import ApiError from "../../../../utils/ApiError";
 import { sendEmail } from "../../../../utils/sendEmail";
 import { sendNotificationService } from "../../../../utils/notifications/sendNotificationService";
 import { createNotification } from "../../../../utils/notifications/createNotificationRow";
+import { APPOINTMENT_COMMISSION } from "../../../../constants/appoinmentCommision";
 
 
 export const approveAppointment = async (doctor: User, appointmentId: string) => {
@@ -339,12 +340,14 @@ export const endAppointment = async (
         await client.query("BEGIN");
 
         const appointmentResult = await client.query(
-            `SELECT a.id, a.date, a.time, a.status,
+            `SELECT a.id, a.date, a.time, a.status,a."appointmentFee",discount,
                 jsonb_build_object('id', u.id, 'name', u.name, 'email', u.email) AS owner,
-                jsonb_build_object('id', p.id, 'name', p.name) AS pet
+                jsonb_build_object('id', p.id, 'name', p.name) AS pet,
+                jsonb_build_object('id', d.id, 'appointmentFee', d."appointmentFee") AS doctor
              FROM appointments a
              JOIN users u ON a.owner = u.id
              JOIN pets p ON a.pet = p.id
+             JOIN doctors d ON a.doctor = d.id
              WHERE a.id = $1 AND a.doctor = $2 AND a.status = 'accepted'`,
             [appointmentId, doctor.id]
         );
@@ -430,6 +433,25 @@ export const endAppointment = async (
                 [chatExpiryDays || 0, chatId]
             );
         }
+
+
+        const doctorFee = appointment.doctor.appointmentFee;
+        const appointmentFee = appointment.appointmentFee;
+        let remaining = doctorFee - appointmentFee;
+        const commission = Math.round(doctorFee * APPOINTMENT_COMMISSION);
+
+        const change = remaining - commission;
+
+        let doctor_credit = await client.query(`UPDATE doctor_wallet SET "balance" = "balance" + $1 WHERE doctor = $2 RETURNING id,balance`, [change, doctor.id]);
+
+        if (doctor_credit.rowCount === 0) {
+            doctor_credit = await client.query(`INSERT INTO doctor_wallet (doctor, balance) VALUES ($1, $2) RETURNING id,balance`, [doctor.id, change]);
+        }
+
+        await client.query(`INSERT INTO wallet_transactions ("walletId","appointmentId",type,amount,"balanceAfter","createdAt") 
+            VALUES ($1,$2,$3,$4,$5,$6)`,
+            [doctor_credit.rows[0].id, appointmentId, change >= 0 ? "debit" : "credit", Math.abs(change), doctor_credit.rows[0].balance, new Date()]);
+
 
         await client.query("COMMIT");
 
