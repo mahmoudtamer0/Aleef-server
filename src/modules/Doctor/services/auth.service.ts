@@ -35,7 +35,7 @@ export const doctorRegister = async ({ email, name, password, phone, specializat
                 `UPDATE doctors SET name = $1, phone = $2, password = $3, "license_number" = $4, 
                 "city" = $5, "address" = $6, "specialization" = $7, "profilePic" = $8, 
                 "cloudinary_id" = $9, "emailVerificationCode" = $10, "emailVerificationExpires" = $11, 
-                appointmentFee = $12, lat = $13, lng = $14, location_link = $15 
+                "appointmentFee" = $12, lat = $13, lng = $14, location_link = $15 
                 WHERE email = $16 RETURNING id`,
                 [name, phone, hashedPassword, license_number, city, address, specialization,
                     reqFiles.profilePic[0].path, reqFiles.profilePic[0].filename,
@@ -47,7 +47,7 @@ export const doctorRegister = async ({ email, name, password, phone, specializat
             doctor = await client.query(
                 `INSERT INTO doctors (email, name, phone, password, "license_number", "city", "address", 
                 "specialization", "profilePic", "cloudinary_id", "emailVerificationCode", 
-                "emailVerificationExpires", appointmentFee, lat, lng, location_link) 
+                "emailVerificationExpires", "appointmentFee", lat, lng, location_link) 
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
                 [email, name, phone, hashedPassword, license_number, city, address, specialization,
                     reqFiles.profilePic[0].path, reqFiles.profilePic[0].filename,
