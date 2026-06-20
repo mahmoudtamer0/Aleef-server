@@ -162,7 +162,7 @@ export const getActiveAppointment = async (user: User) => {
     }
 
     const appointment = await pool.query(
-        `SELECT a.id, a.date, a.time, a.reason, a.status, a.notes, a."appointmentFee",a.""
+        `SELECT a.id, a.date, a.time, a.reason, a.status, a.notes, a."appointmentFee",a."rejectionReason",
         a."createdAt", a."updatedAt",
         jsonb_build_object('id', d.id, 'name', d.name, 'email', d.email, 'profilePic', d."profilePic") AS doctor,
         jsonb_build_object('id', p.id, 'name', p.name) AS pet
@@ -237,7 +237,7 @@ export const getPrevAppointments = async (user: any) => {
     if (cached) return cached;
 
     const result = await pool.query(
-        `SELECT a.id, a.date, a.time, a.reason, a.status,
+        `SELECT a.id, a.date, a.time, a.reason, a.status,a."rejectionReason",
             jsonb_build_object('id', d.id, 'name', d.name, 'profilePic', d."profilePic", 'specialization', d.specialization) AS doctor,
             jsonb_build_object('id', p.id, 'name', p.name) AS pet
         FROM appointments a
