@@ -57,7 +57,8 @@ export = (io: any, socket: any) => {
                 },
                 body: JSON.stringify({
                     msg: data.message ?? "?",
-                    image_url: data.image ?? null
+                    image_url: data.image ?? null,
+                    user_id: socket.user.id
                 })
             })
 
