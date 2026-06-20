@@ -47,6 +47,7 @@ export const getAppointmentsRequestsForDoctor = async (doctor: User, params: any
 }
 
 export const getActiveAppoinmentsForDoctor = async (doctor: User, date: any) => {
+
     const cacheKey = `active_appointments_doctor:${doctor.id}_${date}`;
     const cached = getCache(cacheKey);
     if (cached) return cached;
@@ -54,7 +55,7 @@ export const getActiveAppoinmentsForDoctor = async (doctor: User, date: any) => 
     let result;
 
     if (date) {
-
+        date = date.split('-').reverse().join('-');
         result = await pool.query(
             `SELECT a.id,TO_CHAR(a.date, 'YYYY-MM-DD') AS date, a.time, a.reason, a.status, a."createdAt",
             jsonb_build_object('id', p.id, 'name', p.name, 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic") AS pet,
