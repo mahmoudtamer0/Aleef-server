@@ -129,6 +129,7 @@ export const bookAppointment = async (user: User, { pet, doctor, date, time, rea
                 `${user.name} has requested an appointment for ${petResult.rows[0].name}, Please review the request.`
             );
 
+
             await createNotificationForDoctor({
                 title: "New Appointment Request 🐾",
                 body: `${user.name} has requested an appointment for ${petResult.rows[0].name}, Please review the request.`,
@@ -161,7 +162,7 @@ export const getActiveAppointment = async (user: User) => {
     }
 
     const appointment = await pool.query(
-        `SELECT a.id, a.date, a.time, a.reason, a.status, a.notes, a."appointmentFee",
+        `SELECT a.id, a.date, a.time, a.reason, a.status, a.notes, a."appointmentFee",a.""
         a."createdAt", a."updatedAt",
         jsonb_build_object('id', d.id, 'name', d.name, 'email', d.email, 'profilePic', d."profilePic") AS doctor,
         jsonb_build_object('id', p.id, 'name', p.name) AS pet
@@ -169,7 +170,11 @@ export const getActiveAppointment = async (user: User) => {
         LEFT JOIN doctors d ON a.doctor = d.id
         LEFT JOIN pets p ON a.pet = p.id
         WHERE a.owner = $1
-        AND a.status IN ('pending', 'accepted')
+        AND a.status IN ('pending', 'accepted', 'rejected')
+        AND (
+            a.status != 'rejected'
+            OR a."updatedAt" >= NOW() - INTERVAL '24 hours'
+            )
         ORDER BY a."updatedAt" DESC
         LIMIT 1`,
         [user.id]
@@ -238,7 +243,7 @@ export const getPrevAppointments = async (user: any) => {
         FROM appointments a
         LEFT JOIN doctors d ON a.doctor = d.id
         LEFT JOIN pets p ON a.pet = p.id
-        WHERE a.owner = $1 AND a.status IN ('cancelled', 'completed')
+        WHERE a.owner = $1 AND a.status IN ('cancelled', 'completed','rejected')
         ORDER BY a."updatedAt" DESC`,
         [user.id]
     );
