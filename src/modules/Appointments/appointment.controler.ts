@@ -200,6 +200,7 @@ export const prevAppointmentsForDoctor = catchAsync(async (req, res, next) => {
         appoinmentsCounts: appointments.appoinmentsCounts,
         doctorRating: appointments.doctorRating,
         wallet: appointments.wallet,
+        totalEarnings: appointments.totalEarnings,
     })
 })
 

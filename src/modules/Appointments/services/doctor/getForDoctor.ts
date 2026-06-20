@@ -47,13 +47,6 @@ export const getAppointmentsRequestsForDoctor = async (doctor: User, params: any
 }
 
 export const getActiveAppoinmentsForDoctor = async (doctor: User, date: any) => {
-    if (!date) {
-        date = new Date().toISOString().split('T')[0];
-    } else {
-        date = date.split('-').reverse().join('-');
-    }
-
-
     const cacheKey = `active_appointments_doctor:${doctor.id}_${date}`;
     const cached = getCache(cacheKey);
     if (cached) return cached;
