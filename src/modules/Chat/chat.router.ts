@@ -3,7 +3,7 @@ import express from "express";
 import { verifyToken } from "../../middlewares/verifyToken";
 import { getAllChats, getChatbotMessages, getChatMessages, getChatMessagesForAdmin, getChats, uploadChatPhoto } from "./chat.controler";
 import { allowTo } from "../../middlewares/allowTo";
-import { upload } from "../../middlewares/userProfileImage";
+import { upload } from "../../middlewares/chatUploads";
 const router = express.Router()
 
 
