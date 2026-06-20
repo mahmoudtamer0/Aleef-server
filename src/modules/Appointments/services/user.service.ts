@@ -243,7 +243,7 @@ export const getPrevAppointments = async (user: any) => {
         FROM appointments a
         LEFT JOIN doctors d ON a.doctor = d.id
         LEFT JOIN pets p ON a.pet = p.id
-        WHERE a.owner = $1 AND a.status IN ('cancelled', 'completed','rejected')
+        WHERE a.owner = $1 AND a.status IN ('cancelled-by-owner','cancelled-by-doctor', 'completed','rejected')
         ORDER BY a."updatedAt" DESC`,
         [user.id]
     );
