@@ -340,7 +340,7 @@ export const endAppointment = async (
         await client.query("BEGIN");
 
         const appointmentResult = await client.query(
-            `SELECT a.id, a.date, a.time, a.status,a."appointmentFee",discount,
+            `SELECT a.id, a.date, a.time, a.status,a."appointmentFee",discount,"doctorFee",
                 jsonb_build_object('id', u.id, 'name', u.name, 'email', u.email) AS owner,
                 jsonb_build_object('id', p.id, 'name', p.name) AS pet,
                 jsonb_build_object('id', d.id, 'appointmentFee', d."appointmentFee") AS doctor
