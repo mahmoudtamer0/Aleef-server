@@ -288,7 +288,7 @@ export const cancelAppointmentByDoctor = async (doctor: User, appointmentId: str
 
         const appointmentResult = await client.query(
             `UPDATE appointments
-             SET status = 'cancelled-by-doctor', "updatedAt" = NOW(), "cancelledReason" = $3
+             SET status = 'cancelled-by-doctor', "updatedAt" = NOW(), "rejectionReason" = $3
              WHERE id = $1
                AND doctor = $2
                AND status IN ('pending', 'accepted')

@@ -143,6 +143,16 @@ export const cancelAppointmentByUser = catchAsync(async (req, res, next) => {
     })
 })
 
+export const cancelAppointmentByDoctor = catchAsync(async (req, res, next) => {
+    const { appointmentId } = req.params;
+    const { rejectionReason } = req.body;
+    const doctor = req.user as User;
+    await doctorActionsServices.cancelAppointmentByDoctor(doctor, appointmentId as string, rejectionReason as string);
+    return res.status(200).json({
+        status: "success",
+    })
+})
+
 
 export const endAppoinment = catchAsync(async (req, res, next) => {
 
