@@ -22,6 +22,34 @@ export = (io: any, socket: any) => {
                 return;
             }
 
+            if (!data.message && !data.image) {
+                socket.emit("chat_response", {
+                    _id: crypto.randomUUID(),
+                    message: "message or image is required",
+                    sender: { id: BOT_ID },
+                    createdAt: new Date(),
+                    isDeleted: false,
+                });
+                return;
+            }
+
+            if (data.image) {
+                try {
+                    const url = new URL(data.image);
+                    if (!["https:", "http:"].includes(url.protocol)) throw new Error();
+                    if (!url.hostname.includes("cloudinary.com")) throw new Error();
+                } catch {
+                    socket.emit("chat_response", {
+                        _id: crypto.randomUUID(),
+                        message: "invalid image url",
+                        sender: { id: BOT_ID },
+                        createdAt: new Date(),
+                        isDeleted: false,
+                    });
+                    return;
+                }
+            }
+
             const botresponse = fetch(chatBotApiKey, {
                 method: "POST",
                 headers: {
