@@ -435,7 +435,7 @@ export const endAppointment = async (
         }
 
 
-        const doctorFee = appointment.doctor.appointmentFee;
+        const doctorFee = appointment.doctorFee;
         const appointmentFee = appointment.appointmentFee;
         let remaining = doctorFee - appointmentFee;
         const commission = Math.round(doctorFee * APPOINTMENT_COMMISSION);

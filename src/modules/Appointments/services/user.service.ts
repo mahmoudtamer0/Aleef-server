@@ -84,12 +84,12 @@ export const bookAppointment = async (user: User, { pet, doctor, date, time, rea
 
 
         const appointmentResult = await client.query(
-            `INSERT INTO appointments(owner, pet, doctor, date, time, reason, notes,"appointmentFee",discount)
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            `INSERT INTO appointments(owner, pet, doctor, date, time, reason, notes,"appointmentFee",discount,"doctorFee")
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
              RETURNING * `,
             [
                 user.id, pet, doctor, date, time, reason,
-                notes && notes.trim().length > 0 ? notes : null, finalAppointmentFee, discount
+                notes && notes.trim().length > 0 ? notes : null, finalAppointmentFee, discount, doctorResult.rows[0].appointmentFee
             ]
         );
 
