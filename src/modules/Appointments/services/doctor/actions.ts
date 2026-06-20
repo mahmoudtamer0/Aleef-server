@@ -183,7 +183,8 @@ export const rejectAppointment = async (
             `UPDATE appointments
              SET status = 'rejected',
                  "rejectionReason" = $3,
-                 "expiresAt" = NOW() + INTERVAL '3 days'
+                 "expiresAt" = NOW() + INTERVAL '3 days',
+                 "updatedAt" = NOW()
              WHERE id = $1
                AND doctor = $2
                AND status = 'pending'
