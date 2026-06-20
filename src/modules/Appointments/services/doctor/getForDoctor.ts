@@ -54,6 +54,7 @@ export const getActiveAppoinmentsForDoctor = async (doctor: User, date: any) => 
 
     let result;
 
+
     if (date) {
         date = date.split('-').reverse().join('-');
         result = await pool.query(
@@ -79,7 +80,7 @@ export const getActiveAppoinmentsForDoctor = async (doctor: User, date: any) => 
              JOIN pets p ON a.pet = p.id
              JOIN users u ON a.owner = u.id
             WHERE a.doctor = $1 AND a.status = 'accepted'
-            ORDER BY a.updatedAt DESC
+            ORDER BY a."updatedAt" DESC
             LIMIT 10
             `,
             [doctor.id]

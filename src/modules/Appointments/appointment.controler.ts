@@ -216,6 +216,7 @@ export const getWalletTransactions = catchAsync(async (req, res, next) => {
 export const activeAppoinmentsForDoctor = catchAsync(async (req, res, next) => {
     const doctor = req.user as User;
     const { date } = req.query;
+
     const appointments = await doctorGetServices.getActiveAppoinmentsForDoctor(doctor, date);
 
     return res.status(200).json({
