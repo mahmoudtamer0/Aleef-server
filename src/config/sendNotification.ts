@@ -22,7 +22,7 @@ export const sendPushNotification = async (
             },
         });
 
-        console.log("result", result);
+        console.log("result notification", result);
     } catch (error) {
         console.error("FCM Error:", error);
     }

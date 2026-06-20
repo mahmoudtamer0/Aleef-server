@@ -265,3 +265,17 @@ export const addFcmToken = catchAsync(async (req, res, next) => {
     });
 
 })
+
+export const chargeDoctor = catchAsync(async (req, res, next) => {
+
+    const { amount, reason } = req.body as { amount: number, reason: string };
+    const { doctorId } = req.params as { doctorId: string };
+
+    await adminService.chargeDoctor(doctorId, amount, reason);
+
+    return res.status(200).json({
+        status: "success",
+        message: "added successfully"
+    });
+
+})

@@ -1,6 +1,9 @@
 import { getCache, setCache, clearCache } from "../../../cache";
 import pool from "../../../db";
+import { getIO } from "../../../sockets/socket";
 import ApiError from "../../../utils/ApiError";
+import { createNotificationForDoctor } from "../../../utils/notifications/createNotificationRow";
+import { sendNotificationService } from "../../../utils/notifications/sendNotificationService";
 import { sendEmail } from "../../../utils/sendEmail";
 
 export const approveDoctorRequest = async (doctorId: string) => {
@@ -157,4 +160,74 @@ export const getDoctorToAdmin = async (doctorId: string) => {
     clearCache("doctors:")
 
     return doctorResult.rows[0]
+}
+
+export const chargeDoctor = async (doctorId: string, amount: number, reason: string) => {
+    const io = getIO();
+    const client = await pool.connect();
+    try {
+        await client.query(`BEGIN`);
+        const doctor = await client.query(`SELECT id FROM doctors WHERE id = $1 AND status = 'active'`, [doctorId]);
+
+        if (!doctor.rows.length) throw new ApiError(404, "Doctor not found");
+
+        let doctorWallet = await client.query(`UPDATE doctor_wallet SET balance = balance + $1 WHERE doctor = $2 RETURNING id,balance`, [amount, doctorId]);
+
+        if (!doctorWallet.rows.length) {
+            doctorWallet = await client.query(`INSERT INTO doctor_wallet (doctor, balance) VALUES ($1, $2) RETURNING id,balance`, [doctorId, amount]);
+        }
+
+        await client.query(`INSERT INTO wallet_transactions ("walletId", type, "balanceAfter", amount, reason) VALUES ($1, $2, $3, $4, $5)`,
+            [doctorWallet.rows[0].id, amount > 0 ? "debit" : "credit", doctorWallet.rows[0].balance, Math.abs(amount), reason]);
+
+        await client.query(`COMMIT`)
+
+        setImmediate(async () => {
+
+            let isOnline = false;
+
+            try {
+                const sockets = await io.in(`user:${doctorId.toString()}`).fetchSockets();
+                isOnline = sockets.length > 0;
+            } catch (err) {
+                isOnline = false;
+            }
+
+
+            if (isOnline) {
+                io.to(`user:${doctorId.toString()}`).emit("notification", {
+                    type: "WALLET_UPDATE",
+                    title: amount > 0 ? "Doctor Balance Increased 💰" : "Doctor Balance Decreased 💰",
+                    body: amount > 0 ? `You have charged by $${amount}` : `Your doctor balance has decreased by $${amount}`,
+                    data: {
+                        type: "wallet",
+                        walletId: doctorWallet.rows[0].id,
+                        balance: doctorWallet.rows[0].balance
+                    }
+                })
+            }
+
+            sendNotificationService(
+                doctorId,
+                "DOCTOR",
+                amount > 0 ? "Balance Increased 💰" : "Balance Decreased 💰",
+                `You have charged by $${amount}`
+            );
+
+            await createNotificationForDoctor({
+                title: amount > 0 ? "Balance Increased 💰" : "Balance Decreased 💰",
+                body: `You have charged by $${amount}`,
+                doctorId: doctorId,
+                type: "appointment",
+            });
+        });
+        return;
+    } catch (err) {
+        await client.query("ROLLBACK");
+        console.error(err);
+        throw err;
+    } finally {
+        client.release();
+    }
+
 }

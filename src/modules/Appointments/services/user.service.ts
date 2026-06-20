@@ -3,6 +3,7 @@ import pool from "../../../db";
 import { getIO } from "../../../sockets/socket";
 import { User } from "../../../types/user";
 import ApiError from "../../../utils/ApiError";
+import { createNotificationForDoctor } from "../../../utils/notifications/createNotificationRow";
 import { sendNotificationService } from "../../../utils/notifications/sendNotificationService";
 
 
@@ -116,7 +117,7 @@ export const bookAppointment = async (user: User, { pet, doctor, date, time, rea
                     body: `Doctor ${doctor.name} has completed your appoinment`,
                     data: {
                         type: "appointment",
-                        appointmentId: appointmentResult.rows[0].id,//order.id,chat.id,
+                        appointmentId: appointmentResult.rows[0].id,
                     }
                 })
             }
@@ -127,6 +128,14 @@ export const bookAppointment = async (user: User, { pet, doctor, date, time, rea
                 "New Appointment Request 🐾",
                 `${user.name} has requested an appointment for ${petResult.rows[0].name}, Please review the request.`
             );
+
+            await createNotificationForDoctor({
+                title: "New Appointment Request 🐾",
+                body: `${user.name} has requested an appointment for ${petResult.rows[0].name}, Please review the request.`,
+                doctorId: appointmentResult.rows[0].doctor,
+                type: "appointment",
+                appointmentId: appointmentResult.rows[0].id,
+            });
         });
 
         return appointmentResult.rows[0];

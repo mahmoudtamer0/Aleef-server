@@ -22,8 +22,6 @@ export = (io: any, socket: any) => {
                 return;
             }
 
-            console.log("data:", data);
-
             const botresponse = fetch(chatBotApiKey, {
                 method: "POST",
                 headers: {

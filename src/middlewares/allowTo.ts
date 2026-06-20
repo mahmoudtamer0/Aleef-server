@@ -12,7 +12,7 @@ export const allowTo = (...roles: Role[]) => {
         }
 
         if (!roles.includes(user.role)) {
-            return next(new ApiError(403, "Forbidden"));
+            return next(new ApiError(403, "you are not allowed for this action, please contact the admin"));
         }
 
         next()

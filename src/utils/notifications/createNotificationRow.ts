@@ -3,7 +3,8 @@ import pool from "../../db";
 interface CreateNotificationParams {
     title: string;
     body: string;
-    userId: number;
+    userId?: string;
+    doctorId?: string;
     type: 'order' | 'appointment' | 'pet' | 'chat' | 'vaccination';
     orderId?: number;
     appointmentId?: number;
@@ -27,3 +28,17 @@ export const createNotification = async ({
         [title, body, userId, type, orderId ?? null, appointmentId ?? null, petId ?? null, chatId ?? null]
     );
 };
+
+export const createNotificationForDoctor = async ({
+    title,
+    body,
+    doctorId,
+    type,
+    appointmentId,
+}: CreateNotificationParams) => {
+    await pool.query(
+        `INSERT INTO notifications (title, body, doctor_id, type,appointment_id)
+       VALUES ($1, $2, $3, $4, $5)`,
+        [title, body, doctorId, type, appointmentId ?? null]
+    );
+}

@@ -15,7 +15,7 @@ export const getDoctorSchedual = async (doctorId: string): Promise<any> => {
     const doctorResult = await pool.query(
         `SELECT id, name, specialization, city, address, "profilePic", 
                 rating, "ratingsCount", "appointmentFee", "slotduration"
-         FROM doctors WHERE id = $1`,
+         FROM doctors WHERE id = $1 AND status = 'active'`,
         [doctorId]
     );
 
@@ -57,7 +57,7 @@ export const getDoctorSlots = async (doctorId: string, date: string): Promise<an
     if (cached) return cached;
 
     const doctorResult = await pool.query(
-        `SELECT id, "slotduration" FROM doctors WHERE id = $1`,
+        `SELECT id, "slotduration" FROM doctors WHERE id = $1 AND status = 'active'`,
         [doctorId]
     );
 
@@ -321,7 +321,7 @@ export const getDoctor = async (doctorId: string) => {
                 "profilePic", address, rating, "ratingsCount", 
                 "appointmentFee", "createdAt"
             FROM doctors 
-            WHERE id = $1
+            WHERE id = $1 AND status = 'active'
         `, [doctorId]),
         pool.query(`
             SELECT r.id, r.rate, r.comment, r."createdAt",

@@ -74,8 +74,6 @@ export const editProduct = catchAsync(async (req, res, next) => {
 
     const { prodId } = req.params
 
-    console.log("prodId:", prodId);
-
     await productService.editProduct(
         prodId,
         req.body,
