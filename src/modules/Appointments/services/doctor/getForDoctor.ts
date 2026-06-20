@@ -58,19 +58,40 @@ export const getActiveAppoinmentsForDoctor = async (doctor: User, date: any) => 
     const cached = getCache(cacheKey);
     if (cached) return cached;
 
-    const result = await pool.query(
-        `SELECT a.id,TO_CHAR(a.date, 'YYYY-MM-DD') AS date, a.time, a.reason, a.status, a."createdAt",
-        jsonb_build_object('id', p.id, 'name', p.name, 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic") AS pet,
-        jsonb_build_object('id', u.id, 'name', u.name) AS owner,
-        COUNT(*) OVER() AS total_count
-        FROM appointments a
-         JOIN pets p ON a.pet = p.id
-         JOIN users u ON a.owner = u.id
-        WHERE a.doctor = $1 AND a.status = 'accepted' AND a.date = $2::date
-        ORDER BY a.time ASC
-        `,
-        [doctor.id, date]
-    );
+    let result;
+
+    if (date) {
+
+        result = await pool.query(
+            `SELECT a.id,TO_CHAR(a.date, 'YYYY-MM-DD') AS date, a.time, a.reason, a.status, a."createdAt",
+            jsonb_build_object('id', p.id, 'name', p.name, 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic") AS pet,
+            jsonb_build_object('id', u.id, 'name', u.name) AS owner,
+            COUNT(*) OVER() AS total_count
+            FROM appointments a
+             JOIN pets p ON a.pet = p.id
+             JOIN users u ON a.owner = u.id
+            WHERE a.doctor = $1 AND a.status = 'accepted' AND a.date = $2::date
+            ORDER BY a.time ASC
+            `,
+            [doctor.id, date]
+        );
+    } else {
+        result = await pool.query(
+            `SELECT a.id,TO_CHAR(a.date, 'YYYY-MM-DD') AS date, a.time, a.reason, a.status, a."createdAt",
+            jsonb_build_object('id', p.id, 'name', p.name, 'type', p.type, 'gender', p.gender, 'profilePic', p."profilePic") AS pet,
+            jsonb_build_object('id', u.id, 'name', u.name) AS owner,
+            COUNT(*) OVER() AS total_count
+            FROM appointments a
+             JOIN pets p ON a.pet = p.id
+             JOIN users u ON a.owner = u.id
+            WHERE a.doctor = $1 AND a.status = 'accepted'
+            ORDER BY a.updatedAt DESC
+            LIMIT 10
+            `,
+            [doctor.id, date]
+        );
+    }
+
 
     const appointments = result.rows.map(row => ({ ...row, date: row.date.split('-').reverse().join('-') })
     );
@@ -135,7 +156,7 @@ export const prevAppointmentsForDoctor = async (doctor: User) => {
     const cached = getCache(cacheKey);
     if (cached) return cached;
 
-    let [result, doctor_wallet] = await Promise.all([
+    let [result, doctor_wallet, totalEarnings] = await Promise.all([
         pool.query(
             `SELECT a.id, a.date, a.time, a.reason, a.status,
             jsonb_build_object('id', u.id, 'name', u.name) AS owner,
@@ -153,7 +174,15 @@ export const prevAppointmentsForDoctor = async (doctor: User) => {
             [doctor.id]
         ),
         pool.query(`SELECT balance,id FROM doctor_wallet WHERE doctor = $1`, [doctor.id]),
+        pool.query(
+            `SELECT COALESCE(SUM(a."doctorFee"), 0) AS "totalEarnings"
+             FROM appointments a
+             WHERE a.doctor = $1
+             AND a.status = 'completed'`,
+            [doctor.id]
+        )
     ]);
+
 
 
     if (doctor_wallet.rowCount === 0) {
@@ -191,6 +220,7 @@ export const prevAppointmentsForDoctor = async (doctor: User) => {
         appointments: appoinments,
         appoinmentsCounts,
         doctorRating,
+        totalEarnings: totalEarnings.rows[0].totalEarnings,
         wallet: doctor_wallet.rows[0],
     };
 
