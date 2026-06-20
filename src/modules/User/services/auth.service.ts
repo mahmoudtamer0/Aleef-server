@@ -291,13 +291,14 @@ export const forgetPassword = async (email: string) => {
 
         if (!userProfile.rows.length) throw new ApiError(404, "user not found");
 
+
         await client.query(
             `DELETE FROM password_reset_tokens WHERE "user" = $1`,
             [userProfile.rows[0].id]
         );
 
         await client.query(
-            `INSERT INTO password_reset_tokens (user, token, "expiresAt")
+            `INSERT INTO password_reset_tokens ("user", token, "expiresAt")
              VALUES ($1, $2, NOW() + INTERVAL '15 minutes')`,
             [userProfile.rows[0].id, hashedOtp]
         );
