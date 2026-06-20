@@ -3,14 +3,41 @@ import pool from "../../../db";
 import { User } from "../../../types/user";
 import ApiError from "../../../utils/ApiError";
 import deleteProfilPic from "../../../utils/deleteProfile";
+import { getAge } from "../../../utils/getPetAge";
 
 export const getMe = async (userId: string) => {
 
-    const userProfile = await pool.query("SELECT name, email, phone, \"profilePic\" FROM users WHERE id = $1", [userId])
+    try {
+        const cacheKey = `user:${userId}`;
+        const cached = getCache(cacheKey);
+        if (cached) return cached;
+        const userProfile = await pool.query(`
+            SELECT 
+            u.id, u.name, u.email, u.phone, u."profilePic",
+            json_agg(DISTINCT jsonb_build_object('id', p.id, 'name', p.name, 'birthDate', p."birthDate", 'gender', p.gender, 'profilePic', p."profilePic", 'type', p.type)) AS pets
+            FROM users u
+            JOIN pets p ON u.id = p.owner
+            WHERE u.id = $1
+            GROUP BY u.id
+            `, [userId])
 
-    if (userProfile.rows.length == 0) throw new ApiError(404, "user not fount");
+        const appointments = await pool.query(`
+            SELECT * FROM appointments WHERE owner = $1 ORDER BY "updatedAt" DESC
+            `, [userId])
 
-    return userProfile.rows[0];
+        userProfile.rows[0].pets = userProfile.rows[0].pets.map((pet: any) => ({ ...pet, age: getAge(pet.birthDate) }))
+
+        const response = {
+            user: userProfile.rows[0],
+            appointments: appointments.rows
+        }
+        setCache(cacheKey, response, 300);
+        return response;
+    } catch (err) {
+        console.log(err);
+        throw err;
+    }
+
 }
 
 export const editUserProfile = async (user: User, reqBody: { name?: string, phone?: string, changeProfilePic?: boolean | string, deleteProfilePic?: boolean | string }, reqFile: any) => {

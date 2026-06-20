@@ -10,18 +10,6 @@ const userStorage = new CloudinaryStorage({
         return {
             folder: "aleef/chats",
 
-            transformation: [
-                {
-                    width: 500,
-                    height: 500,
-                    crop: "fill",
-                    gravity: "auto",
-                    quality: "auto",
-                    fetch_format: "auto",
-                    flags: "progressive"
-                }
-            ],
-
             public_id: `${Date.now()}-${file.originalname.split(".")[0]}`
         };
     }

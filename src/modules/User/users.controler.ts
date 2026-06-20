@@ -99,7 +99,8 @@ export const getUserToAdmin = catchAsync(async (req, res, next) => {
 
     return res.status(200).json({
         status: "success",
-        user: userProfile
+        user: userProfile.user,
+        appointments: userProfile.appoinments
     })
 })
 
