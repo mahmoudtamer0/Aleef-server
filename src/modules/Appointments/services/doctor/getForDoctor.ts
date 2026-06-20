@@ -82,7 +82,7 @@ export const getActiveAppoinmentsForDoctor = async (doctor: User, date: any) => 
             ORDER BY a.updatedAt DESC
             LIMIT 10
             `,
-            [doctor.id, date]
+            [doctor.id]
         );
     }
 
