@@ -63,7 +63,7 @@ export const approveAppointment = async (doctor: User, appointmentId: string) =>
                 [chat.rows[0].id, appointment.rows[0].owner, doctor.id]
             );
         } else {
-            await client.query(`UPDATE chats SET status = 'active', "expiresAt" =NULL WHERE id = $1`, [chat.rows[0].id]);
+            await client.query(`UPDATE chats SET status = 'active', "expiresAt" =NULL,"updatedAt" = NOW() WHERE id = $1`, [chat.rows[0].id]);
         }
 
         const message = await client.query(

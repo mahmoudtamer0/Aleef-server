@@ -37,19 +37,20 @@ export = (io: any, socket: any) => {
         (socket as any).currentChat = null;
     });
 
-    socket.on("send_message", async (data: { chatId: string; message: string }) => {
+    socket.on("send_message", async (data: { chatId: string; message: string, image: string }) => {
         try {
             const model: "Doctor" | "User" =
                 socket.user.role === "DOCTOR" ? "Doctor" : "User";
 
 
 
-            if (data.message.trim().length < 1) {
+            if (data.message.trim().length < 1 && !data.image) {
                 io.to(socket.user.id).emit("error_message", {
                     errMessage: "you can't send empty message :)"
                 });
                 return;
             }
+
             const chatResult = await pool.query(
                 `SELECT c.id, c."expiresAt", c."updatedAt", cm.member_id AS other_member_id, cm.member_model AS other_member_model,
                 CASE WHEN cm.member_model = 'User' THEN
@@ -102,16 +103,32 @@ export = (io: any, socket: any) => {
 
             const { other_member_id } = chatResult.rows[0];
 
+
+            const formattedMessage = {
+                id: crypto.randomUUID(),
+                text: data.message,
+                image: data.image || null,
+                sender: { id: socket.user.id, name: socket.user.name, profilePic: socket.user.profilePic },
+                chatId: data.chatId,
+                createdAt: new Date(),
+                isDeleted: false,
+            };
+
+
+            clearCache(`chats:${socket.user.id}`);
+            clearCache(`chat_messages_${socket.user.id}_${data.chatId}`);
+
+            socket.emit("receive_message", formattedMessage);
+
+
             const messageResult = await pool.query(
-                `INSERT INTO messages ("chatId", sender, sender_model, chat_type, text)
-                 VALUES ($1, $2, $3, 'personal', $4)
-                 RETURNING id, "chatId", sender, sender_model, text, "isDeleted", "createdAt"`,
-                [data.chatId, socket.user.id, model, data.message]
+                `INSERT INTO messages ("chatId", sender, sender_model, chat_type, text, image)
+                 VALUES ($1, $2, $3, 'personal', $4, $5)
+                 RETURNING id`,
+                [data.chatId, socket.user.id, model, data.message, data.image || null]
             );
 
             const message = messageResult.rows[0];
-
-
 
             const sender = chatResult.rows[0].sender_profile;
 
@@ -121,20 +138,6 @@ export = (io: any, socket: any) => {
                 [message.id, data.chatId]
             );
 
-            const formattedMessage = {
-                id: message.id,
-                text: message.text,
-                sender: { id: sender.id, name: sender.name, profilePic: sender.profilePic },
-                chatId: data.chatId,
-                createdAt: message.createdAt,
-                isDeleted: message.isDeleted,
-            };
-
-
-            clearCache(`chats:${socket.user.id}`);
-            clearCache(`chat_messages_${socket.user.id}_${data.chatId}`);
-
-            socket.emit("receive_message", formattedMessage);
 
 
             const otherProfile = chatResult.rows[0].other_member_profile;
@@ -161,7 +164,7 @@ export = (io: any, socket: any) => {
                         "unreadCount" = unread_messages."unreadCount" + 1,
                         "lastMessage" = $3
                      RETURNING "unreadCount"`,
-                    [data.chatId, other_member_id, message.text]
+                    [data.chatId, other_member_id, formattedMessage.text]
                 );
 
                 io.to(`user:${other_member_id}`).emit("chat_updated", {
@@ -192,7 +195,7 @@ export = (io: any, socket: any) => {
                         "unreadCount" = unread_messages."unreadCount" + 1,
                         "lastMessage" = $3
                      RETURNING "unreadCount"`,
-                    [data.chatId, other_member_id, message.text]
+                    [data.chatId, other_member_id, formattedMessage.text]
                 );
 
                 io.to(`user:${other_member_id}`).emit("chat_updated", {
@@ -208,7 +211,7 @@ export = (io: any, socket: any) => {
                 io.to(`user:${other_member_id}`).emit("notification", {
                     type: "MESSAGE",
                     title: sender.name,
-                    body: message.text,
+                    body: formattedMessage.text,
                     data: {
                         type: "chat",
                         chatId: data.chatId,
@@ -232,7 +235,7 @@ export = (io: any, socket: any) => {
                      ON CONFLICT ("chatId", user_id) DO UPDATE SET
                         "unreadCount" = unread_messages."unreadCount" + 1,
                         "lastMessage" = $3`,
-                    [data.chatId, other_member_id, message.text]
+                    [data.chatId, other_member_id, formattedMessage.text]
                 );
 
                 const otherModel = model === "Doctor" ? "USER" : "DOCTOR";
@@ -252,6 +255,8 @@ export = (io: any, socket: any) => {
                 unreadCount: 0,
                 updatedAt: new Date()
             });
+
+            return;
         } catch (err) {
             console.error("Error sending message:", err);
         }
