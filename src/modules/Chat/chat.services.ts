@@ -22,6 +22,7 @@ export const getChats = async (user: any) => {
                 'senderModel', msg.sender_model,
                 'chatType', msg.chat_type,
                 'isDeleted', msg."isDeleted",
+                'image', msg.image,
                 'text', msg.text,
                 'createdAt', msg."createdAt"
             ) AS "lastMessage",
