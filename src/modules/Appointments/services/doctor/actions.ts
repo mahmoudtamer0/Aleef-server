@@ -282,6 +282,8 @@ export const rejectAppointment = async (
 
 
 export const cancelAppointmentByDoctor = async (doctor: User, appointmentId: string, reason: string) => {
+    const io = getIO();
+
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -309,13 +311,46 @@ export const cancelAppointmentByDoctor = async (doctor: User, appointmentId: str
         clearCache(`active_appointments_doctor:${doctor.id}_${appointmentResult.rows[0].date}`);
         clearCache(`appointment_details_doctor:${appointmentId}`);
 
-        setImmediate(() => {
+
+        setImmediate(async () => {
+
+            let isOnline = false;
+
+            try {
+                const sockets = await io.in(`user:${appointmentResult.rows[0].owner.toString()}`).fetchSockets();
+                isOnline = sockets.length > 0;
+            } catch (err) {
+                isOnline = false;
+            }
+
+
+            if (isOnline) {
+                io.to(`user:${appointmentResult.rows[0].owner.toString()}`).emit("notification", {
+                    type: "APPOINTMENT_ACCEPTED",
+                    title: "Appointment Rejected ❗",
+                    body: `Doctor ${doctor.name} has rejected your appoinment`,
+                    data: {
+                        type: "appointment",
+                        appointmentId: appointmentResult.rows[0].id,
+                    }
+                })
+            }
+
             sendNotificationService(
                 appointmentResult.rows[0].owner,
                 "USER",
                 "Appointment Cancelled 🐾",
                 `Dr. ${doctor.name} has cancelled your appointment.`
             );
+
+            await createNotification({
+                title: "Appointment Cancelled 🐾",
+                body: `Dr. ${doctor.name} has cancelled your appointment.`,
+                userId: appointmentResult.rows[0].owner,
+                type: "appointment",
+                appointmentId: appointmentResult.rows[0].id,
+            });
+
         });
 
     } catch (err) {
