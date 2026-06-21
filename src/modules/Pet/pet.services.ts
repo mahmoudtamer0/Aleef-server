@@ -93,7 +93,7 @@ export const getPetProfile = async (petId: any) => {
     const age = getAge(pet.birthDate);
     const response = {
         pet,
-        age: `${age.value} ${age.unit}`,
+        age: age,
         medicalRecords: medicalRecords.rows,
         upcomingVaccinations: upcomingVaccinations.rows,
         overdueVaccinations: overdueVaccinations.rows,

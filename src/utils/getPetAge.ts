@@ -7,7 +7,7 @@ export const getAge = (birthdate: any) => {
 
     // Under 90 days → show days
     if (diffDays <= 90) {
-        return { value: diffDays, unit: "days" };
+        return `${diffDays} days`;
     }
 
     // Under 24 months → show months
@@ -16,7 +16,7 @@ export const getAge = (birthdate: any) => {
         (today.getMonth() - birth.getMonth());
 
     if (diffMonths < 24) {
-        return { value: diffMonths, unit: "months" };
+        return `${diffMonths} months`;
     }
 
     // 2+ years → show years
@@ -29,5 +29,5 @@ export const getAge = (birthdate: any) => {
         years--;
     }
 
-    return { value: years, unit: "years" };
+    return `${years} years`;
 };
