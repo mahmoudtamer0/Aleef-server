@@ -131,6 +131,9 @@ export const editDoctor = async (doctor: User, body: { name: string, phone: stri
     if (result.rowCount === 0) throw new ApiError(404, "Doctor not found");
 
     clearCache(`me_doctor:${doctor.id}`)
+    clearCache(`doctor_details:${doctor.id}`)
+    clearCache(`doctorsAvailable:${doctor.id}`)
+    clearCache(`doctor_schedual:${doctor.id}`)
 
 
 

@@ -79,8 +79,8 @@ export const verifyEmail = async ({ email, otp }: { email: string, otp: string }
         .update(otp)
         .digest("hex");
 
-    const findUser = await pool.query(`UPDATE users SET "isEmailVerified" = $1, "emailVerificationCode" = $2,
-            "emailVerificationExpires" = $3 WHERE email = $4 AND "isEmailVerified" = $5 And "emailVerificationExpires" >= $6 AND "emailVerificationCode" = $7 RETURNING id,name,email,role`,
+    const findUser = await pool.query(`UPDATE users SET "isEmailVerified" = $1, "emailVerificationCode" = $2,status = 'active',
+            "emailVerificationExpires" = $3 WHERE email = $4 AND "isEmailVerified" = $5 And "emailVerificationExpires" >= $6 AND "emailVerificationCode" = $7 RETURNING id,name,email,role,"profilePic"`,
         [true, null, null, email, false, new Date(), hashedOtp])
 
     if (findUser.rowCount == 0) throw new ApiError(400, "Invalid or expired verification code");

@@ -6,7 +6,7 @@ export const registerSchema = Joi.object({
     phone: Joi.string(),
     password: Joi.string()
         .min(8)
-        .pattern(new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$"))
+        .pattern(new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d])[A-Za-z\\d\\W]{8,}$"))
         .required()
         .messages({
             "string.pattern.base": "Password must have at least 8 characters, 1 uppercase, 1 lowercase, 1 number and 1 special character",
@@ -14,7 +14,6 @@ export const registerSchema = Joi.object({
             "any.required": "Password is required",
         }),
 });
-
 
 export const loginSchema = Joi.object({
     email: Joi.string().email().required(),
