@@ -223,7 +223,7 @@ export const rejectAppointment = async (
             await client.query(
                 `UPDATE chats 
                  SET status = 'closed', "expiresAt" = NOW()
-                 WHERE id = $2`,
+                 WHERE id = $1`,
                 [chatId]
             );
         }
