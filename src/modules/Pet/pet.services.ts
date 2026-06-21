@@ -88,6 +88,7 @@ export const getPetProfile = async (petId: any) => {
         ]);
 
     const pet = petResult.rows[0];
+
     if (!pet) throw new ApiError(404, "Pet not found");
 
     const response = {

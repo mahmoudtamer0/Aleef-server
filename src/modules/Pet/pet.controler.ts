@@ -52,6 +52,7 @@ export const getPetProfile = catchAsync(async (req, res, next) => {
             type: pet.pet?.type,
             gender: pet.pet?.gender,
             profilePic: pet.pet?.profilePic,
+            birthDate: pet.pet?.birthDate,
             weight: pet.pet?.weight,
             age: pet.age,
         },
