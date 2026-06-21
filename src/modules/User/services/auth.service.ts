@@ -194,7 +194,7 @@ export const google = async (idToken: string, device: string) => {
         throw new ApiError(400, "Invalid token");
     }
 
-    const { email, name, email_verified, picture } = payload;
+    const { email, name, email_verified } = payload;
 
     if (!email_verified) {
         throw new ApiError(400, "Google email not verified");
@@ -220,9 +220,9 @@ export const google = async (idToken: string, device: string) => {
 
     if (findUser.rows.length === 0) {
         findUser = await pool.query(
-            `INSERT INTO users (email, name, "isEmailVerified", role, "profilePic") 
-             VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role, "profilePic"`,
-            [email, name, true, "USER", picture]
+            `INSERT INTO users (email, name, "isEmailVerified", role) 
+             VALUES ($1, $2, $3, $4) RETURNING id, name, email, role, "profilePic"`,
+            [email, name, true, "USER"]
         )
     }
 
