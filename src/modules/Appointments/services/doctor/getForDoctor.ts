@@ -1,4 +1,5 @@
 import { getCache, setCache } from "../../../../cache";
+import { APPOINTMENT_COMMISSION } from "../../../../constants/appoinmentCommision";
 import pool from "../../../../db";
 import { User } from "../../../../types/user";
 import ApiError from "../../../../utils/ApiError";
@@ -178,6 +179,7 @@ export const prevAppointmentsForDoctor = async (doctor: User) => {
         )
     ]);
 
+    const doctorEarnings = totalEarnings.rows[0].totalEarnings * (1 - APPOINTMENT_COMMISSION);
 
 
     if (doctor_wallet.rowCount === 0) {
@@ -190,6 +192,7 @@ export const prevAppointmentsForDoctor = async (doctor: User) => {
             appointments: [],
             appoinmentsCounts: { totalAppoinments: 0, completedAppoinments: 0, cancelledAppoinments: 0 },
             doctorRating: { rating: null, ratingCount: 0 },
+            totalEarnings: doctorEarnings,
             wallet: doctor_wallet.rows[0],
         };
 
@@ -211,11 +214,12 @@ export const prevAppointmentsForDoctor = async (doctor: User) => {
         ratingCount: result.rows[0].doctor.ratingsCount
     }
 
+
     const response = {
         appointments: appoinments,
         appoinmentsCounts,
         doctorRating,
-        totalEarnings: totalEarnings.rows[0].totalEarnings,
+        totalEarnings: doctorEarnings,
         wallet: doctor_wallet.rows[0],
     };
 
