@@ -170,7 +170,7 @@ export const getAppoinmentsAndOrdersCount = async (user: User) => {
     if (cached) return cached;
 
     const appointments = await pool.query(
-        `SELECT COUNT(*) FROM appointments WHERE owner = $1`,
+        `SELECT COUNT(*) FROM appointments WHERE owner = $1 AND status = 'completed'`,
         [user.id]
     );
     const orders = await pool.query(
