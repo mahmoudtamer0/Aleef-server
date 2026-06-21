@@ -207,6 +207,28 @@ export const rejectAppointment = async (
             throw new ApiError(404, "user not found");
         }
 
+        const chatResult = await client.query(
+            `SELECT c.id FROM chats c
+             JOIN chat_members cm ON c.id = cm."chatId"
+             WHERE cm.member_id = $1 AND c.chat_type = 'personal'
+             AND c.id IN (
+                 SELECT "chatId" FROM chat_members WHERE member_id = $2
+             )`,
+            [appointment.rows[0].owner, doctor.id]
+        );
+
+        const chatId = chatResult.rows[0]?.id;
+
+        if (chatId) {
+            await client.query(
+                `UPDATE chats 
+                 SET status = 'closed', "expiresAt" = NOW()
+                 WHERE id = $2`,
+                [chatId]
+            );
+        }
+
+
         await client.query("COMMIT");
 
         clearCache(`activeAppointment:${appointment.rows[0].owner}`);
@@ -214,6 +236,7 @@ export const rejectAppointment = async (
         clearCache(`appointment_details_user:${appointment.rows[0].id}`);
         clearCache(`appointment_details_doctor:${appointment.rows[0].id}`);
         clearCache(`appointments:`);
+        clearCache(`active_appointments_doctor:${doctor.id}`);
 
         setImmediate(async () => {
 
