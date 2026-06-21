@@ -90,10 +90,10 @@ export const getPetProfile = async (petId: any) => {
     const pet = petResult.rows[0];
 
     if (!pet) throw new ApiError(404, "Pet not found");
-
+    const age = getAge(pet.birthDate);
     const response = {
         pet,
-        age: getAge(pet.birthDate),
+        age: `${age.value} ${age.unit}`,
         medicalRecords: medicalRecords.rows,
         upcomingVaccinations: upcomingVaccinations.rows,
         overdueVaccinations: overdueVaccinations.rows,
@@ -103,6 +103,7 @@ export const getPetProfile = async (petId: any) => {
     setCache(cacheKey, response, 300);
     return response;
 };
+
 
 
 export const editPet = async (user: any, petId: string, { name, type, birthDate, gender, weight, deleteProfilePic }: any, reqFile: any) => {
