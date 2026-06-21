@@ -3,7 +3,6 @@ import pool from "../../../db";
 import { getIO } from "../../../sockets/socket";
 import { User } from "../../../types/user";
 import ApiError from "../../../utils/ApiError";
-import { createNotificationForDoctor } from "../../../utils/notifications/createNotificationRow";
 import { sendNotificationService } from "../../../utils/notifications/sendNotificationService";
 
 
@@ -103,7 +102,7 @@ export const bookAppointment = async (user: User, { pet, doctor, date, time, rea
             let isOnline = false;
 
             try {
-                const sockets = await io.in(`user:${appointmentResult.rows[0].owner.id.toString()}`).fetchSockets();
+                const sockets = await io.in(`user:${doctorResult.rows[0].id.toString()}`).fetchSockets();
                 isOnline = sockets.length > 0;
             } catch (err) {
                 isOnline = false;
@@ -111,10 +110,10 @@ export const bookAppointment = async (user: User, { pet, doctor, date, time, rea
 
 
             if (isOnline) {
-                io.to(`user:${appointmentResult.rows[0].doctor.toString()}`).emit("notification", {
+                io.to(`user:${doctorResult.rows[0].id.toString()}`).emit("notification", {
                     type: "APPOINTMENT_REQUEST",
-                    title: "Appointment Completed ✅",
-                    body: `Doctor ${doctor.name} has completed your appoinment`,
+                    title: "New Appointment Request 🐾",
+                    body: `${user.name} has requested an appointment for ${petResult.rows[0].name}, Please review the request.`,
                     data: {
                         type: "appointment",
                         appointmentId: appointmentResult.rows[0].id,
@@ -123,20 +122,11 @@ export const bookAppointment = async (user: User, { pet, doctor, date, time, rea
             }
 
             sendNotificationService(
-                appointmentResult.rows[0].doctor,
+                doctorResult.rows[0].id.toString(),
                 "DOCTOR",
                 "New Appointment Request 🐾",
                 `${user.name} has requested an appointment for ${petResult.rows[0].name}, Please review the request.`
             );
-
-
-            await createNotificationForDoctor({
-                title: "New Appointment Request 🐾",
-                body: `${user.name} has requested an appointment for ${petResult.rows[0].name}, Please review the request.`,
-                doctorId: appointmentResult.rows[0].doctor,
-                type: "appointment",
-                appointmentId: appointmentResult.rows[0].id,
-            });
         });
 
         return appointmentResult.rows[0];
@@ -253,6 +243,7 @@ export const getPrevAppointments = async (user: any) => {
 };
 
 export const cancelAppointmentByUser = async (user: User, appointmentId: string, reason: string) => {
+    const io = getIO();
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -281,7 +272,30 @@ export const cancelAppointmentByUser = async (user: User, appointmentId: string,
         clearCache(`active_appointments_doctor:${appointmentResult.rows[0].doctor}_${appointmentResult.rows[0].date}`);
         clearCache(`appointment_details_doctor:${appointmentId}`);
 
-        setImmediate(() => {
+        setImmediate(async () => {
+
+            let isOnline = false;
+
+            try {
+                const sockets = await io.in(`user:${appointmentResult.rows[0].doctor.toString()}`).fetchSockets();
+                isOnline = sockets.length > 0;
+            } catch (err) {
+                isOnline = false;
+            }
+
+
+            if (isOnline) {
+                io.to(`user:${appointmentResult.rows[0].doctor.toString()}`).emit("notification", {
+                    type: "Appointment Cancelled",
+                    title: "Appointment Cancelled",
+                    body: `${user.name} has cancelled their appointment.`,
+                    data: {
+                        type: "appointment",
+                        appointmentId: appointmentResult.rows[0].id,
+                    }
+                })
+            }
+
             sendNotificationService(
                 appointmentResult.rows[0].doctor,
                 "DOCTOR",

@@ -187,13 +187,13 @@ export const rejectAppointment = async (
                  "updatedAt" = NOW()
              WHERE id = $1
                AND doctor = $2
-               AND status = 'pending'
+               AND status in ('pending', 'accepted')
              RETURNING *`,
             [appointmentId, doctor.id, rejectionReason]
         );
 
         if (appointment.rowCount === 0) {
-            throw new ApiError(404, "Appointment not found or not pending");
+            throw new ApiError(404, "Appointment not found or not pending or accepted");
         }
 
         const userProfile = await client.query(
