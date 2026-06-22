@@ -82,6 +82,13 @@ export = (io: any, socket: any) => {
                     [data.chatId]
                 );
 
+                await pool.query(
+                    `INSERT INTO unread_messages (user_id, "chatId", "lastMessage", "unreadCount")
+                     VALUES ($1, $2, '', 0)
+                     ON CONFLICT ("chatId", user_id) DO UPDATE SET "unreadCount" = 0`,
+                    [socket.user.id, data.chatId]
+                );
+
                 const expiredMessage = {
                     id: "00000000-0000-0000-0000-000000000000",
                     text: "This chat has expired and is now closed. 🔒",
