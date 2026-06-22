@@ -76,7 +76,7 @@ export const getAppointmentDetails = catchAsync(async (req, res, next) => {
     let appointment = null;
 
     if (user?.role == "USER" || user?.role == "ADMIN") {
-        appointment = await userServices.getAppointmentDetailsForUser(appointmentId);
+        appointment = await userServices.getAppointmentDetailsForUser(user, appointmentId);
     } else {
         appointment = await doctorGetServices.getAppointmentDetailsForDoctor(user, appointmentId);
     }

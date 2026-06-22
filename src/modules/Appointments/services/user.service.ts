@@ -178,9 +178,9 @@ export const getActiveAppointment = async (user: User) => {
 
 }
 
-export const getAppointmentDetailsForUser = async (appointmentId: any) => {
+export const getAppointmentDetailsForUser = async (user: User, appointmentId: any) => {
 
-    const cacheKey = `appointment_details_user:${appointmentId}`;
+    const cacheKey = `appointment_details_user:_${user.id}_${appointmentId}`;
     const cached = getCache(cacheKey);
     if (cached) {
         return cached;
@@ -278,7 +278,7 @@ export const cancelAppointmentByUser = async (user: User, appointmentId: string,
             await client.query(
                 `UPDATE chats 
                  SET status = 'closed', "expiresAt" = NOW()
-                 WHERE id = $2`,
+                 WHERE id = $1`,
                 [chatId]
             );
         }
@@ -287,11 +287,12 @@ export const cancelAppointmentByUser = async (user: User, appointmentId: string,
 
         clearCache(`activeAppointment:${user.id}`);
         clearCache(`prevAppointments:${user.id}`);
-        clearCache(`appointment_details_user:${appointmentId}`);
+        clearCache(`appointment_details_user:_${user.id}_${appointmentId}`);
         clearCache(`appointmentsRequests:${appointmentResult.rows[0].doctor}`);
         clearCache(`active_appointments_doctor:${appointmentResult.rows[0].doctor}_${appointmentResult.rows[0].date}`);
         clearCache(`appointment_details_doctor:${appointmentId}`);
         clearCache(`active_appointments_doctor:${appointmentResult.rows[0].doctor}`);
+        clearCache(`appointment_details_doctor:_${appointmentResult.rows[0].doctor}_${appointmentId}`);
 
         setImmediate(async () => {
 

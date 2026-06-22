@@ -95,8 +95,8 @@ export const approveAppointment = async (doctor: User, appointmentId: string) =>
         clearCache(`chat_messages_${doctor.id}_${chat.rows[0].id}`);
         clearCache(`activeAppointment:${appointment.rows[0].owner}`);
         clearCache(`appointmentsRequests:${doctor.id}`);
-        clearCache(`appointment_details_user:${appointment.rows[0].id}`);
-        clearCache(`appointment_details_doctor:${appointment.rows[0].id}`);
+        clearCache(`appointment_details_user:_${appointment.rows[0].owner}_${appointment.rows[0].id}`);
+        clearCache(`appointment_details_doctor:_${doctor.id}_${appointment.rows[0].id}`);
         clearCache(`doctor_schedual:${doctor.id}`);
         clearCache(`doctor_slots_${appointment.rows[0].date}:${doctor.id}`);
         clearCache(`appointments:`);
@@ -237,6 +237,8 @@ export const rejectAppointment = async (
         clearCache(`appointment_details_doctor:${appointment.rows[0].id}`);
         clearCache(`appointments:`);
         clearCache(`active_appointments_doctor:${doctor.id}`);
+        clearCache(`appointment_details_user:_${appointment.rows[0].owner}_${appointment.rows[0].id}`);
+        clearCache(`appointment_details_doctor:_${doctor.id}_${appointment.rows[0].id}`);
 
         setImmediate(async () => {
 
@@ -333,7 +335,8 @@ export const cancelAppointmentByDoctor = async (doctor: User, appointmentId: str
         clearCache(`appointmentsRequests:${doctor.id}`);
         clearCache(`active_appointments_doctor:${doctor.id}_${appointmentResult.rows[0].date}`);
         clearCache(`appointment_details_doctor:${appointmentId}`);
-
+        clearCache(`appointment_details_user:_${appointmentResult.rows[0].owner}_${appointmentResult.rows[0].id}`);
+        clearCache(`appointment_details_doctor:_${doctor.id}_${appointmentResult.rows[0].id}`);
 
         setImmediate(async () => {
 
@@ -524,6 +527,8 @@ export const endAppointment = async (
         clearCache(`active_appointments_doctor:${doctor.id}_`);
         clearCache(`pending_review:${appointment.owner.id}`);
         clearCache(`appointments_and_orders_count:${appointment.owner.id}`);
+        clearCache(`appointment_details_user:_${appointment.owner.id}_${appointmentId}`);
+        clearCache(`appointment_details_doctor:_${doctor.id}_${appointmentId}`);
 
         setImmediate(async () => {
 

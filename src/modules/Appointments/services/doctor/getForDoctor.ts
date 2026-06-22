@@ -100,7 +100,7 @@ export const getActiveAppoinmentsForDoctor = async (doctor: User, date: any) => 
 export const getAppointmentDetailsForDoctor = async (doctor: User, appointmentId: string) => {
 
 
-    const cacheKey = `appointment_details_doctor:${appointmentId}`;
+    const cacheKey = `appointment_details_doctor:_${doctor.id}_${appointmentId}`;
     const cached = getCache(cacheKey);
     if (cached) {
         return cached;
