@@ -12,7 +12,7 @@ import crypto from "crypto";
 
 
 
-export const doctorRegister = async ({ email, name, password, phone, specialization, license_number, city, address, appointmentFee, lat, lng }: any, reqFiles: any) => {
+export const doctorRegister = async ({ email, name, password, phone, specialization, license_number, city, address, appointmentFee = 250, lat, lng }: any, reqFiles: any) => {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -81,6 +81,7 @@ export const doctorRegister = async ({ email, name, password, phone, specializat
         return;
 
     } catch (err) {
+        console.log(err)
         await client.query("ROLLBACK");
         throw err;
     } finally {
