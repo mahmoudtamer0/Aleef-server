@@ -109,18 +109,17 @@ export const bookAppointment = async (user: User, { pet, doctor, date, time, rea
             }
 
 
-            if (isOnline) {
-                console.log("sending notification to ", doctorResult.rows[0].id.toString());
-                io.to(`user:${doctorResult.rows[0].id.toString()}`).emit("notification", {
-                    type: "APPOINTMENT_REQUEST",
-                    title: "New Appointment Request 🐾",
-                    body: `${user.name} has requested an appointment for ${petResult.rows[0].name}, Please review the request.`,
-                    data: {
-                        type: "appointment",
-                        appointmentId: appointmentResult.rows[0].id,
-                    }
-                })
-            }
+
+            io.to(`user:${doctorResult.rows[0].id.toString()}`).emit("notification", {
+                type: "APPOINTMENT_REQUEST",
+                title: "New Appointment Request 🐾",
+                body: `${user.name} has requested an appointment for ${petResult.rows[0].name}, Please review the request.`,
+                data: {
+                    type: "appointment",
+                    appointmentId: appointmentResult.rows[0].id,
+                }
+            })
+
 
             sendNotificationService(
                 doctorResult.rows[0].id.toString(),
