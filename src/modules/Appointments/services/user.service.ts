@@ -99,16 +99,6 @@ export const bookAppointment = async (user: User, { pet, doctor, date, time, rea
 
         setImmediate(async () => {
 
-            let isOnline = false;
-
-            try {
-                const sockets = await io.in(`user:${doctorResult.rows[0].id.toString()}`).fetchSockets();
-                isOnline = sockets.length > 0;
-            } catch (err) {
-                isOnline = false;
-            }
-
-
 
             io.to(`user:${doctorResult.rows[0].id.toString()}`).emit("notification", {
                 type: "APPOINTMENT_REQUEST",
