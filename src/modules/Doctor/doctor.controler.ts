@@ -179,8 +179,9 @@ export const approveDoctorRequest = catchAsync(async (req, res, next) => {
 export const rejectDoctorRequest = catchAsync(async (req, res, next) => {
 
     const { doctorId } = req.params as { doctorId: string };
+    const { reason } = req.body as { reason: string };
 
-    const doctorApprove = await adminService.rejectDoctorRequest(doctorId)
+    const doctorApprove = await adminService.rejectDoctorRequest(doctorId, reason)
 
     return res.status(200).json({
         status: "success",

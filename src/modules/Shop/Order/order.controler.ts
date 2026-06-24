@@ -59,3 +59,14 @@ export const getAllOrderDetailsForAdmin = catchAsync(async (req, res, next) => {
         order: order
     })
 })
+
+export const updateOrder = catchAsync(async (req, res, next) => {
+    const { orderId } = req.params as { orderId: string };
+    const { status } = req.body
+    const order = await orderService.changeOrderStatus(orderId, status)
+
+    return res.status(200).json({
+        status: "success",
+        order: order
+    })
+})

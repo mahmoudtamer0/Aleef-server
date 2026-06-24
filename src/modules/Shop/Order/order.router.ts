@@ -1,7 +1,7 @@
 import express from "express"
 import { verifyToken } from "../../../middlewares/verifyToken"
 import validate from "../../../middlewares/userValidate"
-import { createOrder, getAllOrderDetailsForAdmin, getAllOrders, getMyPreviousOrders, getMyUpComingOrders } from "./order.controler"
+import { createOrder, getAllOrderDetailsForAdmin, getAllOrders, getMyPreviousOrders, getMyUpComingOrders, updateOrder } from "./order.controler"
 import { orderValidationSchema } from "./order.validation"
 import { allowTo } from "../../../middlewares/allowTo"
 
@@ -20,5 +20,6 @@ router.route("/my-previous-orders")
 
 router.route("/:orderId")
     .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllOrderDetailsForAdmin)
+    .patch(verifyToken, allowTo("ADMIN"), updateOrder)
 
 export default router

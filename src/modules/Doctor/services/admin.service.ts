@@ -136,7 +136,7 @@ export const getAllDoctors = async (reqQuery: { search?: string, status?: string
     return response;
 };
 
-export const rejectDoctorRequest = async (doctorId: string) => {
+export const rejectDoctorRequest = async (doctorId: string, reason: string) => {
 
     const doctor = await pool.query(`DELETE FROM doctors WHERE id = $1 AND status = 'pending' RETURNING email,name`, [doctorId])
 
@@ -150,7 +150,7 @@ export const rejectDoctorRequest = async (doctorId: string) => {
             email: doctor.rows[0].email,
             subject: "Account Rejected 😔 - Aleef",
             text: "",
-            message: doctorRequestRejectedTemplate(doctor.rows[0].name, doctor.rows[0].email),
+            message: doctorRequestRejectedTemplate(doctor.rows[0].name, reason),
         }).catch(err => {
             console.error("Email failed:", err);
         });
@@ -265,6 +265,7 @@ export const banDoctor = async (req: any) => {
             const days = banDays ? Number(banDays) : 5;
             const banDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
+            console.log(doctorId);
             const doctor = await client.query(
                 `UPDATE doctors SET status = $1, "banExpiresAt" = $2 WHERE id = $3 RETURNING id, name, email`,
                 ["banned", banDate, doctorId]

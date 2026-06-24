@@ -313,3 +313,33 @@ export const getAllOrderDetailsForAdmin = async (orderId: any) => {
     setCache(cacheKey, result.rows[0], 300);
     return result.rows[0];
 };
+
+export const changeOrderStatus = async (orderId: string, status: string) => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const order = await client.query(
+            `UPDATE orders SET status = $1 WHERE id = $2 RETURNING id, user_id`,
+            [status, orderId]
+        );
+
+        if (!order.rowCount) throw new ApiError(404, "Order not found");
+
+        await client.query("COMMIT");
+
+        clearCache(`orders:`);
+        clearCache(`order_details_admin:${orderId}`);
+        clearCache(`appointments_and_orders_count:${order.rows[0].user_id}`);
+        clearCache(`upcomingOrders:${order.rows[0].user_id}`);
+        clearCache(`previousOrders:${order.rows[0].user_id}`);
+
+        return "success";
+
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
+    }
+};

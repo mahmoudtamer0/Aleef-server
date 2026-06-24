@@ -1,5 +1,5 @@
 import express from "express";
-import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors, approveDoctorRequest, getDoctor, getDoctorSchedual, getDoctorSlots, login, getAvailableDoctors, getDoctorToAdmin, getMeDoctor, editDoctor, getDoctorScheduleForDoctor, editDoctorSchedule, logOut, addFcmToken, changePassword, forgetPassword, resetPassword, chargeDoctor, banDoctor } from "./doctor.controler";
+import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors, approveDoctorRequest, getDoctor, getDoctorSchedual, getDoctorSlots, login, getAvailableDoctors, getDoctorToAdmin, getMeDoctor, editDoctor, getDoctorScheduleForDoctor, editDoctorSchedule, logOut, addFcmToken, changePassword, forgetPassword, resetPassword, chargeDoctor, banDoctor, rejectDoctorRequest } from "./doctor.controler";
 import { upload } from "../../middlewares/doctorProfilepic"
 import validate from "../../middlewares/userValidate";
 import { registerSchema, verifyOtpSchema, resendOtpSchema, editDoctorProfileSchema, editScheduleSchema, changePasswordSchema, forgetPasswordSchema, resetPasswordSchema } from "./doctor.validation";
@@ -19,7 +19,6 @@ router.route("/register")
 
 router.route("/verify-email")
     .post(validate(verifyOtpSchema), verifyEmail)
-
 
 router.route("/login")
     .post(validate(loginSchema), login)
@@ -66,7 +65,7 @@ router.route("/approve-request/:doctorId")
     .post(verifyToken, allowTo("ADMIN"), approveDoctorRequest)
 
 router.route("/reject-request/:doctorId")
-    .post(verifyToken, allowTo("ADMIN"), approveDoctorRequest)
+    .post(verifyToken, allowTo("ADMIN"), rejectDoctorRequest)
 
 router.route("/baan-doctor/:doctorId")
     .post(verifyToken, allowTo("ADMIN"), banDoctor)
