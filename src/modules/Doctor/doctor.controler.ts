@@ -176,6 +176,19 @@ export const approveDoctorRequest = catchAsync(async (req, res, next) => {
 
 })
 
+export const rejectDoctorRequest = catchAsync(async (req, res, next) => {
+
+    const { doctorId } = req.params as { doctorId: string };
+
+    const doctorApprove = await adminService.rejectDoctorRequest(doctorId)
+
+    return res.status(200).json({
+        status: "success",
+        message: doctorApprove,
+    })
+
+})
+
 export const getAllDoctors = catchAsync(async (req, res, next) => {
 
     const doctors = await adminService.getAllDoctors(req.query as { search: string, status: string, sort?: string, page: string, limit: string })
@@ -279,3 +292,14 @@ export const chargeDoctor = catchAsync(async (req, res, next) => {
     });
 
 })
+
+export const banDoctor = catchAsync(async (req, res, next) => {
+
+    const baan = await adminService.banDoctor(req)
+
+    return res.status(200).json({
+        status: baan.status,
+        message: baan.message
+    })
+
+}) 

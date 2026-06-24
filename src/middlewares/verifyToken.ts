@@ -37,7 +37,6 @@ export const verifyToken = catchAsync(async (req, res, next) => {
         if (session.rowCount === 0) {
             return next(new ApiError(401, "Session expired. Please login again."));
         }
-
         setCache(cacheKey, session.rows[0], 1000);
     }
 

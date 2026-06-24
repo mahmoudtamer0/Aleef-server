@@ -1,5 +1,7 @@
 import { getCache, setCache, clearCache } from "../../../cache";
 import pool from "../../../db";
+import { doctorRequestRejectedTemplate } from "../../../emails/doctor.emails";
+import { banUserTemplate, unBanUserTemplate } from "../../../emails/user.emails";
 import { getIO } from "../../../sockets/socket";
 import ApiError from "../../../utils/ApiError";
 import { createNotificationForDoctor } from "../../../utils/notifications/createNotificationRow";
@@ -134,6 +136,28 @@ export const getAllDoctors = async (reqQuery: { search?: string, status?: string
     return response;
 };
 
+export const rejectDoctorRequest = async (doctorId: string) => {
+
+    const doctor = await pool.query(`DELETE FROM doctors WHERE id = $1 AND status = 'pending' RETURNING email,name`, [doctorId])
+
+
+    if (doctor.rows.length == 0) {
+        throw new ApiError(404, "Doctor not found");
+    }
+
+    setImmediate(() => {
+        sendEmail({
+            email: doctor.rows[0].email,
+            subject: "Account Rejected 😔 - Aleef",
+            text: "",
+            message: doctorRequestRejectedTemplate(doctor.rows[0].name, doctor.rows[0].email),
+        }).catch(err => {
+            console.error("Email failed:", err);
+        });
+    });
+
+    return "request rejected"
+}
 
 
 export const getDoctorToAdmin = async (doctorId: string) => {
@@ -155,9 +179,6 @@ export const getDoctorToAdmin = async (doctorId: string) => {
 
 
     if (!doctorResult.rows.length) throw new ApiError(404, "Doctor not found");
-
-    clearCache("doctorsAvailable:")
-    clearCache("doctors:")
 
     return doctorResult.rows[0]
 }
@@ -231,3 +252,89 @@ export const chargeDoctor = async (doctorId: string, amount: number, reason: str
     }
 
 }
+
+export const banDoctor = async (req: any) => {
+    const { doctorId } = req.params;
+    const { banAction, banDays } = req.body;
+
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        if (banAction === "ban") {
+            const days = banDays ? Number(banDays) : 5;
+            const banDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+            const doctor = await client.query(
+                `UPDATE doctors SET status = $1, "banExpiresAt" = $2 WHERE id = $3 RETURNING id, name, email`,
+                ["banned", banDate, doctorId]
+            );
+
+            if (doctor.rowCount === 0) throw new ApiError(404, "doctor not found");
+
+            const userSessions = await client.query(
+                `SELECT id FROM sessions WHERE doctor_id = $1`,
+                [doctorId]
+            );
+
+            await client.query("DELETE FROM sessions WHERE doctor_id = $1", [doctorId]);
+
+            userSessions.rows.forEach(session => clearCache(`session:${session.id}`));
+            clearCache(`doctors:`);
+            clearCache(`doctorsAvailable:`);
+
+
+            await client.query("COMMIT");
+
+
+            setImmediate(async () => {
+                await sendEmail({
+                    email: doctor.rows[0].email,
+                    subject: "Important update about your Aleef account",
+                    text: `...`,
+                    message: banUserTemplate(doctor.rows[0].name, banDate.toLocaleString())
+                }).catch(err => console.log("email error:", err));
+            });
+
+            return { status: "success", message: "User banned successfully" };
+
+        } else if (banAction === "remove") {
+            const doctor = await client.query(
+                `UPDATE doctors SET status = $1, "banExpiresAt" = $2 WHERE id = $3 RETURNING id, name, email`,
+                ["active", null, doctorId]
+            );
+
+            if (doctor.rowCount === 0) throw new ApiError(404, "user not found");
+
+            const userSessions = await client.query(
+                `SELECT id FROM sessions WHERE doctor_id = $1`,
+                [doctorId]
+            );
+
+            userSessions.rows.forEach(session => clearCache(`session:${session.id}`));
+
+            clearCache(`doctors:`);
+            clearCache(`doctorsAvailable:`);
+            await client.query("COMMIT");
+
+            setImmediate(() => {
+                sendEmail({
+                    email: doctor.rows[0].email,
+                    subject: "Your Aleef account is now accessible",
+                    text: `...`,
+                    message: unBanUserTemplate(doctor.rows[0].name)
+                }).catch(err => console.log("email error:", err));
+            });
+
+            return { status: "success", message: "ban removed successfully" };
+        }
+
+        throw new ApiError(400, "unexpected ban action");
+
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
+    }
+};

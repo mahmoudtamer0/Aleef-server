@@ -1,5 +1,5 @@
 import express from "express";
-import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors, approveDoctorRequest, getDoctor, getDoctorSchedual, getDoctorSlots, login, getAvailableDoctors, getDoctorToAdmin, getMeDoctor, editDoctor, getDoctorScheduleForDoctor, editDoctorSchedule, logOut, addFcmToken, changePassword, forgetPassword, resetPassword, chargeDoctor } from "./doctor.controler";
+import { doctorRegister, verifyEmail, resendOtp, getAllDoctorsRequests, getAllDoctors, approveDoctorRequest, getDoctor, getDoctorSchedual, getDoctorSlots, login, getAvailableDoctors, getDoctorToAdmin, getMeDoctor, editDoctor, getDoctorScheduleForDoctor, editDoctorSchedule, logOut, addFcmToken, changePassword, forgetPassword, resetPassword, chargeDoctor, banDoctor } from "./doctor.controler";
 import { upload } from "../../middlewares/doctorProfilepic"
 import validate from "../../middlewares/userValidate";
 import { registerSchema, verifyOtpSchema, resendOtpSchema, editDoctorProfileSchema, editScheduleSchema, changePasswordSchema, forgetPasswordSchema, resetPasswordSchema } from "./doctor.validation";
@@ -64,6 +64,12 @@ router.route("/charge-doctor/:doctorId")
 
 router.route("/approve-request/:doctorId")
     .post(verifyToken, allowTo("ADMIN"), approveDoctorRequest)
+
+router.route("/reject-request/:doctorId")
+    .post(verifyToken, allowTo("ADMIN"), approveDoctorRequest)
+
+router.route("/baan-doctor/:doctorId")
+    .post(verifyToken, allowTo("ADMIN"), banDoctor)
 
 router.route("/:doctorId/schedual")
     .get(verifyToken, getDoctorSchedual)

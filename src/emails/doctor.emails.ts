@@ -186,3 +186,42 @@ export const forgetPasswordTemplate = (name: string, otp: string) => {
     </div>
     `;
 }
+
+export const doctorRequestRejectedTemplate = (name: string, reason: string) => {
+
+    return `
+    <div style="font-family: Arial, sans-serif; text-align: center; background-color: #f5f5f5; padding: 40px;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 10px;">
+
+        <h2 style="color: #E53935;">Application Rejected ❌</h2>
+
+        <p>Dear Dr. ${name},</p>
+
+        <p>We appreciate your interest in joining <strong>Aleef</strong>.</p>
+
+        <p>Unfortunately, your account application could not be approved at this time.</p>
+
+        <div style="background-color: #FFF3F3; border-left: 4px solid #E53935; padding: 15px; margin: 20px 0; text-align: left;">
+            <strong>Reason:</strong><br>
+            ${reason}
+        </div>
+
+        <p>
+            Please review the reason above and feel free to submit a new application after addressing the issue.
+        </p>
+
+        <p style="margin-top:30px; font-size:12px; color:#888;">
+            Thank you for your understanding ❤️
+        </p>
+
+        <p style="margin-top: 15px;">
+            Made with <span style="color: #267D77;">❤️</span> by 
+            <a href="https://www.linkedin.com/in/mahmoudtamer0/" style="color: #267D77; text-decoration: none;">
+                Mahmoud Tamer
+            </a>
+        </p>
+    </div>
+</div>
+    `
+
+}
