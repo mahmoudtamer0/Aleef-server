@@ -203,6 +203,8 @@ export const chargeDoctor = async (doctorId: string, amount: number, reason: str
 
         await client.query(`COMMIT`)
 
+        clearCache(`prevAppointmentsDoctor:${doctorId}`);
+
         setImmediate(async () => {
 
             let isOnline = false;
