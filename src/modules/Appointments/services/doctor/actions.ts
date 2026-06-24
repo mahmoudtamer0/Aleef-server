@@ -1,6 +1,6 @@
 import { clearCache } from "../../../../cache";
 import pool from "../../../../db";
-import { endAppointmentTemplate } from "../../../../emails/appoinment.emails";
+import { acceptedAppointmentTemplate, endAppointmentTemplate } from "../../../../emails/appoinment.emails";
 import { getIO } from "../../../../sockets/socket";
 import { User } from "../../../../types/user";
 import ApiError from "../../../../utils/ApiError";
@@ -36,7 +36,7 @@ export const approveAppointment = async (doctor: User, appointmentId: string) =>
             );
         }
 
-        let [userProfile, chat] = await Promise.all([
+        let [userProfile, chat, doctorProfile] = await Promise.all([
             client.query(
                 `SELECT id, email, name FROM users WHERE id = $1`,
                 [appointment.rows[0].owner]
@@ -48,6 +48,10 @@ export const approveAppointment = async (doctor: User, appointmentId: string) =>
                  WHERE c.chat_type = 'personal'
                  LIMIT 1`,
                 [appointment.rows[0].owner, doctor.id]
+            ),
+            client.query(
+                `SELECT location_link FROM doctors WHERE id = $1`,
+                [doctor.id]
             )
         ]);
 
@@ -145,14 +149,14 @@ export const approveAppointment = async (doctor: User, appointmentId: string) =>
             });
 
 
-            // sendEmail({
-            //     email: userProfile.rows[0].email,
-            //     subject: "Appointment Accepted ✅",
-            //     text: `Hello ${userProfile.rows[0].name}, your appointment has been accepted on ${appointment.rows[0].date} at ${appointment.rows[0].time}.`,
-            //     message: acceptedAppointmentTemplate(userProfile.rows[0].name, appointment.rows[0].date, appointment.rows[0].time, appointment.rows[0].reason),
-            // }).catch(err => {
-            //     console.error("Email failed:", err);
-            // });
+            sendEmail({
+                email: userProfile.rows[0].email,
+                subject: "Appointment Accepted ✅",
+                text: `Hello ${userProfile.rows[0].name}, your appointment has been accepted on ${appointment.rows[0].date} at ${appointment.rows[0].time}.`,
+                message: acceptedAppointmentTemplate(userProfile.rows[0].name, appointment.rows[0].date, appointment.rows[0].time, appointment.rows[0].reason, doctorProfile.rows[0].location_link),
+            }).catch(err => {
+                console.error("Email failed:", err);
+            });
         })
 
 

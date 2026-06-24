@@ -205,6 +205,7 @@ export const chargeDoctor = async (doctorId: string, amount: number, reason: str
 
         clearCache(`prevAppointmentsDoctor:${doctorId}`);
 
+
         setImmediate(async () => {
 
             let isOnline = false;

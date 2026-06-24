@@ -66,12 +66,13 @@ export const acceptedAppointmentTemplate = (
     date: string,
     time: string,
     reason: string,
+    locationLink: string,
 ) => {
     return `
     <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
         <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 10px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
 
-            <h1 style="color: #267D77; text-align: center; margin-bottom: 10px;">
+            <h1 style="color: #267D77; text-align: center;">
                 Aleef
             </h1>
 
@@ -94,6 +95,28 @@ export const acceptedAppointmentTemplate = (
             <p><strong>Time:</strong> ${time}</p>
             <p><strong>Reason:</strong> ${reason}</p>
 
+            <p>
+                <strong>Clinic Location:</strong>
+            </p>
+
+            <div style="text-align: center; margin: 20px 0;">
+                <a
+                    href="${locationLink}"
+                    target="_blank"
+                    style="
+                        background-color: #267D77;
+                        color: white;
+                        padding: 12px 20px;
+                        text-decoration: none;
+                        border-radius: 6px;
+                        display: inline-block;
+                        font-weight: bold;
+                    "
+                >
+                    📍 Open Location
+                </a>
+            </div>
+
             <div style="text-align: center; margin-top: 30px;">
                 <p style="color: #777; font-size: 14px;">
                     Please arrive on time for your appointment 🐶🐱
@@ -108,8 +131,8 @@ export const acceptedAppointmentTemplate = (
 
         </div>
     </div>
-    `
-}
+    `;
+};
 
 
 export const rejectedAppointmentTemplate = (
