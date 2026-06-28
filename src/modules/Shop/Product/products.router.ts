@@ -12,7 +12,7 @@ const router = express.Router()
 router.route("/")
     .post(
         verifyToken,
-        allowTo("ADMIN", "MODERATOR"),
+        allowTo("ADMIN"),
         upload.fields([
             { name: "thumbnail", maxCount: 1 },
             { name: "productImages", maxCount: 5 },
@@ -30,14 +30,14 @@ router.route("/:prodId")
     .get(getProduct)
     .patch(
         verifyToken,
-        allowTo("ADMIN", "MODERATOR"),
+        allowTo("ADMIN"),
         upload.fields([
             { name: "thumbnail", maxCount: 1 },
             { name: "productImages", maxCount: 5 }
         ]),
         editProduct
     )
-    .delete(verifyToken, allowTo("ADMIN", "MODERATOR"), deleteProduct)
+    .delete(verifyToken, allowTo("ADMIN"), deleteProduct)
 
 
 export default router
