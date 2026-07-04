@@ -9,6 +9,7 @@ export const verifyEmailTemplate = (
             <h2 style="color: #333;">Email Verification</h2>
             <p style="color: #555; font-size: 16px;">You're almost ready! Use the code below to verify your email address.</p>
 
+            
             <!-- OTP Code -->
             <div style="margin: 20px 0;">
                 <span style="font-size: 32px; font-weight: bold; color: #267D77; letter-spacing: 8px;">${otp}</span>
