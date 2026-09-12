@@ -164,6 +164,8 @@ export const verifyEmail = async ({ email, otp }: { email: string, otp: string }
             });
         });
 
+        clearCache("doctors:")
+
         return;
 
     } catch (err) {
