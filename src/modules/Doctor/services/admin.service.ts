@@ -18,6 +18,7 @@ export const approveDoctorRequest = async (doctorId: string) => {
 
 
 
+    clearCache(`doctors:`);
     setImmediate(() => {
         sendEmail({
             email: doctor.rows[0].email,
