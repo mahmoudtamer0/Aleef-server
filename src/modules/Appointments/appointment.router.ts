@@ -1,8 +1,8 @@
 import express from "express";
-import { activeAppoinmentsForDoctor, addReview, approveAppointment, bookAppointment, cancelAppointmentByDoctor, cancelAppointmentByUser, changeAppoinmentStatus, checkPendingReview, endAppoinment, getActiveAppointment, getAllAppoinments, getAppoinmentDetailsForAdmin, getAppointmentDetails, getAppointmentsRequestsForDoctor, getPrevAppoinments, getWalletTransactions, prevAppointmentsForDoctor, rejectAppointment, skipAppointmentReview } from "./appointment.controler";
+import { activeAppoinmentsForDoctor, addReview, approveAppointment, bookAppointment, cancelAppointmentByDoctor, cancelAppointmentByUser, changeAppoinmentStatus, checkPendingReview, editAppointmentTime, endAppoinment, getActiveAppointment, getAllAppoinments, getAppoinmentDetailsForAdmin, getAppointmentDetails, getAppointmentsRequestsForDoctor, getPrevAppoinments, getWalletTransactions, prevAppointmentsForDoctor, rejectAppointment, skipAppointmentReview } from "./appointment.controler";
 import { upload } from "../../middlewares/appoinmentUploads"
 import validate from "../../middlewares/userValidate";
-import { addAppointmentSchema, addReviewSchema, cancelAppointmentByUserSchema, endAppointmentSchema, rejectAppoinmentSchema } from "./appointment.validation";
+import { addAppointmentSchema, addReviewSchema, cancelAppointmentByUserSchema, editAppointmentTimeSchema, endAppointmentSchema, rejectAppoinmentSchema } from "./appointment.validation";
 import { verifyToken } from "../../middlewares/verifyToken";
 import { allowTo } from "../../middlewares/allowTo";
 
@@ -63,6 +63,7 @@ router.route("/details-for-admin/:appointmentId")
     .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAppoinmentDetailsForAdmin);
 
 router.route("/:appointmentId")
-    .get(verifyToken, getAppointmentDetails);
+    .get(verifyToken, getAppointmentDetails)
+    .patch(verifyToken, validate(editAppointmentTimeSchema), editAppointmentTime);
 
 export default router

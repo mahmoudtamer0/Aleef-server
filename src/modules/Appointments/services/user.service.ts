@@ -447,3 +447,65 @@ export const skipAppointmentReview = async (user: User, appointmentId: string) =
         client.release();
     }
 }
+
+export const editAppointmentTime = async (user: User, appointmentId: string, date: string, time: string) => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const appointment = await client.query(
+            'SELECT * FROM appointments WHERE id = $1 AND owner = $2 FOR UPDATE',
+            [appointmentId, user.id]
+        );
+
+        if (!appointment.rows.length) throw new ApiError(404, "appointment not found");
+        if (appointment.rows[0].status !== "pending" && appointment.rows[0].status !== "accepted") {
+            throw new ApiError(400, "appointment is not in pending or accepted status");
+        }
+        if (appointment.rows[0].isEdited) throw new ApiError(400, "appointment has already been edited");
+
+        const checkDoctor = await client.query(
+            `SELECT d.status,
+                COUNT(a.id) FILTER (
+                    WHERE a.status = ANY(ARRAY['accepted'])
+                    AND a.time = $2
+                    AND a.date::date = $3::date
+                    AND a.id != $4
+                ) AS active_appointments
+             FROM doctors d
+             LEFT JOIN appointments a ON a.doctor = d.id
+             WHERE d.id = $1 AND d.status = 'active'
+             GROUP BY d.id`,
+            [appointment.rows[0].doctor, time, date, appointmentId]
+        );
+
+        if (!checkDoctor.rows.length) {
+            throw new ApiError(400, "sorry this doctor is not available for appointments at the moment");
+        }
+        if (Number(checkDoctor.rows[0].active_appointments) > 0) {
+            throw new ApiError(400, "sorry this time is not available for this doctor, please select another time slot");
+        }
+
+        await client.query(
+            `UPDATE appointments SET date = $2, time = $3, "isEdited" = true WHERE id = $1`,
+            [appointmentId, date, time]
+        );
+
+        await client.query("COMMIT");
+
+        clearCache(`activeAppointment:${user.id}`);
+        clearCache(`appointment_details_user:_${user.id}_${appointmentId}`);
+        clearCache(`appointmentsRequests:${appointment.rows[0].doctor}`);
+        clearCache(`active_appointments_doctor:${appointment.rows[0].doctor}_${appointment.rows[0].date}`);
+        clearCache(`appointment_details_doctor:${appointmentId}`);
+        clearCache(`active_appointments_doctor:${appointment.rows[0].doctor}`);
+        clearCache(`appointment_details_doctor:_${appointment.rows[0].doctor}_${appointmentId}`);
+
+        return "success";
+    } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+    } finally {
+        client.release();
+    }
+};

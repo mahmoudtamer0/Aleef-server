@@ -254,3 +254,16 @@ export const skipAppointmentReview = catchAsync(async (req, res, next) => {
         status: "success",
     })
 })
+
+
+export const editAppointmentTime = catchAsync(async (req, res, next) => {
+    const { appointmentId } = req.params as { appointmentId: string };
+    const { date, time } = req.body;
+    const user = req.user as User;
+    await userServices.editAppointmentTime(user, appointmentId, date, time);
+
+    return res.status(200).json({
+        status: "success",
+    })
+
+})

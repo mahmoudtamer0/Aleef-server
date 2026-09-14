@@ -83,3 +83,17 @@ export const endAppointmentSchema = Joi.object({
 
     chatExpiryDays: Joi.number().integer().optional(),
 });
+
+
+export const editAppointmentTimeSchema = Joi.object({
+    date: Joi.date().required().messages({
+        "any.required": "Date is required",
+    }),
+
+    time: Joi.string()
+        .pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+        .required()
+        .messages({
+            "string.pattern.base": "Time must be in HH:mm format",
+        }),
+})
