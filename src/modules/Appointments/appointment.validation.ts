@@ -1,7 +1,6 @@
 import Joi from "joi";
 
-
-export const addAppointmentSchema = Joi.object({
+export const bookAppointmentSchema = Joi.object({
     pet: Joi.string().required().messages({
         "any.required": "Pet is required",
     }),
@@ -24,6 +23,57 @@ export const addAppointmentSchema = Joi.object({
     reason: Joi.string().min(3).max(500).required(),
 
     notes: Joi.string().max(1000).min(0).optional(),
+    paymentMethod: Joi.string().valid("CASH", "CARD").required().messages({
+        "any.required": "Payment method is required",
+        "any.only": "Payment method must be either CASH or CARD",
+    }),
+    promoCode: Joi.string().max(50).optional(),
+
+})
+    .custom((value, helpers) => {
+        const now = new Date();
+
+        const appointmentDateTime = new Date(value.date);
+        const [hours, minutes] = value.time.split(":");
+
+        appointmentDateTime.setHours(hours, minutes);
+
+        if (appointmentDateTime <= now) {
+            return helpers.error("any.invalid");
+        }
+
+        return value;
+    })
+    .messages({
+        "any.invalid": "Appointment must be in the future",
+    });
+
+
+export const previewAppointmentSchema = Joi.object({
+    pet: Joi.string().required().messages({
+        "any.required": "Pet is required",
+    }),
+
+    doctor: Joi.string().required().messages({
+        "any.required": "Doctor is required",
+    }),
+
+    date: Joi.date().required().messages({
+        "any.required": "Date is required",
+    }),
+
+    time: Joi.string()
+        .pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/) // HH:mm
+        .required()
+        .messages({
+            "string.pattern.base": "Time must be in HH:mm format",
+        }),
+
+    reason: Joi.string().min(3).max(500).required(),
+
+    notes: Joi.string().max(1000).min(0).optional(),
+
+    promoCode: Joi.string().max(50).optional(),
 
 })
     .custom((value, helpers) => {

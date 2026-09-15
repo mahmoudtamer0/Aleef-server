@@ -2,18 +2,18 @@ import express from "express";
 import { activeAppoinmentsForDoctor, addReview, approveAppointment, bookAppointment, cancelAppointmentByDoctor, cancelAppointmentByUser, changeAppoinmentStatus, checkPendingReview, editAppointmentTime, endAppoinment, getActiveAppointment, getAllAppoinments, getAppoinmentDetailsForAdmin, getAppointmentDetails, getAppointmentsRequestsForDoctor, getPrevAppoinments, getWalletTransactions, prevAppointmentsForDoctor, previewAppointment, rejectAppointment, skipAppointmentReview } from "./appointment.controler";
 import { upload } from "../../middlewares/appoinmentUploads"
 import validate from "../../middlewares/userValidate";
-import { addAppointmentSchema, addReviewSchema, cancelAppointmentByUserSchema, editAppointmentTimeSchema, endAppointmentSchema, rejectAppoinmentSchema } from "./appointment.validation";
+import { addReviewSchema, bookAppointmentSchema, cancelAppointmentByUserSchema, editAppointmentTimeSchema, endAppointmentSchema, previewAppointmentSchema, rejectAppoinmentSchema } from "./appointment.validation";
 import { verifyToken } from "../../middlewares/verifyToken";
 import { allowTo } from "../../middlewares/allowTo";
 
 const router = express.Router()
 
 router.route("/")
-    .post(verifyToken, upload.single("profilePic"), validate(addAppointmentSchema), bookAppointment)
+    .post(verifyToken, upload.single("profilePic"), validate(bookAppointmentSchema), bookAppointment)
     .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllAppoinments)
 
 router.route("/preview")
-    .post(verifyToken, validate(addAppointmentSchema), previewAppointment)
+    .post(verifyToken, validate(previewAppointmentSchema), previewAppointment)
 
 router.route("/get-my-active-appointment")
     .get(verifyToken, getActiveAppointment)
