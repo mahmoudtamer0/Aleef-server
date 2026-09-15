@@ -1,6 +1,5 @@
 import Joi from "joi";
 
-// reusable ObjectId
 
 export const addAppointmentSchema = Joi.object({
     pet: Joi.string().required().messages({

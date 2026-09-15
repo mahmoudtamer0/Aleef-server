@@ -4,134 +4,220 @@ import { getIO } from "../../../sockets/socket";
 import { User } from "../../../types/user";
 import ApiError from "../../../utils/ApiError";
 import { sendNotificationService } from "../../../utils/notifications/sendNotificationService";
+import { Pool, PoolClient } from 'pg';
+import { findApplicableDiscount, redeemDiscountWithinTransaction } from "../../discounts/discounts.services";
+import { DOCTOR_COMMISSION_RATE, SERVICE_FEE_RATE } from '../appointment.pricing.constants';
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+export async function resolveAppointmentEligibilityAndPricing(
+    client: PoolClient | Pool,
+    user: User,
+    doctor: string,
+    date: string,
+    time: string,
+    pet: string,
+    promoCode?: string
+) {
+    const [userResult, doctorResult, petResult] = await Promise.all([
+        client.query(
+            `SELECT u.id, u.email, u.name,
+                    COUNT(a.id) FILTER (WHERE a.status = ANY(ARRAY['pending', 'accepted'])) AS active_appointments,
+                    COUNT(a.id) FILTER (
+                        WHERE a.status = 'cancelled-by-owner'
+                        AND a."updatedAt" >= NOW() - INTERVAL '15 days'
+                    ) AS recent_cancellations
+             FROM users u
+             LEFT JOIN appointments a ON a.owner = u.id
+             WHERE u.id = $1
+             GROUP BY u.id`,
+            [user.id]
+        ),
+        client.query(
+            `SELECT d.id, d.name, d.city, d.address, d."appointmentFee",
+            COUNT(a.id) FILTER (
+                WHERE a.status = ANY(ARRAY['accepted']) 
+                AND a.time = $2 
+                AND a.date::date = $3::date
+            ) AS active_appointments,
+            d.status
+            FROM doctors d
+            LEFT JOIN appointments a ON a.doctor = d.id
+            WHERE d.id = $1 AND d.status = 'active'
+            GROUP BY d.id`,
+            [doctor, time, date]
+        ),
+        client.query(`SELECT name FROM pets WHERE id = $1`, [pet]),
+    ]);
+
+    if (!userResult.rows.length) throw new ApiError(404, 'user not found');
+    if (Number(userResult.rows[0].active_appointments) > 0) {
+        throw new ApiError(
+            400,
+            'you have an active appointment, cancel your active appointment to be eligible to book another one'
+        );
+    }
+
+    if (Number(userResult.rows[0].recent_cancellations) > 2) {
+        throw new ApiError(400, 'you have too many cancelled appointments,wait a few days before booking another one');
+    }
+
+    if (!doctorResult.rows.length || doctorResult.rows[0].status !== 'active') {
+        throw new ApiError(400, 'sorry this doctor is not available for appointments at the moment');
+    }
+
+    if (Number(doctorResult.rows[0].active_appointments) > 0) {
+        throw new ApiError(400, 'sorry this time is not available for this doctor, please select another time slot');
+    }
+
+    if (!petResult.rows.length) {
+        throw new ApiError(404, 'pet not found');
+    }
+
+    // doctorFee = the doctor's ORIGINAL listed price, before any discount.
+    // This matches your existing "doctorFee" column semantics exactly —
+    // it is NOT the doctor's net payout.
+    const doctorFee: number = doctorResult.rows[0].appointmentFee;
+
+    const discountResult = await findApplicableDiscount(user.id, doctorFee, promoCode);
+    const discount = discountResult ? discountResult.amountSaved : 0;
+
+    // appointmentFee = doctorFee - discount, matching your existing column:
+    // "the price the user pays for the appointment itself".
+    const appointmentFee = round2(doctorFee - discount);
+
+    // Service fee is always computed on doctorFee (the original price) —
+    // the discount never touches it, per the agreed pricing model.
+    const serviceFee = round2(doctorFee * SERVICE_FEE_RATE);
+
+    // What the customer actually pays in total (appointment portion + service fee).
+    const totalPaid = round2(appointmentFee + serviceFee);
 
 
-export const bookAppointment = async (user: User, { pet, doctor, date, time, reason, notes }: any) => {
+    const doctorPayout = round2(doctorFee * (1 - DOCTOR_COMMISSION_RATE));
+
+    return {
+        doctor: doctorResult.rows[0],
+        petResult: petResult.rows[0],
+        doctorResult: doctorResult.rows[0],
+        userResult: userResult.rows[0],
+        date,
+        time,
+        doctorAppointmentFee: doctorResult.rows[0].appointmentFee,
+        doctorFee,
+        discount,
+        discountDetails: discountResult,
+        appointmentFee,
+        serviceFee,
+        totalPaid,
+        doctorPayout,
+        doctorCommissionRate: DOCTOR_COMMISSION_RATE,
+        serviceFeeRate: SERVICE_FEE_RATE,
+    };
+}
+
+
+export async function previewAppointmentPricing(
+    user: User,
+    doctor: string,
+    date: string,
+    time: string,
+    pet: string,
+    promoCode?: string
+) {
+    return resolveAppointmentEligibilityAndPricing(pool, user, doctor, date, time, pet, promoCode);
+}
+
+export const bookAppointment = async (
+    user: User,
+    { pet, doctor, date, time, reason, notes, promoCode }: any
+) => {
     const io = getIO();
     const client = await pool.connect();
     try {
-        await client.query("BEGIN");
+        await client.query('BEGIN');
 
-        const [userResult, doctorResult, petResult] = await Promise.all([
-            client.query(
-                `SELECT u.id, u.email, u.name,
-                        COUNT(a.id) FILTER (WHERE a.status = ANY(ARRAY['pending', 'accepted'])) AS active_appointments,
-                        COUNT(a.id) FILTER (
-                            WHERE a.status = 'cancelled-by-owner'
-                            AND a."updatedAt" >= NOW() - INTERVAL '15 days'
-                        ) AS recent_cancellations
-                 FROM users u
-                 LEFT JOIN appointments a ON a.owner = u.id
-                 WHERE u.id = $1
-                 GROUP BY u.id`,
-                [user.id]
-            ),
-            client.query(
-                `SELECT d.id, d.name, d.city, d.address, d."appointmentFee",
-                COUNT(a.id) FILTER (
-                    WHERE a.status = ANY(ARRAY['accepted']) 
-                    AND a.time = $2 
-                    AND a.date::date = $3::date
-                ) AS active_appointments,
-                d.status
-                FROM doctors d
-                LEFT JOIN appointments a ON a.doctor = d.id
-                WHERE d.id = $1 AND d.status = 'active'
-                GROUP BY d.id`,
-                [doctor, time, date]
-            ),
-            client.query(`
-                SELECT name FROM pets WHERE id = $1
-                `, [pet])
-        ]);
-
-
-
-        if (!userResult.rows.length) throw new ApiError(404, "user not found");
-        if (Number(userResult.rows[0].active_appointments) > 0) {
-            throw new ApiError(400, "you have an active appointment, cancel your active appointment to be eligible to book another one");
-        }
-
-        if (Number(userResult.rows[0].recent_cancellations) > 2) {
-            throw new ApiError(400, "you have too many cancelled appointments,wait a few days before booking another one");
-        }
-
-
-        if (!doctorResult.rows.length || doctorResult.rows[0].status !== "active") {
-            throw new ApiError(400, "sorry this doctor is not available for appointments at the moment");
-        }
-
-        if (Number(doctorResult.rows[0].active_appointments) > 0) {
-            throw new ApiError(400, "sorry this time is not available for this doctor, please select another time slot");
-        }
-
-        const checkFirstAppointment = await client.query(
-            `SELECT COUNT(*) AS total_count
-             FROM appointments
-             WHERE owner = $1 AND status = 'completed'`,
-            [user.id]
-        );
-
-        let finalAppointmentFee = doctorResult.rows[0].appointmentFee;
-        let discount = 0;
-
-        if (Number(checkFirstAppointment.rows[0].total_count) === 0) {
-            finalAppointmentFee = 0;
-            discount = doctorResult.rows[0].appointmentFee;
-        }
-
-
+        const {
+            petResult,
+            doctorResult,
+            doctorFee,
+            discount,
+            discountDetails,
+            appointmentFee,
+            serviceFee,
+            totalPaid,
+            doctorPayout,
+            doctorCommissionRate,
+            serviceFeeRate,
+        } = await resolveAppointmentEligibilityAndPricing(client, user, doctor, date, time, pet, promoCode);
 
         const appointmentResult = await client.query(
-            `INSERT INTO appointments(owner, pet, doctor, date, time, reason, notes,"appointmentFee",discount,"doctorFee")
-            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            `INSERT INTO appointments(
+                owner, pet, doctor, date, time, reason, notes,
+                "appointmentFee", discount, "doctorFee",
+                "serviceFee", "totalPaid", "doctorPayout",
+                "doctorCommissionRate", "serviceFeeRate"
+            )
+            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
              RETURNING * `,
             [
-                user.id, pet, doctor, date, time, reason,
-                notes && notes.trim().length > 0 ? notes : null, finalAppointmentFee, discount, doctorResult.rows[0].appointmentFee
+                user.id,
+                pet,
+                doctor,
+                date,
+                time,
+                reason,
+                notes && notes.trim().length > 0 ? notes : null,
+                appointmentFee,
+                discount,
+                doctorFee,
+                serviceFee,
+                totalPaid,
+                doctorPayout,
+                doctorCommissionRate,
+                serviceFeeRate,
             ]
         );
 
-        await client.query("COMMIT");
+        if (discountDetails) {
+            await redeemDiscountWithinTransaction(
+                client,
+                discountDetails.discount.id,
+                user.id,
+                appointmentResult.rows[0].id,
+                discountDetails.amountSaved
+            );
+        }
+
+        await client.query('COMMIT');
 
         clearCache(`activeAppointment:${user.id}`);
         clearCache(`appointmentsRequests:${doctor}`);
 
         setImmediate(async () => {
-
-
-            io.to(`user:${doctorResult.rows[0].id.toString()}`).emit("notification", {
-                type: "APPOINTMENT_REQUEST",
-                title: "New Appointment Request 🐾",
-                body: `${user.name} has requested an appointment for ${petResult.rows[0].name}, Please review the request.`,
-                data: {
-                    type: "appointment",
-                    appointmentId: appointmentResult.rows[0].id,
-                }
-            })
-
+            io.to(`user:${doctorResult.id.toString()}`).emit('notification', {
+                type: 'APPOINTMENT_REQUEST',
+                title: 'New Appointment Request 🐾',
+                body: `${user.name} has requested an appointment for ${petResult.name}, Please review the request.`,
+                data: { type: 'appointment', appointmentId: appointmentResult.rows[0].id },
+            });
 
             sendNotificationService(
-                doctorResult.rows[0].id.toString(),
-                "DOCTOR",
-                "New Appointment Request 🐾",
-                `${user.name} has requested an appointment for ${petResult.rows[0].name}, Please review the request.`
+                doctorResult.id.toString(),
+                'DOCTOR',
+                'New Appointment Request 🐾',
+                `${user.name} has requested an appointment for ${petResult.name}, Please review the request.`
             );
         });
 
         return appointmentResult.rows[0];
-
-
-
     } catch (err) {
-        await client.query("ROLLBACK");
+        await client.query('ROLLBACK');
         throw err;
     } finally {
         client.release();
     }
-
-}
-
+};
 
 export const getActiveAppointment = async (user: User) => {
 

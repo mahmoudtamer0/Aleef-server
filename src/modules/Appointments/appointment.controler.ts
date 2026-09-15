@@ -267,3 +267,28 @@ export const editAppointmentTime = catchAsync(async (req, res, next) => {
     })
 
 })
+
+export const previewAppointment = catchAsync(async (req, res, next) => {
+    const { doctor, date, time, pet, promoCode } = req.body;
+    const user = req.user as User;
+    const appointment = await userServices.previewAppointmentPricing(user, doctor, date, time, pet, promoCode);
+    return res.status(200).json({
+        status: "success",
+        doctor: { name: appointment.doctorResult.name },
+        pet: { name: appointment.petResult.name },
+        date: appointment.date,
+        time: appointment.time,
+
+        originalFee: appointment.doctorFee,           // السعر الأصلي قبل أي خصم (500)
+        discount: appointment.discount,                // قيمة الخصم بالجنيه (150)
+        appointmentFee: appointment.appointmentFee,    // بعد الخصم (350) — ده المعنى الصح لعمود appointmentFee
+        discountDetails: {
+            name: appointment.discountDetails?.discount.name ?? null,
+            type: appointment.discountDetails?.discount.type ?? null,
+            value: appointment.discountDetails ? Number(appointment.discountDetails.discount.value) : null,
+            amountSaved: appointment.discountDetails?.amountSaved ?? null,
+        },
+        serviceFee: appointment.serviceFee,            // 50
+        totalPaid: appointment.totalPaid,               // 400
+    });
+})
