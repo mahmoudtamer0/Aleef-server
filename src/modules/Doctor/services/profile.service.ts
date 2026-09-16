@@ -274,13 +274,14 @@ export const getAvailableDoctors = async (reqQuery: {
         ? `WHERE ${filters.join(" AND ")} AND d.status = 'active'`
         : `WHERE d.status = 'active'`;
 
-    // ترتيب: لو فيه location، الأولوية دايمًا للأقرب، وبعدين حسب الـ sort
+    const DISTANCE_BUCKET_KM = 5;
+
     let orderBy: string;
     if (hasLocation) {
         if (sort === "top_rated") {
-            orderBy = `ORDER BY distance_km ASC, d.rating DESC NULLS LAST`;
+            orderBy = `ORDER BY FLOOR(distance_km / ${DISTANCE_BUCKET_KM}) ASC, d.rating DESC NULLS LAST`;
         } else if (sort === "lowest_price") {
-            orderBy = `ORDER BY distance_km ASC, d."appointmentFee" ASC NULLS LAST`;
+            orderBy = `ORDER BY FLOOR(distance_km / ${DISTANCE_BUCKET_KM}) ASC, d."appointmentFee" ASC NULLS LAST`;
         } else {
             orderBy = `ORDER BY distance_km ASC`;
         }
