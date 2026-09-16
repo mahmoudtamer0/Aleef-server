@@ -207,12 +207,13 @@ export const getAllDoctors = catchAsync(async (req, res, next) => {
 
 export const getAvailableDoctors = catchAsync(async (req, res, next) => {
 
+    const user = req.user as User | null;
     const doctors = await profileService.getAvailableDoctors(req.query as {
         search: string, status: string, sort: string,
         page: string, limit: string,
         user_lat?: string, user_lng?: string,
         city?: string
-    })
+    }, user?.id || null)
 
     return res.status(200).json({
         status: "success",

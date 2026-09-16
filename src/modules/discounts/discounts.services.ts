@@ -230,3 +230,76 @@ export async function redeemDiscountWithinTransaction(
         [discountId, userId, appointmentId, amountSaved]
     );
 }
+
+
+
+
+
+export async function findUserActiveDiscount(userId: string): Promise<Discount | null> {
+    const result = await pool.query<Discount>(
+        `SELECT * FROM discounts
+         WHERE is_active = TRUE
+           AND (valid_until IS NULL OR valid_until > NOW())
+           AND (
+             (discount_scope = 'USER_SPECIFIC' AND target_user_id = $1
+               AND (max_total_uses IS NULL OR current_total_uses < max_total_uses))
+             OR
+             (discount_scope = 'GLOBAL_LIMITED'
+               AND (max_total_uses IS NULL OR current_total_uses < max_total_uses)
+               AND (
+                 applies_to_first_appointment_only = FALSE
+                 OR NOT EXISTS (SELECT 1 FROM appointments WHERE owner = $1)
+               ))
+           )
+         ORDER BY discount_scope = 'USER_SPECIFIC' DESC, value DESC
+         LIMIT 1`,
+        [userId]
+    );
+
+    const discount = result.rows[0];
+    if (!discount) return null;
+
+    const perUserCount = await pool.query(
+        `SELECT COUNT(*) FROM discount_redemptions WHERE discount_id = $1 AND user_id = $2`,
+        [discount.id, userId]
+    );
+    if (Number(perUserCount.rows[0].count) >= discount.max_uses_per_user) {
+        return null;
+    }
+
+    return discount;
+}
+
+export function applyDiscountToFee(originalFee: number, discount: Discount | null) {
+    if (!discount) {
+        return {
+            originalFee,
+            finalFee: originalFee,
+            discount: null
+        };
+    }
+
+    const rawAmount = discount.type === 'PERCENTAGE'
+        ? (originalFee * discount.value) / 100
+        : discount.value;
+
+    const cappedAmount = discount.max_discount_amount !== null && discount.max_discount_amount !== undefined
+        ? Math.min(rawAmount, discount.max_discount_amount)
+        : rawAmount;
+
+    const amountSaved = Math.round(Math.min(cappedAmount, originalFee) * 100) / 100;
+    const finalFee = Math.round((originalFee - amountSaved) * 100) / 100;
+
+    return {
+        originalFee,
+        finalFee,
+        discount: {
+            type: discount.type,
+            value: discount.value,
+            label: discount.type === 'PERCENTAGE'
+                ? `-${discount.value}%`
+                : `-${discount.value} EGP`,
+            amountSaved
+        }
+    };
+}

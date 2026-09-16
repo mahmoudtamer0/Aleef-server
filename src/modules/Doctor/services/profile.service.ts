@@ -5,6 +5,7 @@ import ApiError from "../../../utils/ApiError";
 import cloudinary from "../../../utils/cloudinary";
 import { getNextDays } from "../../../utils/getDoctorAvailableDays";
 import { getAvailableSlots } from "../../../utils/getDoctorAvailableSlots";
+import { applyDiscountToFee, findUserActiveDiscount } from "../../discounts/discounts.services";
 
 export const getDoctorSchedual = async (doctorId: string): Promise<any> => {
 
@@ -217,7 +218,7 @@ export const getAvailableDoctors = async (reqQuery: {
     page?: string, limit?: string,
     user_lat?: string, user_lng?: string,
     city?: string
-}) => {
+}, userId: string | null) => {
 
     const { search, status, sort, city } = reqQuery;
     const user_lat = reqQuery.user_lat ? parseFloat(reqQuery.user_lat) : null;
@@ -325,11 +326,21 @@ export const getAvailableDoctors = async (reqQuery: {
 
     const totalDoctors = result.rows[0]?.total_count ?? 0;
 
-    const finalDoctors = result.rows.map((doc: any) => ({
-        ...doc,
-        distance_km: doc.distance_km ? Math.round(Number(doc.distance_km)) : null,
-        minutes: doc.distance_km ? Math.round(Number(doc.distance_km) * 1.5) : null
-    }));
+    const userDiscount = userId ? await findUserActiveDiscount(userId) : null;
+
+    const finalDoctors = result.rows.map((doc: any) => {
+        const originalFee = Number(doc.appointmentFee) || 0;
+        const { finalFee, discount } = applyDiscountToFee(originalFee, userDiscount);
+
+        return {
+            ...doc,
+            distance_km: doc.distance_km ? Math.round(Number(doc.distance_km)) : null,
+            minutes: doc.distance_km ? Math.round(Number(doc.distance_km) * 1.5) : null,
+            originalFee,
+            finalFee,
+            discount
+        };
+    });
 
     const response = {
         doctors: finalDoctors,

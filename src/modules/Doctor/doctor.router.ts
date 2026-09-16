@@ -48,7 +48,7 @@ router.route("/get-all-doctors")
     .get(verifyToken, allowTo("ADMIN", "MODERATOR"), getAllDoctors)
 
 router.route("/get-available-doctors")
-    .get(getAvailableDoctors)
+    .get(verifyToken, getAvailableDoctors)
 
 router.route("/me/schedule")
     .get(verifyToken, getDoctorScheduleForDoctor)
