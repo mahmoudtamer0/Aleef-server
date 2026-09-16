@@ -215,10 +215,11 @@ export const editDoctorSchedule = async (doctor: User, schedule: { day_of_week: 
 export const getAvailableDoctors = async (reqQuery: {
     search?: string, status?: string, sort?: string,
     page?: string, limit?: string,
-    user_lat?: string, user_lng?: string
+    user_lat?: string, user_lng?: string,
+    city?: string
 }) => {
 
-    const { search, status, sort } = reqQuery;
+    const { search, status, sort, city } = reqQuery;
     const user_lat = reqQuery.user_lat ? parseFloat(reqQuery.user_lat) : null;
     const user_lng = reqQuery.user_lng ? parseFloat(reqQuery.user_lng) : null;
 
@@ -226,7 +227,7 @@ export const getAvailableDoctors = async (reqQuery: {
     const limit = Math.min(Number(reqQuery.limit) || 10, 5);
     const offset = (page - 1) * limit;
 
-    const cacheKey = `doctorsAvailable:${page}_${limit}_${sort}_${status}_${search}_${user_lat}_${user_lng}`;
+    const cacheKey = `doctorsAvailable:${page}_${limit}_${sort}_${status}_${search}_${city}_${user_lat}_${user_lng}`;
     const cached = getCache(cacheKey);
     if (cached) return cached;
 
@@ -235,7 +236,9 @@ export const getAvailableDoctors = async (reqQuery: {
     let paramIndex = 1;
 
     let distanceSelect = `NULL AS distance_km`;
-    if (user_lat !== null && user_lng !== null) {
+    const hasLocation = user_lat !== null && user_lng !== null;
+
+    if (hasLocation) {
         distanceSelect = `
             ROUND(CAST(
                 6371 * acos(
@@ -261,14 +264,35 @@ export const getAvailableDoctors = async (reqQuery: {
         paramIndex++;
     }
 
+    if (city && city !== "") {
+        filters.push(`d.city ILIKE $${paramIndex}`);
+        params.push(city);
+        paramIndex++;
+    }
+
     const whereClause = filters.length > 0
         ? `WHERE ${filters.join(" AND ")} AND d.status = 'active'`
         : `WHERE d.status = 'active'`;
 
-    const orderBy = (user_lat !== null && user_lng !== null)
-        ? `ORDER BY distance_km ASC`
-        : `ORDER BY completed_appointments DESC`;
-
+    // ترتيب: لو فيه location، الأولوية دايمًا للأقرب، وبعدين حسب الـ sort
+    let orderBy: string;
+    if (hasLocation) {
+        if (sort === "top_rated") {
+            orderBy = `ORDER BY distance_km ASC, d.rating DESC NULLS LAST`;
+        } else if (sort === "lowest_price") {
+            orderBy = `ORDER BY distance_km ASC, d."appointmentFee" ASC NULLS LAST`;
+        } else {
+            orderBy = `ORDER BY distance_km ASC`;
+        }
+    } else {
+        if (sort === "top_rated") {
+            orderBy = `ORDER BY d.rating DESC NULLS LAST`;
+        } else if (sort === "lowest_price") {
+            orderBy = `ORDER BY d."appointmentFee" ASC NULLS LAST`;
+        } else {
+            orderBy = `ORDER BY completed_appointments DESC`;
+        }
+    }
 
     const mainQuery = `
         SELECT
