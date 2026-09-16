@@ -276,12 +276,20 @@ export const getAvailableDoctors = async (reqQuery: {
 
     const DISTANCE_BUCKET_KM = 5;
 
+    const distanceExpr = hasLocation
+        ? `(6371 * acos(
+                    cos(radians($1)) * cos(radians(d.lat)) *
+                    cos(radians(d.lng) - radians($2)) +
+                    sin(radians($1)) * sin(radians(d.lat))
+                ))`
+        : null;
+
     let orderBy: string;
     if (hasLocation) {
         if (sort === "top_rated") {
-            orderBy = `ORDER BY FLOOR(distance_km / ${DISTANCE_BUCKET_KM}) ASC, d.rating DESC NULLS LAST`;
+            orderBy = `ORDER BY FLOOR(${distanceExpr} / ${DISTANCE_BUCKET_KM}) ASC, d.rating DESC NULLS LAST`;
         } else if (sort === "lowest_price") {
-            orderBy = `ORDER BY FLOOR(distance_km / ${DISTANCE_BUCKET_KM}) ASC, d."appointmentFee" ASC NULLS LAST`;
+            orderBy = `ORDER BY FLOOR(${distanceExpr} / ${DISTANCE_BUCKET_KM}) ASC, d."appointmentFee" ASC NULLS LAST`;
         } else {
             orderBy = `ORDER BY distance_km ASC`;
         }
