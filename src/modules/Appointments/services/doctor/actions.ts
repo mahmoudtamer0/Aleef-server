@@ -20,7 +20,7 @@ export const approveAppointment = async (doctor: User, appointmentId: string) =>
             [appointmentId, doctor.id]
         );
 
-        if (appointment.rowCount === 0) throw new Error("Appointment not found");
+        if (appointment.rowCount === 0) throw new ApiError(404, "Appointment not found");
 
         const findAnotherAppointmentForThisDoc = await client.query(`
             SELECT id FROM appointments

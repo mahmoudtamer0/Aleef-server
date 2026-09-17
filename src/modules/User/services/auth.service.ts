@@ -170,11 +170,11 @@ export const google = async (idToken: string, device: string) => {
     const googleAndroidClientId = process.env["GOOGLE_ANDROID_CLIENT_ID"];
 
     if (!googleClientId) {
-        throw new Error("GOOGLE_CLIENT_ID is not configured");
+        throw new ApiError(500, "GOOGLE_CLIENT_ID is not configured");
     }
 
     if (!googleAndroidClientId) {
-        throw new Error("GOOGLE_Android_CLIENT_ID is not configured");
+        throw new ApiError(500, "GOOGLE_Android_CLIENT_ID is not configured");
     }
 
     const client = new OAuth2Client(

@@ -21,7 +21,6 @@ initSocket(server);
 
 const PORT = process.env["PORT"] || 3000;
 
-// server.ts
 pool.connect()
     .then(client => {
         client.release();

@@ -86,7 +86,7 @@ export async function getAllDiscounts(filters: {
 export async function updateDiscount(id: string, input: UpdateDiscountInput) {
     const fields = Object.keys(input) as (keyof UpdateDiscountInput)[];
     if (fields.length === 0) {
-        throw new Error('No fields provided to update');
+        throw new ApiError(400, "No fields to update");
     }
 
     const setClauses = fields.map((field, i) => `${field} = $${i + 1}`);

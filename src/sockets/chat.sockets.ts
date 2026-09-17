@@ -55,6 +55,8 @@ export = (io: any, socket: any) => {
                 return io.to(socket.user.id).emit("error_message", { errMessage: "message too long" });
             }
 
+            const notificationBody = data.message?.trim().length > 0 ? data.message : "📷 Photo";
+
             const chatResult = await pool.query(
                 `SELECT c.id, c."expiresAt", c."updatedAt", cm.member_id AS other_member_id, cm.member_model AS other_member_model,
                 CASE WHEN cm.member_model = 'User' THEN
@@ -188,12 +190,8 @@ export = (io: any, socket: any) => {
 
                 const otherModel = model === "Doctor" ? "USER" : "DOCTOR";
 
-                sendNotificationService(
-                    other_member_id,
-                    otherModel,
-                    sender.name,
-                    formattedMessage.text
-                );
+                sendNotificationService(other_member_id, otherModel, sender.name, notificationBody)
+                    .catch((err: any) => console.error("Notification error:", err));
 
             } else if (isOnline) {
 
@@ -231,12 +229,8 @@ export = (io: any, socket: any) => {
 
                 const otherModel = model === "Doctor" ? "USER" : "DOCTOR";
 
-                sendNotificationService(
-                    other_member_id,
-                    otherModel,
-                    sender.name,
-                    formattedMessage.text
-                );
+                sendNotificationService(other_member_id, otherModel, sender.name, notificationBody)
+                    .catch((err: any) => console.error("Notification error:", err));
 
 
             } else {
@@ -251,12 +245,8 @@ export = (io: any, socket: any) => {
 
                 const otherModel = model === "Doctor" ? "USER" : "DOCTOR";
 
-                sendNotificationService(
-                    other_member_id,
-                    otherModel,
-                    sender.name,
-                    formattedMessage.text
-                );
+                sendNotificationService(other_member_id, otherModel, sender.name, notificationBody)
+                    .catch((err: any) => console.error("Notification error:", err));
             }
 
             io.to(`user:${socket.user.id}`).emit("chat_updated", {
