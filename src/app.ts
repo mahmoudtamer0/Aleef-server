@@ -14,6 +14,7 @@ import appointmentsRouter from "./modules/Appointments/appointment.router";
 import chatRouter from "./modules/Chat/chat.router";
 import globalErrorHandler from "./middlewares/error";
 import { vaccinationReminder } from "./jobs/vaccinationReminder.job";
+import { uploadErrorHandler } from "./middlewares/uploadError";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -62,6 +63,8 @@ app.use('/api/v1/chats', apiLimiter, chatRouter);
 app.use('/api/v1', (req, res) => {
     res.status(404).json({ status: "fail", message: "Route not found" });
 });
+
+app.use(uploadErrorHandler);
 
 app.use(globalErrorHandler);
 

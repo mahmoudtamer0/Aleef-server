@@ -16,7 +16,11 @@ router.route("/all")
 
 
 router.route("/chatbot/image")
-    .post(verifyToken, upload.single("image"), uploadChatPhoto)
+    .post(
+        verifyToken,
+        upload.single("image"),
+        uploadChatPhoto,
+    );
 
 router.route("/chatbot")
     .get(verifyToken, getChatbotMessages)
