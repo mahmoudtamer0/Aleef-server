@@ -7,8 +7,6 @@ import ApiError from "../../../../utils/ApiError";
 import { sendEmail } from "../../../../utils/sendEmail";
 import { sendNotificationService } from "../../../../utils/notifications/sendNotificationService";
 import { createNotification } from "../../../../utils/notifications/createNotificationRow";
-import { APPOINTMENT_COMMISSION } from "../../../../constants/appoinmentCommision";
-
 
 export const approveAppointment = async (doctor: User, appointmentId: string) => {
     const io = getIO();
@@ -504,7 +502,7 @@ export const endAppointment = async (
         const doctorFee = appointment.doctorFee;
         const appointmentFee = appointment.appointmentFee;
         let remaining = doctorFee - appointmentFee;
-        const commission = Math.round(doctorFee * APPOINTMENT_COMMISSION);
+        const commission = Math.round(doctorFee * 0.10);
 
         const change = remaining - commission;
 
