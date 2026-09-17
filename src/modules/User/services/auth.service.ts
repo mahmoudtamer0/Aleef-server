@@ -274,6 +274,7 @@ export const changePassword = async (user: User, currentPassword: string, newPas
 
     } catch (err) {
         await client.query("ROLLBACK");
+        if (err instanceof ApiError) throw err;
         throw new ApiError(500, "something went wrong");
     } finally {
         client.release();
@@ -362,7 +363,7 @@ export const resetPassword = async (newPassword: string, otp: string) => {
         );
 
         await client.query(
-            `DELETE FROM password_reset_tokens WHERE user = $1 AND token = $2`,
+            `DELETE FROM password_reset_tokens WHERE "user" = $1 AND token = $2`,
             [passwordResetToken.rows[0].user, hashedOtp]
         );
 

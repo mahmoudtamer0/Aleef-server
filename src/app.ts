@@ -42,6 +42,15 @@ vaccinationReminder();
 
 
 app.use('/api/v1/users/login', authLimiter);
+app.use('/api/v1/users/verify-email', authLimiter);
+app.use('/api/v1/users/resend-otp', authLimiter);
+app.use('/api/v1/users/reset-password', authLimiter);
+app.use('/api/v1/doctors/login', authLimiter);
+app.use('/api/v1/doctors/verify-email', authLimiter);
+app.use('/api/v1/doctors/resend-otp', authLimiter);
+app.use('/api/v1/doctors/reset-password', authLimiter);
+
+
 app.use('/api/v1/users', apiLimiter, usersRouter);
 app.use('/api/v1/doctors', apiLimiter, doctorRouter);
 app.use('/api/v1/products', apiLimiter, productsRouter);

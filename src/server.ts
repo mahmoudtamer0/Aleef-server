@@ -23,9 +23,3 @@ pool.connect()
         console.error("❌ PostgreSQL connection failed:", err);
         process.exit(1);
     });
-
-if (process.env["NODE_ENV"] === "production") {
-    setInterval(() => {
-        pool.query("SELECT 1").catch(console.error);
-    }, 3 * 60 * 1000);
-}

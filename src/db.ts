@@ -7,8 +7,8 @@ if (!dbUrl) throw new Error("SQL_DB_URL is not defined");
 const pool = new Pool({
     connectionString: dbUrl,
     ssl: { rejectUnauthorized: false },
-    max: 10,
-    min: 5,
+    max: 60,
+    min: 10,
     idleTimeoutMillis: 60000,
     connectionTimeoutMillis: 5000,
 });

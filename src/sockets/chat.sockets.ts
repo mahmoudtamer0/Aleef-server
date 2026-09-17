@@ -51,6 +51,10 @@ export = (io: any, socket: any) => {
                 return;
             }
 
+            if (data.message.length > 2000) {
+                return io.to(socket.user.id).emit("error_message", { errMessage: "message too long" });
+            }
+
             const chatResult = await pool.query(
                 `SELECT c.id, c."expiresAt", c."updatedAt", cm.member_id AS other_member_id, cm.member_model AS other_member_model,
                 CASE WHEN cm.member_model = 'User' THEN

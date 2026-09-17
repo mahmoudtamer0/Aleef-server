@@ -1,5 +1,4 @@
 import { getCache, setCache } from "../../../../cache";
-import { APPOINTMENT_COMMISSION } from "../../../../constants/appoinmentCommision";
 import pool from "../../../../db";
 import { User } from "../../../../types/user";
 import ApiError from "../../../../utils/ApiError";
@@ -165,13 +164,14 @@ export const prevAppointmentsForDoctor = async (doctor: User) => {
             JOIN users u ON u.id = a.owner
             JOIN doctors d ON d.id = a.doctor
             JOIN pets p ON p.id = a.pet
-            WHERE a.doctor = $1 AND a.status IN ('cancelled', 'completed')
+            WHERE a.doctor = $1 AND a.status IN ('cancelled-by-doctor', 'cancelled-by-owner', 'completed')
             ORDER BY a."updatedAt" DESC LIMIT 8`,
             [doctor.id]
         ),
         pool.query(`SELECT balance,id FROM doctor_wallet WHERE doctor = $1`, [doctor.id]),
+
         pool.query(
-            `SELECT COALESCE(SUM(a."doctorFee"), 0) AS "totalEarnings"
+            `SELECT COALESCE(SUM(a."doctorPayout"), 0) AS "totalEarnings"
              FROM appointments a
              WHERE a.doctor = $1
              AND a.status = 'completed'`,
@@ -179,7 +179,7 @@ export const prevAppointmentsForDoctor = async (doctor: User) => {
         )
     ]);
 
-    const doctorEarnings = totalEarnings.rows[0].totalEarnings * (1 - APPOINTMENT_COMMISSION);
+    const doctorEarnings = totalEarnings.rows[0].totalEarnings;
 
 
     if (doctor_wallet.rowCount === 0) {

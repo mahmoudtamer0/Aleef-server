@@ -279,9 +279,9 @@ export const previewAppointment = catchAsync(async (req, res, next) => {
         date: appointment.date,
         time: appointment.time,
 
-        originalFee: appointment.doctorFee,           // السعر الأصلي قبل أي خصم (500)
-        discount: appointment.discount,                // قيمة الخصم بالجنيه (150)
-        appointmentFee: appointment.appointmentFee,    // بعد الخصم (350) — ده المعنى الصح لعمود appointmentFee
+        originalFee: appointment.doctorFee,
+        discount: appointment.discount,
+        appointmentFee: appointment.appointmentFee,
         discountDetails: {
             name: appointment.discountDetails?.discount.name ?? null,
             type: appointment.discountDetails?.discount.type ?? null,

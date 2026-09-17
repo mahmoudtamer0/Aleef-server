@@ -5,7 +5,6 @@ import { generateFinalPrice } from "../../../utils/generateFinalPrice"
 
 
 
-// addProduct
 export const addProduct = async ({ title, description, originalPrice, discount, categories, stock }: any, reqFiles: any): Promise<any> => {
     const client = await pool.connect();
     try {
@@ -235,7 +234,7 @@ export const editProduct = async (
     const client = await pool.connect();
 
     try {
-
+        await client.query("BEGIN");
         const fields: string[] = [];
         const values: any[] = [];
         let index = 1;
@@ -376,7 +375,6 @@ export const editProduct = async (
 export const deleteProduct = async (prodId: any) => {
     const client = await pool.connect();
     try {
-        console.log("deleting product:", prodId);
         await client.query("BEGIN");
         await client.query(`DELETE FROM products WHERE id = $1`, [prodId]);
         await client.query(`DELETE FROM product_images WHERE product_id = $1`, [prodId]);

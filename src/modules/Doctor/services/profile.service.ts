@@ -213,6 +213,11 @@ export const editDoctorSchedule = async (doctor: User, schedule: { day_of_week: 
 
 };
 
+function roundForCacheKey(value: number | null): string {
+    if (value === null) return "none";
+    return value.toFixed(2);
+}
+
 export const getAvailableDoctors = async (reqQuery: {
     search?: string, status?: string, sort?: string,
     page?: string, limit?: string,
@@ -228,7 +233,7 @@ export const getAvailableDoctors = async (reqQuery: {
     const limit = Math.min(Number(reqQuery.limit) || 10, 5);
     const offset = (page - 1) * limit;
 
-    const cacheKey = `doctorsAvailable:${page}_${limit}_${sort}_${status}_${search}_${city}_${user_lat}_${user_lng}`;
+    const cacheKey = `doctorsAvailable:${page}_${limit}_${sort}_${status}_${search}_${city}_${roundForCacheKey(user_lat)}_${roundForCacheKey(user_lng)}`;
     const cached = getCache(cacheKey);
     if (cached) return cached;
 
@@ -300,20 +305,18 @@ export const getAvailableDoctors = async (reqQuery: {
         } else if (sort === "lowest_price") {
             orderBy = `ORDER BY d."appointmentFee" ASC NULLS LAST`;
         } else {
-            orderBy = `ORDER BY completed_appointments DESC`;
+            orderBy = `ORDER BY d.completed_appointments DESC`;
         }
     }
 
     const mainQuery = `
         SELECT
-            d.id, d.name, d.city, d.specialization,
+            d.id, d.name, d.city, d.specialization,d.completed_appointments,
             d.status, d."profilePic", d.address, d.rating, d."ratingsCount",
             d."appointmentFee", d."createdAt",
             ${distanceSelect},
-            COUNT(CASE WHEN a.status = 'completed' THEN 1 END) AS completed_appointments,
             COUNT(*) OVER() AS total_count
         FROM doctors d
-        LEFT JOIN appointments a ON d.id = a.doctor
         ${whereClause}
         GROUP BY d.id
         ${orderBy}

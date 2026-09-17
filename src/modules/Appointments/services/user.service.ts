@@ -271,8 +271,8 @@ export const getAppointmentDetailsForUser = async (user: User, appointmentId: an
         FROM appointments a
         JOIN doctors d ON d.id = a.doctor
         JOIN pets p ON p.id = a.pet
-        WHERE a.id = $1`,
-        [appointmentId]
+        WHERE a.id = $1 AND a.owner = $2`,
+        [appointmentId, user.id]
     );
 
     if (appointment.rows.length === 0) throw new ApiError(404, "appointment not found");
