@@ -10,6 +10,7 @@ const globalErrorHandler = (
     err.status = err.status || "error";
 
     if (process.env["NODE_ENV"] === "development") {
+        console.error("Error :", err);
         return res.status(err.statusCode).json({
             status: err.status,
             message: err.message,

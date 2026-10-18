@@ -23,7 +23,7 @@ export const bookAppointmentSchema = Joi.object({
     reason: Joi.string().min(3).max(500).required(),
 
     notes: Joi.string().max(1000).min(0).optional(),
-    paymentMethod: Joi.string().valid("CASH", "CARD").required().messages({
+    paymentMethod: Joi.string().valid("CASH", "CARD").optional().messages({
         "any.required": "Payment method is required",
         "any.only": "Payment method must be either CASH or CARD",
     }),
