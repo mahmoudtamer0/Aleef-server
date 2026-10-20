@@ -2,8 +2,9 @@ import { BOT_ID } from "../../constants/bot";
 import pool from "../../db";
 import { getCache, setCache } from "../../cache";
 import ApiError from "../../utils/ApiError";
+import { User } from "../../types/user";
 
-export const getChats = async (user: any) => {
+export const getChats = async (user: User) => {
 
     const cacheKey = `chats:${user.id}`;
     const cached = getCache(cacheKey);
@@ -53,7 +54,7 @@ export const getChats = async (user: any) => {
 };
 
 
-export const getChatMessages = async (chatId: any, user: any) => {
+export const getChatMessages = async (chatId: any, user: User) => {
 
     const cacheKey = `chat_messages_${user.id}_${chatId}`;
     const cached = getCache(cacheKey);
@@ -115,7 +116,7 @@ export const getChatMessages = async (chatId: any, user: any) => {
 };
 
 
-export const getChatbotMessages = async (user: any) => {
+export const getChatbotMessages = async (user: User) => {
     let chatResult = await pool.query(
         `SELECT c.id FROM chats c
          JOIN chat_members cm ON c.id = cm."chatId"
@@ -272,4 +273,15 @@ export const getChatMessagesForAdmin = async (chatId: any) => {
     };
 
     return response;
+};
+
+export const getUnreadMessagesCount = async (user: User) => {
+    const result = await pool.query(
+        `SELECT SUM(m."unreadCount") AS unread_count
+         FROM unread_messages m
+         WHERE m.user_id = $1`,
+        [user.id]
+    );
+
+    return result.rows[0].unread_count;
 };

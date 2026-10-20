@@ -1,7 +1,7 @@
 import express from "express";
 
 import { verifyToken } from "../../middlewares/verifyToken";
-import { getAllChats, getChatbotMessages, getChatMessages, getChatMessagesForAdmin, getChats, uploadChatPhoto } from "./chat.controler";
+import { getAllChats, getChatbotMessages, getChatMessages, getChatMessagesForAdmin, getChats, getUnreadMessagesCount, uploadChatPhoto } from "./chat.controler";
 import { allowTo } from "../../middlewares/allowTo";
 import { upload } from "../../middlewares/chatUploads";
 const router = express.Router()
@@ -24,6 +24,9 @@ router.route("/chatbot/image")
 
 router.route("/chatbot")
     .get(verifyToken, getChatbotMessages)
+
+router.route("/unread-messages-count")
+    .get(verifyToken, getUnreadMessagesCount)
 
 router.route("/:chatId/messages")
     .get(verifyToken, getChatMessages)
