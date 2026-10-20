@@ -1,3 +1,4 @@
+import { User } from "../../types/user";
 import catchAsync from "../../utils/catchAsync";
 import * as chatServices from "./chat.services"
 
@@ -5,7 +6,7 @@ import * as chatServices from "./chat.services"
 
 export const getChats = catchAsync(async (req, res, next) => {
 
-    const user = req.user;
+    const user = req.user as User;
     const chats = await chatServices.getChats(user);
 
     return res.status(200).json({
@@ -17,7 +18,7 @@ export const getChats = catchAsync(async (req, res, next) => {
 
 export const getChatMessages = catchAsync(async (req, res, next) => {
 
-    const user = req.user;
+    const user = req.user as User;
     const { chatId } = req.params;
     const messages = await chatServices.getChatMessages(chatId, user);
     return res.status(200).json({
@@ -30,7 +31,7 @@ export const getChatMessages = catchAsync(async (req, res, next) => {
 
 
 export const getChatbotMessages = catchAsync(async (req, res, next) => {
-    const user = req.user;
+    const user = req.user as User;
     const messages = await chatServices.getChatbotMessages(user);
 
     return res.status(200).json({
@@ -70,4 +71,14 @@ export const getChatMessagesForAdmin = catchAsync(async (req, res, next) => {
         status: "success",
         messages: messages,
     })
-}); 
+});
+
+export const getUnreadMessagesCount = catchAsync(async (req, res, next) => {
+    const user = req.user as User;
+    const unreadCount = await chatServices.getUnreadMessagesCount(user);
+
+    return res.status(200).json({
+        status: "success",
+        unreadCount
+    })
+})
